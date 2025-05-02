@@ -1,0 +1,384 @@
+# llama-swap Configuration File
+# Place this file in the same directory as run_server.ps1 or specify with --config
+
+# Optional: Seconds to wait for backend llama-server to become healthy
+healthCheckTimeout: 60
+
+# Optional: Log level for llama-swap itself (debug, info, warn, error)
+logLevel: info
+
+# Define your models here
+models:
+  # Model alias used by clients (e.g., Open WebUI)
+  "Qwen3-8B-Q4_K_M":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9901"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9901
+      --model D:\\LLMs\\GGUF\\Qwen3-8B-Q4_K_M.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 999
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+    aliases:
+      - Qwen3-8B-NoThink
+
+    # Optional: Other names clients can use to request this model
+    # aliases:
+    #  - "qwen-8b-alias"
+
+    # Optional: Unload this model if idle for N seconds (0 = never unload)
+    # ttl: 300
+
+  "Qwen3-30B-A3B":
+    # UNIQUE Proxy Port
+    proxy: "http://127.0.0.1:9902"
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9902
+      --model D:\\LLMs\\GGUF\\Qwen3-30B-A3B-Q4_K_M.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 48
+      -ot "blk\.([0-3][0-9])\.ffn_.*_exps.=CPU"
+      --split-mode none
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+
+  "Qwen3-32B-Think":
+    # UNIQUE Proxy Port
+    proxy: "http://127.0.0.1:9903"
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9903
+      --model D:\\LLMs\\GGUF\\Qwen3-32B-Q4_K_M.gguf
+      --ctx-size 16384
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 24
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+    aliases:
+      - Qwen3-32B-NoThink
+
+  "Qwen3-0.6B":
+    # UNIQUE Proxy Port
+    proxy: "http://127.0.0.1:9904"
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9904
+      --model D:\\LLMs\\GGUF\\Qwen3-0.6B-Q4_K_M.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 999
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+
+  "Qwen3-4B-Q4_K_M":
+    # UNIQUE Proxy Port
+    proxy: "http://127.0.0.1:9905"
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9905
+      --model D:\\LLMs\\GGUF\\Qwen3-4B-Q4_K_M.gguf
+      --ctx-size 16384
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 999
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+
+  "Qwen3-4B-UD-Q8_K_XL":
+    # UNIQUE Proxy Port
+    proxy: "http://127.0.0.1:9906"
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9906
+      --model D:\\LLMs\\GGUF\\Qwen3-4B-UD-Q8_K_XL.gguf
+      --ctx-size 16384
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 999
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+
+  "Qwen3-32B-SpeculativeDecoding":
+    # UNIQUE Proxy Port
+    proxy: "http://127.0.0.1:9907"
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9907
+      --model D:\\LLMs\\GGUF\\Qwen3-32B-Q4_K_M.gguf
+      --ctx-size 16384
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 18
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+      -md D:\\LLMs\\GGUF\\Qwen3-0.6B-Q4_K_M.gguf
+      -ngld 99
+      -devd CUDA0
+      -cd 8192
+
+  "Qwen3-8B-Q4_K_M-Bart":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9908"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9908
+      --model D:\\LLMs\\GGUF\\Qwen3-8B-Q4_K_M-Bart.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 999
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --reasoning-format qwen3
+
+  "GLM-4-32B-0414":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9909"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9909
+      --model D:\\LLMs\\GGUF\\GLM-4-32B-0414-Q4_K_M.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 24
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 20
+      --override-kv tokenizer.ggml.eos_token_id=int:151336
+      --override-kv glm4.rope.dimension_count=int:64
+      --chat-template chatglm4
+
+  "gemma-3-1b-it":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9910"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9910
+      --model D:\\LLMs\\GGUF\\gemma-3-1b-it-q4_0.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 99
+      --threads 28
+      --seed 3407
+      --temp 1.0
+      --min-p 0.01
+      --top-p 0.95
+      --top-k 64
+      --repeat-penalty 1.0
+      --chat-template gemma
+
+  "gemma-3-4b-it":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9911"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9911
+      --model D:\\LLMs\\GGUF\\gemma-3-4b-it-q4_0.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 99
+      --threads 28
+      --seed 3407
+      --temp 1.0
+      --min-p 0.01
+      --top-p 0.95
+      --top-k 64
+      --repeat-penalty 1.0
+      --chat-template gemma
+
+  "gemma-3-12b-it":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9912"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9912
+      --model D:\\LLMs\\GGUF\\gemma-3-12b-it-q4_0.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 50
+      --threads 26
+      --seed 3407
+      --temp 1.0
+      --min-p 0.01
+      --top-p 0.95
+      --top-k 64
+      --repeat-penalty 1.0
+      --chat-template gemma
+
+  "gemma-3-27b-it":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9913"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9913
+      --model D:\\LLMs\\GGUF\\gemma-3-27b-it-q4_0.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 29
+      --threads 28
+      --seed 3407
+      --temp 1.0
+      --min-p 0.01
+      --top-p 0.95
+      --top-k 64
+      --repeat-penalty 1.0
+      --chat-template gemma
+
+  "Mistral-Small-3.1-24B":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9914"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9914
+      --model D:\\LLMs\\GGUF\\Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 21
+      --threads 28
+      --seed 3407
+      --temp 0.15
+
+  "QwQ-32B-Q4_K_M.gguf":
+    # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
+    proxy: "http://127.0.0.1:9915"
+    # Command to START the dedicated llama-server for this model.
+    # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9915
+      --model D:\\LLMs\\GGUF\\QwQ-32B-Q4_K_M.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 24
+      --threads 28
+      --seed 3407
+      --temp 0.6
+      --min-p 0.0
+      --top-p 0.95
+      --top-k 40
+      --repeat-penalty 1.1
+      --dry-multiplier 0.5
+
+  "gemma-3-27b-it-SpeculativeDecoding":
+    # UNIQUE Proxy Port
+    proxy: "http://127.0.0.1:9916"
+    cmd: >
+      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      --port 9916
+      --model D:\\LLMs\\GGUF\\gemma-3-27b-it-q4_0.gguf
+      --ctx-size 8192
+      --flash-attn
+      --cache-type-k q8_0
+      --cache-type-v q8_0
+      --n-gpu-layers 12
+      --threads 28
+      --seed 3407
+      --temp 1.0
+      --min-p 0.01
+      --top-p 0.95
+      --top-k 64
+      --repeat-penalty 1.0
+      --reasoning-format qwen3
+      -md D:\\LLMs\\GGUF\\gemma-3-1b-it-q4_0.gguf
+      -ngld 99
+      -devd CUDA0
+      -cd 8192
+      --chat-template gemma
+
+# Optional: Define profiles to run multiple specific models simultaneously
+# profiles:
+#   coding:
+#     - "Qwen3-8B-Q4_K_M" # Use alias from above
+#     - "SomeOtherModelAlias"
+#   # Request model "coding:Qwen3-8B-Q4_K_M" to load this profile
+
+
