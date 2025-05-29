@@ -9,7 +9,7 @@ set LLAMA_SWAP_EXE_DIR=%INSTALL_DIR%\llama-swap
 set LLAMA_SWAP_EXE=%LLAMA_SWAP_EXE_DIR%\llama-swap.exe
 set MODEL_DIR=%INSTALL_DIR%\models
 set WEBUI_DIR=%INSTALL_DIR%\open-webui
-set LLAMA_CPP_REPO=https://github.com/ggerganov/llama.cpp.git
+set LLAMA_CPP_REPO=https://github.com/ggml-org/llama.cpp.git
 set LLAMA_SWAP_REPO=https://github.com/mostlygeek/llama-swap.git
 
 REM --- Prerequisite Check (Basic) ---

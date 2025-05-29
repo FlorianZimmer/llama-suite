@@ -16,15 +16,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9901
-      --model D:\\LLMs\\GGUF\\Qwen3-8B-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/Qwen3-8B-Q4_K_M.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
       --n-gpu-layers 999
-      --threads 28
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
@@ -45,17 +45,15 @@ models:
     # UNIQUE Proxy Port
     proxy: "http://127.0.0.1:9902"
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9902
-      --model D:\\LLMs\\GGUF\\Qwen3-30B-A3B-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/Qwen3-30B-A3B-Q4_K_M.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 48
-      -ot "blk\.([0-3][0-9])\.ffn_.*_exps.=CPU"
-      --split-mode none
-      --threads 28
+      --n-gpu-layers 999
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
@@ -67,15 +65,15 @@ models:
     # UNIQUE Proxy Port
     proxy: "http://127.0.0.1:9903"
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9903
-      --model D:\\LLMs\\GGUF\\Qwen3-32B-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/Qwen3-32B-Q4_K_M.gguf
       --ctx-size 16384
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 24
-      --threads 28
+      --n-gpu-layers 999
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
@@ -89,15 +87,15 @@ models:
     # UNIQUE Proxy Port
     proxy: "http://127.0.0.1:9904"
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9904
-      --model D:\\LLMs\\GGUF\\Qwen3-0.6B-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/Qwen3-0.6B-Q4_K_M.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
       --n-gpu-layers 999
-      --threads 28
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
@@ -109,9 +107,9 @@ models:
     # UNIQUE Proxy Port
     proxy: "http://127.0.0.1:9906"
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9906
-      --model D:\\LLMs\\GGUF\\Qwen_Qwen3-4B-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/Qwen_Qwen3-4B-Q4_K_M.gguf
       --ctx-size 16384
       --flash-attn
       --cache-type-k q8_0
@@ -129,25 +127,25 @@ models:
     # UNIQUE Proxy Port
     proxy: "http://127.0.0.1:9907"
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9907
-      --model D:\\LLMs\\GGUF\\Qwen3-32B-Q4_K_M.gguf
-      --ctx-size 16384
+      --model /Users/florian/Local/GGUF/Qwen3-32B-Q4_K_M.gguf
+      --ctx-size 4096
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 18
-      --threads 28
+      --n-gpu-layers 999
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
       --top-p 0.95
       --top-k 20
       --reasoning-format qwen3
-      -md D:\\LLMs\\GGUF\\Qwen3-0.6B-Q4_K_M.gguf
+      -md /Users/florian/Local/GGUF/Qwen3-0.6B-Q4_K_M.gguf
       -ngld 99
-      -devd CUDA0
-      -cd 8192
+      -devd Metal
+      -cd 1024
 
   "Qwen3-8B-Q4_K_M-Bart":
     # UNIQUE internal URL where llama-swap expects the backend llama-server for this model to run.
@@ -155,15 +153,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9908
-      --model D:\\LLMs\\GGUF\\Qwen3-8B-Q4_K_M-Bart.gguf
+      --model /Users/florian/Local/GGUF/Qwen3-8B-Q4_K_M-Bart.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
       --n-gpu-layers 999
-      --threads 28
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
@@ -177,15 +175,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9909
-      --model D:\\LLMs\\GGUF\\GLM-4-32B-0414-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/GLM-4-32B-0414-Q4_K_M.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 24
-      --threads 28
+      --n-gpu-layers 999
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
@@ -201,15 +199,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9910
-      --model D:\\LLMs\\GGUF\\gemma-3-1b-it-q4_0.gguf
+      --model /Users/florian/Local/GGUF/gemma-3-1b-it-q4_0.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 99
-      --threads 28
+      --n-gpu-layers 999
+      --threads 14
       --seed 3407
       --temp 1.0
       --min-p 0.01
@@ -224,15 +222,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9911
-      --model D:\\LLMs\\GGUF\\gemma-3-4b-it-q4_0.gguf
+      --model /Users/florian/Local/GGUF/gemma-3-4b-it-q4_0.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
       --n-gpu-layers 99
-      --threads 28
+      --threads 14
       --seed 3407
       --temp 1.0
       --min-p 0.01
@@ -247,14 +245,14 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9912
-      --model D:\\LLMs\\GGUF\\gemma-3-12b-it-q4_0.gguf
+      --model /Users/florian/Local/GGUF/gemma-3-12b-it-q4_0.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 50
+      --n-gpu-layers 99
       --threads 26
       --seed 3407
       --temp 1.0
@@ -270,15 +268,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9913
-      --model D:\\LLMs\\GGUF\\gemma-3-27b-it-q4_0.gguf
+      --model /Users/florian/Local/GGUF/gemma-3-27b-it-q4_0.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 29
-      --threads 28
+      --n-gpu-layers 99
+      --threads 14
       --seed 3407
       --temp 1.0
       --min-p 0.01
@@ -293,15 +291,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9914
-      --model D:\\LLMs\\GGUF\\Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 21
-      --threads 28
+      --n-gpu-layers 99
+      --threads 14
       --seed 3407
       --temp 0.15
 
@@ -311,15 +309,15 @@ models:
     # Command to START the dedicated llama-server for this model.
     # Use > for multi-line readability. Paths should be absolute or relative to where llama-swap runs.
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9915
-      --model D:\\LLMs\\GGUF\\QwQ-32B-Q4_K_M.gguf
+      --model /Users/florian/Local/GGUF/QwQ-32B-Q4_K_M.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 24
-      --threads 28
+      --n-gpu-layers 99
+      --threads 14
       --seed 3407
       --temp 0.6
       --min-p 0.0
@@ -332,15 +330,15 @@ models:
     # UNIQUE Proxy Port
     proxy: "http://127.0.0.1:9916"
     cmd: >
-      C:\\Users\\Florian\\OneDrive\\Dokumente\\Privat\\Programmieren\\llama_suite\\llama.cpp\\build\\bin\\Release\\llama-server.exe
+      /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
       --port 9916
-      --model D:\\LLMs\\GGUF\\gemma-3-27b-it-q4_0.gguf
+      --model /Users/florian/Local/GGUF/gemma-3-27b-it-q4_0.gguf
       --ctx-size 8192
       --flash-attn
       --cache-type-k q8_0
       --cache-type-v q8_0
-      --n-gpu-layers 12
-      --threads 28
+      --n-gpu-layers 99
+      --threads 14
       --seed 3407
       --temp 1.0
       --min-p 0.01
@@ -348,11 +346,13 @@ models:
       --top-k 64
       --repeat-penalty 1.0
       --reasoning-format qwen3
-      -md D:\\LLMs\\GGUF\\gemma-3-1b-it-q4_0.gguf
+      -md /Users/florian/Local/GGUF/gemma-3-1b-it-q4_0.gguf
       -ngld 99
-      -devd CUDA0
+      -devd Metal
       -cd 8192
       --chat-template gemma
+
+
 
 # Optional: Define profiles to run multiple specific models simultaneously
 # profiles:

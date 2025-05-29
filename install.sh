@@ -3,14 +3,14 @@ set -euo pipefail # Exit on error, exit on unset variable, check pipeline errors
 
 # --- Configuration ---
 # Adjust INSTALL_DIR if you want to install somewhere else
-INSTALL_DIR="${HOME}/llama_suite" # Default: /Users/your_username/llama_suite
+INSTALL_DIR="/Users/florian/Documents/code/llama-suite/" # Default: /Users/your_username/llama_suite
 LLAMA_CPP_DIR="${INSTALL_DIR}/llama.cpp"
 LLAMA_SWAP_SOURCE_DIR="${INSTALL_DIR}/llama-swap-source"
 LLAMA_SWAP_EXE_DIR="${INSTALL_DIR}/llama-swap" # Directory where the compiled binary will be placed
 LLAMA_SWAP_EXE="${LLAMA_SWAP_EXE_DIR}/llama-swap" # Executable name without .exe
-MODEL_DIR="${INSTALL_DIR}/models"
-WEBUI_DIR="${INSTALL_DIR}/open-webui" # Data directory for Open WebUI persistent data
-LLAMA_CPP_REPO="https://github.com/ggerganov/llama.cpp.git"
+MODEL_DIR="/Users/florian/Local/GGUF"
+WEBUI_DIR="/Users/florian/OrbStack/docker/volumes/open-webui_open-webui" # Data directory for Open WebUI persistent data
+LLAMA_CPP_REPO="https://github.com/ggml-org/llama.cpp.git"
 LLAMA_SWAP_REPO="https://github.com/mostlygeek/llama-swap.git"
 OPEN_WEBUI_IMAGE="ghcr.io/open-webui/open-webui:main"
 
@@ -43,7 +43,7 @@ mkdir -p "${LLAMA_SWAP_EXE_DIR}" # Create the target directory for the llama-swa
 
 # --- Define llama.cpp server executable path ---
 # Adjust if the build process outputs the server binary elsewhere
-LLAMA_SERVER_EXE="server" # Common name for the server binary in llama.cpp builds
+LLAMA_SERVER_EXE="llama-server" # Common name for the server binary in llama.cpp builds
 LLAMA_SERVER_FULL_PATH="${LLAMA_CPP_DIR}/build/bin/${LLAMA_SERVER_EXE}"
 
 # Function for Yes/No prompts
@@ -171,10 +171,10 @@ fi
 chmod +x "${LLAMA_SWAP_EXE}"
 
 # --- Pull Open WebUI Docker Image ---
-echo "Pulling Open WebUI Docker image (${OPEN_WEBUI_IMAGE})..."
-if ! docker pull "${OPEN_WEBUI_IMAGE}"; then
-    echo "WARNING: Failed to pull Open WebUI image. Check Docker Hub/GHCR status and your internet connection."
-fi
+#echo "Pulling Open WebUI Docker image (${OPEN_WEBUI_IMAGE})..."
+#if ! docker pull "${OPEN_WEBUI_IMAGE}"; then
+#    echo "WARNING: Failed to pull Open WebUI image. Check Docker Hub/GHCR status and your internet connection."
+#fi
 
 echo
 echo "--- Installation Summary ---"

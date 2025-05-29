@@ -389,7 +389,7 @@ if ($PSBoundParameters.ContainsKey('ModelToTest')) {
 Write-Host "Models selected for benchmarking: $($ModelsToTestList -join ', ')"
 
 #==============================================================================
-# PASS 1: Memory Scan (Skip if -ModelToTest is used)
+# PASS 1: Memory Scan
 #==============================================================================
 
 Write-Host ("="*60)
