@@ -1,0 +1,117 @@
+# overrides/windows-rtx3080.yaml
+
+# Global overrides if any (none in this example, but could be top-level keys)
+
+models:
+  # For all models, if the binary path is consistently different on Windows:
+  # You could use a YAML alias here if you want to set it for many models,
+  # or repeat it, or handle it in the python script if platform.system() == "Windows".
+  # For now, let's assume the base config has a path that might work or you adjust it per model if needed.
+  # If all binaries are in the same relative place but end with .exe:
+  # SomeModel:
+  #   cmd:
+  #     bin: ./llama.cpp/build/bin/llama-server.exe # Example
+
+  Qwen3-8B-Q4_K_M:
+    cmd:
+      gpu-layers: 999 # Effectively all layers
+      threads: 28
+
+  Qwen3-30B-A3B:
+    cmd:
+      gpu-layers: 48   # As per your spec
+      threads: 28
+      override-tensor: "blk\\.([0-3][0-9])\\.ffn_.*_exps.=CPU"
+
+  Qwen3-32B-Think:
+    cmd:
+      gpu-layers: 24   # As per your spec
+      threads: 28
+
+  Qwen3-0.6B:
+    cmd:
+      gpu-layers: 999
+      threads: 28
+
+  # Qwen3-32B-UD-Q4:
+  #   cmd:
+  #     gpu-layers: 24
+  #     threads: 28
+
+  Qwen3-4B-Q4-Bart:
+    cmd:
+      gpu-layers: 99 # Your spec
+      threads: 28
+
+  Qwen3-32B-SpeculativeDecoding-40960:
+    cmd:
+      gpu-layers: 10 # Your spec
+      threads: 28
+      devd: CUDA0    # Specific for RTX 3080
+
+  Qwen3-8B-Q4_K_M-Bart:
+    cmd:
+      gpu-layers: 999
+      threads: 28
+
+  GLM-4-32B-0414:
+    cmd:
+      gpu-layers: 24
+      threads: 28
+      # override-kv and chat-template should be in base if not machine-specific
+
+  gemma-3-1b-it:
+    cmd:
+      gpu-layers: 99 # Your spec
+      threads: 28
+
+  gemma-3-4b-it:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+
+  gemma-3-12b-it:
+    cmd:
+      gpu-layers: 50
+      threads: 26
+
+  gemma-3-27b-it:
+    cmd:
+      gpu-layers: 29
+      threads: 28
+
+  Mistral-Small-3.1-24B:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
+  "QwQ-32B-Q4_K_M.gguf": # Ensure model name matches base config
+    cmd:
+      gpu-layers: 22
+      threads: 28
+
+  gemma-3-27b-it-SpeculativeDecoding:
+    cmd:
+      gpu-layers: 14
+      threads: 28
+      devd: CUDA0
+
+  Qwen3-30B-A3B-UD:
+    cmd:
+      gpu-layers: 48
+      threads: 28
+
+  "Qwen3-32B-SpeculativeDecoding-16384": # Ensure model name matches base config
+    cmd:
+      gpu-layers: 10
+      threads: 28
+      devd: CUDA0
+
+# The top-level keys like healthCheckTimeout, logLevel, and profiles from your
+# llama-swap native config are NOT currently handled by llama_swap_watch.py.
+# llama_swap_watch.py focuses on generating the model command strings for a
+# single llama-swap instance's "models" section.
+# If you need those, llama_swap_watch.py would need to be extended to read them
+# and pass them when it calls the actual llama-swap executable, or llama-swap
+# would need to read its own separate config for those global settings.
+# For now, this override only affects the 'models' part that llama_swap_watch.py processes.

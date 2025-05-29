@@ -1,0 +1,6 @@
+# overrides/mac-m3.yaml  ← only edited on this Mac
+models:
+  Qwen3-8B-Q4_K_M:
+    cmd:
+      gpu-layers: 99
+      threads: 12

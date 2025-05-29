@@ -1,0 +1,1019 @@
+{
+  "results": {
+    "humaneval": {
+      "alias": "humaneval",
+      "pass@1,create_test": 0.35,
+      "pass@1_stderr,create_test": 0.10942433098048308
+    }
+  },
+  "group_subtasks": {
+    "humaneval": []
+  },
+  "configs": {
+    "humaneval": {
+      "task": "humaneval",
+      "dataset_path": "openai/openai_humaneval",
+      "test_split": "test",
+      "doc_to_text": "{{prompt}}",
+      "doc_to_target": "{{test}}\ncheck({{entry_point}})",
+      "unsafe_code": true,
+      "description": "",
+      "target_delimiter": " ",
+      "fewshot_delimiter": "\n\n",
+      "num_fewshot": 0,
+      "metric_list": [
+        {
+          "metric": "def pass_at_k(references: list[str], predictions: list[list[str]], k: list[int] = None):\n    global compute_\n    assert k is not None\n    if isinstance(k, int):\n        k = [k]\n    res = compute_.compute(\n        references=references,\n        predictions=predictions,\n        k=k,\n    )\n    return res[0]\n",
+          "aggregation": "mean",
+          "higher_is_better": true,
+          "k": [
+            1
+          ]
+        }
+      ],
+      "output_type": "generate_until",
+      "generation_kwargs": {
+        "until": [
+          "\nclass",
+          "\ndef",
+          "\n#",
+          "\nif",
+          "\nprint"
+        ],
+        "max_gen_toks": 1024,
+        "do_sample": false
+      },
+      "repeats": 1,
+      "filter_list": [
+        {
+          "name": "create_test",
+          "filter": [
+            {
+              "function": "custom",
+              "filter_fn": "<function build_predictions>"
+            }
+          ]
+        }
+      ],
+      "should_decontaminate": false,
+      "metadata": {
+        "version": 1.0
+      }
+    }
+  },
+  "versions": {
+    "humaneval": 1.0
+  },
+  "n-shot": {
+    "humaneval": 0
+  },
+  "higher_is_better": {
+    "humaneval": {
+      "pass_at_k": true
+    }
+  },
+  "n-samples": {
+    "humaneval": {
+      "original": 164,
+      "effective": 20
+    }
+  },
+  "samples": {
+    "humaneval": [
+      {
+        "doc_id": 0,
+        "doc": {
+          "task_id": "HumanEval/0",
+          "prompt": "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n    given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n",
+          "canonical_solution": "    for idx, elem in enumerate(numbers):\n        for idx2, elem2 in enumerate(numbers):\n            if idx != idx2:\n                distance = abs(elem - elem2)\n                if distance < threshold:\n                    return True\n\n    return False\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.3) == True\n    assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.05) == False\n    assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.95) == True\n    assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.8) == False\n    assert candidate([1.0, 2.0, 3.0, 4.0, 5.0, 2.0], 0.1) == True\n    assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 1.0) == True\n    assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 0.5) == False\n\n",
+          "entry_point": "has_close_elements"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.3) == True\n    assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.05) == False\n    assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.95) == True\n    assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.8) == False\n    assert candidate([1.0, 2.0, 3.0, 4.0, 5.0, 2.0], 0.1) == True\n    assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 1.0) == True\n    assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 0.5) == False\n\n\ncheck(has_close_elements)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n    given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    if not numbers:\n        return False\n    if threshold <= 0:\n        return False\n    if len(numbers) < 2:\n        return False\n    # Check if all elements are the same\n    if all(x == numbers[0] for x in numbers):\n        return False\n    # Check if any two elements are closer than threshold\n    for i in range(len(numbers) - 1):\n        for j in range(i + 1, len(numbers)):\n            if abs(numbers[i] - numbers[j]) < threshold:\n                return True\n    return False\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef has_close_elements(numbers: List[float], threshold: float) -> bool:\n    \"\"\" Check if in given list of numbers, are any two numbers closer to each other than\n    given threshold.\n    >>> has_close_elements([1.0, 2.0, 3.0], 0.5)\n    False\n    >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)\n    True\n    \"\"\"\n    if not numbers:\n        return False\n    if threshold <= 0:\n        return False\n    if len(numbers) < 2:\n        return False\n    # Check if all elements are the same\n    if all(x == numbers[0] for x in numbers):\n        return False\n    # Check if any two elements are closer than threshold\n    for i in range(len(numbers) - 1):\n        for j in range(i + 1, len(numbers)):\n            if abs(numbers[i] - numbers[j]) < threshold:\n                return True\n    return False\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "51330d8caa0784cc324cc1db95f6b0d73670802e1729865056c2469e212d40a5",
+        "prompt_hash": "00b2e074e127a6a9d1376278bef732933760ab706057ec755a8c2642217b557a",
+        "target_hash": "d7de8bac324e281816668aa93fb171c16f9f833f74ec6e32ee7b551875e65daa",
+        "pass@1": 1.0
+      },
+      {
+        "doc_id": 1,
+        "doc": {
+          "task_id": "HumanEval/1",
+          "prompt": "from typing import List\n\n\ndef separate_paren_groups(paren_string: str) -> List[str]:\n    \"\"\" Input to this function is a string containing multiple groups of nested parentheses. Your goal is to\n    separate those group into separate strings and return the list of those.\n    Separate groups are balanced (each open brace is properly closed) and not nested within each other\n    Ignore any spaces in the input string.\n    >>> separate_paren_groups('( ) (( )) (( )( ))')\n    ['()', '(())', '(()())']\n    \"\"\"\n",
+          "canonical_solution": "    result = []\n    current_string = []\n    current_depth = 0\n\n    for c in paren_string:\n        if c == '(':\n            current_depth += 1\n            current_string.append(c)\n        elif c == ')':\n            current_depth -= 1\n            current_string.append(c)\n\n            if current_depth == 0:\n                result.append(''.join(current_string))\n                current_string.clear()\n\n    return result\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('(()()) ((())) () ((())()())') == [\n        '(()())', '((()))', '()', '((())()())'\n    ]\n    assert candidate('() (()) ((())) (((())))') == [\n        '()', '(())', '((()))', '(((())))'\n    ]\n    assert candidate('(()(())((())))') == [\n        '(()(())((())))'\n    ]\n    assert candidate('( ) (( )) (( )( ))') == ['()', '(())', '(()())']\n",
+          "entry_point": "separate_paren_groups"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('(()()) ((())) () ((())()())') == [\n        '(()())', '((()))', '()', '((())()())'\n    ]\n    assert candidate('() (()) ((())) (((())))') == [\n        '()', '(())', '((()))', '(((())))'\n    ]\n    assert candidate('(()(())((())))') == [\n        '(()(())((())))'\n    ]\n    assert candidate('( ) (( )) (( )( ))') == ['()', '(())', '(()())']\n\ncheck(separate_paren_groups)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef separate_paren_groups(paren_string: str) -> List[str]:\n    \"\"\" Input to this function is a string containing multiple groups of nested parentheses. Your goal is to\n    separate those group into separate strings and return the list of those.\n    Separate groups are balanced (each open brace is properly closed) and not nested within each other\n    Ignore any spaces in the input string.\n    >>> separate_paren_groups('( ) (( )) (( )( ))')\n    ['()', '(())', '(()())']\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    result = []\n    i = 0\n    n = len(paren_string)\n    while i < n:\n        if paren_string[i] == '(':\n            j = i\n            while j < n and paren_string[j] == '(':\n                j += 1\n            result.append(paren_string[i:j])\n            i = j + 1\n        else:\n            i += 1\n    return result\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef separate_paren_groups(paren_string: str) -> List[str]:\n    \"\"\" Input to this function is a string containing multiple groups of nested parentheses. Your goal is to\n    separate those group into separate strings and return the list of those.\n    Separate groups are balanced (each open brace is properly closed) and not nested within each other\n    Ignore any spaces in the input string.\n    >>> separate_paren_groups('( ) (( )) (( )( ))')\n    ['()', '(())', '(()())']\n    \"\"\"\n    result = []\n    i = 0\n    n = len(paren_string)\n    while i < n:\n        if paren_string[i] == '(':\n            j = i\n            while j < n and paren_string[j] == '(':\n                j += 1\n            result.append(paren_string[i:j])\n            i = j + 1\n        else:\n            i += 1\n    return result\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "45fda07b46c7057899ce8622c21eb50362d8f3ced0c7ce5026d16d5b2740deb7",
+        "prompt_hash": "ba4d0641a184fb3cdd632060a25d6408a7e91fe9d79b5c341407e74b80536327",
+        "target_hash": "6f022b9598355ce573043dc46a16629039bf0c55fa743aa817b8d05e8c44d8cc",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 2,
+        "doc": {
+          "task_id": "HumanEval/2",
+          "prompt": "\n\ndef truncate_number(number: float) -> float:\n    \"\"\" Given a positive floating point number, it can be decomposed into\n    and integer part (largest integer smaller than given number) and decimals\n    (leftover part always smaller than 1).\n\n    Return the decimal part of the number.\n    >>> truncate_number(3.5)\n    0.5\n    \"\"\"\n",
+          "canonical_solution": "    return number % 1.0\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate(3.5) == 0.5\n    assert abs(candidate(1.33) - 0.33) < 1e-6\n    assert abs(candidate(123.456) - 0.456) < 1e-6\n",
+          "entry_point": "truncate_number"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate(3.5) == 0.5\n    assert abs(candidate(1.33) - 0.33) < 1e-6\n    assert abs(candidate(123.456) - 0.456) < 1e-6\n\ncheck(truncate_number)",
+        "arguments": [
+          [
+            "\n\ndef truncate_number(number: float) -> float:\n    \"\"\" Given a positive floating point number, it can be decomposed into\n    and integer part (largest integer smaller than given number) and decimals\n    (leftover part always smaller than 1).\n\n    Return the decimal part of the number.\n    >>> truncate_number(3.5)\n    0.5\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    return number - number // number\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "\n\ndef truncate_number(number: float) -> float:\n    \"\"\" Given a positive floating point number, it can be decomposed into\n    and integer part (largest integer smaller than given number) and decimals\n    (leftover part always smaller than 1).\n\n    Return the decimal part of the number.\n    >>> truncate_number(3.5)\n    0.5\n    \"\"\"\n    return number - number // number\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "5851cbb39115cab5b374cac572ddbc6e215fa11151a2e1ad77fe20b00d4f5ac6",
+        "prompt_hash": "fecb9ddd4f103f1c3e9d9c7d6c3b948a4b1285b50c3498437c85a9d604d957eb",
+        "target_hash": "21f33ba4583aa03b78379b7612325cda9aeae1a31dbd575f0bc1347752c28fb1",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 3,
+        "doc": {
+          "task_id": "HumanEval/3",
+          "prompt": "from typing import List\n\n\ndef below_zero(operations: List[int]) -> bool:\n    \"\"\" You're given a list of deposit and withdrawal operations on a bank account that starts with\n    zero balance. Your task is to detect if at any point the balance of account fallls below zero, and\n    at that point function should return True. Otherwise it should return False.\n    >>> below_zero([1, 2, 3])\n    False\n    >>> below_zero([1, 2, -4, 5])\n    True\n    \"\"\"\n",
+          "canonical_solution": "    balance = 0\n\n    for op in operations:\n        balance += op\n        if balance < 0:\n            return True\n\n    return False\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == False\n    assert candidate([1, 2, -3, 1, 2, -3]) == False\n    assert candidate([1, 2, -4, 5, 6]) == True\n    assert candidate([1, -1, 2, -2, 5, -5, 4, -4]) == False\n    assert candidate([1, -1, 2, -2, 5, -5, 4, -5]) == True\n    assert candidate([1, -2, 2, -2, 5, -5, 4, -4]) == True\n",
+          "entry_point": "below_zero"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == False\n    assert candidate([1, 2, -3, 1, 2, -3]) == False\n    assert candidate([1, 2, -4, 5, 6]) == True\n    assert candidate([1, -1, 2, -2, 5, -5, 4, -4]) == False\n    assert candidate([1, -1, 2, -2, 5, -5, 4, -5]) == True\n    assert candidate([1, -2, 2, -2, 5, -5, 4, -4]) == True\n\ncheck(below_zero)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef below_zero(operations: List[int]) -> bool:\n    \"\"\" You're given a list of deposit and withdrawal operations on a bank account that starts with\n    zero balance. Your task is to detect if at any point the balance of account fallls below zero, and\n    at that point function should return True. Otherwise it should return False.\n    >>> below_zero([1, 2, 3])\n    False\n    >>> below_zero([1, 2, -4, 5])\n    True\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    balance = 0\n    for op in operations:\n        if op < 0:\n            return True\n        balance += op\n    return False\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef below_zero(operations: List[int]) -> bool:\n    \"\"\" You're given a list of deposit and withdrawal operations on a bank account that starts with\n    zero balance. Your task is to detect if at any point the balance of account fallls below zero, and\n    at that point function should return True. Otherwise it should return False.\n    >>> below_zero([1, 2, 3])\n    False\n    >>> below_zero([1, 2, -4, 5])\n    True\n    \"\"\"\n    balance = 0\n    for op in operations:\n        if op < 0:\n            return True\n        balance += op\n    return False\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "017790cfdef7a51b480a9db7924e240733cdd87973db2e9cd57eccb934b681d2",
+        "prompt_hash": "430706f794ffabb60ec5818ca7c9fdbd281b97ef9d3ac6d6ba140a7a2498f5a5",
+        "target_hash": "27ca3c3615fb6c8189b420b0c96db82bffda2fd87b9878a4b92394dc6b21a0da",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 4,
+        "doc": {
+          "task_id": "HumanEval/4",
+          "prompt": "from typing import List\n\n\ndef mean_absolute_deviation(numbers: List[float]) -> float:\n    \"\"\" For a given list of input numbers, calculate Mean Absolute Deviation\n    around the mean of this dataset.\n    Mean Absolute Deviation is the average absolute difference between each\n    element and a centerpoint (mean in this case):\n    MAD = average | x - x_mean |\n    >>> mean_absolute_deviation([1.0, 2.0, 3.0, 4.0])\n    1.0\n    \"\"\"\n",
+          "canonical_solution": "    mean = sum(numbers) / len(numbers)\n    return sum(abs(x - mean) for x in numbers) / len(numbers)\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert abs(candidate([1.0, 2.0, 3.0]) - 2.0/3.0) < 1e-6\n    assert abs(candidate([1.0, 2.0, 3.0, 4.0]) - 1.0) < 1e-6\n    assert abs(candidate([1.0, 2.0, 3.0, 4.0, 5.0]) - 6.0/5.0) < 1e-6\n\n",
+          "entry_point": "mean_absolute_deviation"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert abs(candidate([1.0, 2.0, 3.0]) - 2.0/3.0) < 1e-6\n    assert abs(candidate([1.0, 2.0, 3.0, 4.0]) - 1.0) < 1e-6\n    assert abs(candidate([1.0, 2.0, 3.0, 4.0, 5.0]) - 6.0/5.0) < 1e-6\n\n\ncheck(mean_absolute_deviation)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef mean_absolute_deviation(numbers: List[float]) -> float:\n    \"\"\" For a given list of input numbers, calculate Mean Absolute Deviation\n    around the mean of this dataset.\n    Mean Absolute Deviation is the average absolute difference between each\n    element and a centerpoint (mean in this case):\n    MAD = average | x - x_mean |\n    >>> mean_absolute_deviation([1.0, 2.0, 3.0, 4.0])\n    1.0\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    # code here\n    # calculate mean\n    mean = sum(numbers) / len(numbers)\n    # calculate MAD\n    mad = sum(abs(x - mean) for x in numbers) / len(numbers)\n    return mad\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef mean_absolute_deviation(numbers: List[float]) -> float:\n    \"\"\" For a given list of input numbers, calculate Mean Absolute Deviation\n    around the mean of this dataset.\n    Mean Absolute Deviation is the average absolute difference between each\n    element and a centerpoint (mean in this case):\n    MAD = average | x - x_mean |\n    >>> mean_absolute_deviation([1.0, 2.0, 3.0, 4.0])\n    1.0\n    \"\"\"\n    # code here\n    # calculate mean\n    mean = sum(numbers) / len(numbers)\n    # calculate MAD\n    mad = sum(abs(x - mean) for x in numbers) / len(numbers)\n    return mad\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "88bdeabeb4ba85fbab2bcbba5029c152edadbc65da33e67e0fc559a7a767ccf9",
+        "prompt_hash": "2717edd5d203ea22a6eebf62263effd9b792e1a2ef93e017868cedaac7b5ef10",
+        "target_hash": "903b9b213d71d84d787a424b7ee5f8e3f4710321e5325403e68142aad8817241",
+        "pass@1": 1.0
+      },
+      {
+        "doc_id": 5,
+        "doc": {
+          "task_id": "HumanEval/5",
+          "prompt": "from typing import List\n\n\ndef intersperse(numbers: List[int], delimeter: int) -> List[int]:\n    \"\"\" Insert a number 'delimeter' between every two consecutive elements of input list `numbers'\n    >>> intersperse([], 4)\n    []\n    >>> intersperse([1, 2, 3], 4)\n    [1, 4, 2, 4, 3]\n    \"\"\"\n",
+          "canonical_solution": "    if not numbers:\n        return []\n\n    result = []\n\n    for n in numbers[:-1]:\n        result.append(n)\n        result.append(delimeter)\n\n    result.append(numbers[-1])\n\n    return result\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([], 7) == []\n    assert candidate([5, 6, 3, 2], 8) == [5, 8, 6, 8, 3, 8, 2]\n    assert candidate([2, 2, 2], 2) == [2, 2, 2, 2, 2]\n",
+          "entry_point": "intersperse"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([], 7) == []\n    assert candidate([5, 6, 3, 2], 8) == [5, 8, 6, 8, 3, 8, 2]\n    assert candidate([2, 2, 2], 2) == [2, 2, 2, 2, 2]\n\ncheck(intersperse)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef intersperse(numbers: List[int], delimeter: int) -> List[int]:\n    \"\"\" Insert a number 'delimeter' between every two consecutive elements of input list `numbers'\n    >>> intersperse([], 4)\n    []\n    >>> intersperse([1, 2, 3], 4)\n    [1, 4, 2, 4, 3]\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    result = []\n    for i in range(len(numbers) - 1):\n        result.append(numbers[i])\n        result.append(deliimeter)\n    result.append(numbers[-1])\n    return result\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef intersperse(numbers: List[int], delimeter: int) -> List[int]:\n    \"\"\" Insert a number 'delimeter' between every two consecutive elements of input list `numbers'\n    >>> intersperse([], 4)\n    []\n    >>> intersperse([1, 2, 3], 4)\n    [1, 4, 2, 4, 3]\n    \"\"\"\n    result = []\n    for i in range(len(numbers) - 1):\n        result.append(numbers[i])\n        result.append(deliimeter)\n    result.append(numbers[-1])\n    return result\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "915045e1bdd2f4a5ddf460ce30521795bb63f727722da871e46e363b5b4530ec",
+        "prompt_hash": "388474ac71e5b893802f5971102df2e4ea82ddf2f916a4a55361c19370f54012",
+        "target_hash": "8a15f7f129bed73e33baf1041d86d8d17d88fed24396a6d7c398015e74758b88",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 6,
+        "doc": {
+          "task_id": "HumanEval/6",
+          "prompt": "from typing import List\n\n\ndef parse_nested_parens(paren_string: str) -> List[int]:\n    \"\"\" Input to this function is a string represented multiple groups for nested parentheses separated by spaces.\n    For each of the group, output the deepest level of nesting of parentheses.\n    E.g. (()()) has maximum two levels of nesting while ((())) has three.\n\n    >>> parse_nested_parens('(()()) ((())) () ((())()())')\n    [2, 3, 1, 3]\n    \"\"\"\n",
+          "canonical_solution": "    def parse_paren_group(s):\n        depth = 0\n        max_depth = 0\n        for c in s:\n            if c == '(':\n                depth += 1\n                max_depth = max(depth, max_depth)\n            else:\n                depth -= 1\n\n        return max_depth\n\n    return [parse_paren_group(x) for x in paren_string.split(' ') if x]\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('(()()) ((())) () ((())()())') == [2, 3, 1, 3]\n    assert candidate('() (()) ((())) (((())))') == [1, 2, 3, 4]\n    assert candidate('(()(())((())))') == [4]\n",
+          "entry_point": "parse_nested_parens"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('(()()) ((())) () ((())()())') == [2, 3, 1, 3]\n    assert candidate('() (()) ((())) (((())))') == [1, 2, 3, 4]\n    assert candidate('(()(())((())))') == [4]\n\ncheck(parse_nested_parens)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef parse_nested_parens(paren_string: str) -> List[int]:\n    \"\"\" Input to this function is a string represented multiple groups for nested parentheses separated by spaces.\n    For each of the group, output the deepest level of nesting of parentheses.\n    E.g. (()()) has maximum two levels of nesting while ((())) has three.\n\n    >>> parse_nested_parens('(()()) ((())) () ((())()())')\n    [2, 3, 1, 3]\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    # Your code goes here\n    # Initialize a stack to keep track of the current level of nesting\n    stack = []\n    result = []\n    for char in paren_string:\n        if char == '(':\n            stack.append(1)\n        else:\n            stack.pop()\n        if stack == [1]:\n            result.append(1)\n    return result\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef parse_nested_parens(paren_string: str) -> List[int]:\n    \"\"\" Input to this function is a string represented multiple groups for nested parentheses separated by spaces.\n    For each of the group, output the deepest level of nesting of parentheses.\n    E.g. (()()) has maximum two levels of nesting while ((())) has three.\n\n    >>> parse_nested_parens('(()()) ((())) () ((())()())')\n    [2, 3, 1, 3]\n    \"\"\"\n    # Your code goes here\n    # Initialize a stack to keep track of the current level of nesting\n    stack = []\n    result = []\n    for char in paren_string:\n        if char == '(':\n            stack.append(1)\n        else:\n            stack.pop()\n        if stack == [1]:\n            result.append(1)\n    return result\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "69768a007ad9707ca23b2b733eeacde553464a5c8b71925deb094c9d4c7c8814",
+        "prompt_hash": "39b4ae7cbb22820ff04ffe8a3cbe4bd4332d16046130335d78f36d75a5c3cf4c",
+        "target_hash": "72d6310efe64c0e7e2d565529e5a5e8b8b0feefdd27eab5d87543bf2bf013125",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 7,
+        "doc": {
+          "task_id": "HumanEval/7",
+          "prompt": "from typing import List\n\n\ndef filter_by_substring(strings: List[str], substring: str) -> List[str]:\n    \"\"\" Filter an input list of strings only for ones that contain given substring\n    >>> filter_by_substring([], 'a')\n    []\n    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')\n    ['abc', 'bacd', 'array']\n    \"\"\"\n",
+          "canonical_solution": "    return [x for x in strings if substring in x]\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([], 'john') == []\n    assert candidate(['xxx', 'asd', 'xxy', 'john doe', 'xxxAAA', 'xxx'], 'xxx') == ['xxx', 'xxxAAA', 'xxx']\n    assert candidate(['xxx', 'asd', 'aaaxxy', 'john doe', 'xxxAAA', 'xxx'], 'xx') == ['xxx', 'aaaxxy', 'xxxAAA', 'xxx']\n    assert candidate(['grunt', 'trumpet', 'prune', 'gruesome'], 'run') == ['grunt', 'prune']\n",
+          "entry_point": "filter_by_substring"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([], 'john') == []\n    assert candidate(['xxx', 'asd', 'xxy', 'john doe', 'xxxAAA', 'xxx'], 'xxx') == ['xxx', 'xxxAAA', 'xxx']\n    assert candidate(['xxx', 'asd', 'aaaxxy', 'john doe', 'xxxAAA', 'xxx'], 'xx') == ['xxx', 'aaaxxy', 'xxxAAA', 'xxx']\n    assert candidate(['grunt', 'trumpet', 'prune', 'gruesome'], 'run') == ['grunt', 'prune']\n\ncheck(filter_by_substring)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef filter_by_substring(strings: List[str], substring: str) -> List[str]:\n    \"\"\" Filter an input list of strings only for ones that contain given substring\n    >>> filter_by_substring([], 'a')\n    []\n    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')\n    ['abc', 'bacd', 'array']\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    result = []\n    for s in strings:\n        if substring in s:\n            result.append(s)\n    return result\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef filter_by_substring(strings: List[str], substring: str) -> List[str]:\n    \"\"\" Filter an input list of strings only for ones that contain given substring\n    >>> filter_by_substring([], 'a')\n    []\n    >>> filter_by_substring(['abc', 'bacd', 'cde', 'array'], 'a')\n    ['abc', 'bacd', 'array']\n    \"\"\"\n    result = []\n    for s in strings:\n        if substring in s:\n            result.append(s)\n    return result\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "877d1758e0cb9ba1e07b2bf6d32d885b5cf752076d9f9351828c48d91b34ac13",
+        "prompt_hash": "5eecb2c6bb2b4fcd70989d66291a7c4c02d3afbf31591ad684e926a1e60ee969",
+        "target_hash": "145d64f173d417474a71ab8676a940eb895072ca54e6d8c83b964893c419e719",
+        "pass@1": 1.0
+      },
+      {
+        "doc_id": 8,
+        "doc": {
+          "task_id": "HumanEval/8",
+          "prompt": "from typing import List, Tuple\n\n\ndef sum_product(numbers: List[int]) -> Tuple[int, int]:\n    \"\"\" For a given list of integers, return a tuple consisting of a sum and a product of all the integers in a list.\n    Empty sum should be equal to 0 and empty product should be equal to 1.\n    >>> sum_product([])\n    (0, 1)\n    >>> sum_product([1, 2, 3, 4])\n    (10, 24)\n    \"\"\"\n",
+          "canonical_solution": "    sum_value = 0\n    prod_value = 1\n\n    for n in numbers:\n        sum_value += n\n        prod_value *= n\n    return sum_value, prod_value\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == (0, 1)\n    assert candidate([1, 1, 1]) == (3, 1)\n    assert candidate([100, 0]) == (100, 0)\n    assert candidate([3, 5, 7]) == (3 + 5 + 7, 3 * 5 * 7)\n    assert candidate([10]) == (10, 10)\n",
+          "entry_point": "sum_product"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == (0, 1)\n    assert candidate([1, 1, 1]) == (3, 1)\n    assert candidate([100, 0]) == (100, 0)\n    assert candidate([3, 5, 7]) == (3 + 5 + 7, 3 * 5 * 7)\n    assert candidate([10]) == (10, 10)\n\ncheck(sum_product)",
+        "arguments": [
+          [
+            "from typing import List, Tuple\n\n\ndef sum_product(numbers: List[int]) -> Tuple[int, int]:\n    \"\"\" For a given list of integers, return a tuple consisting of a sum and a product of all the integers in a list.\n    Empty sum should be equal to 0 and empty product should be equal to 1.\n    >>> sum_product([])\n    (0, 1)\n    >>> sum_product([1, 2, 3, 4])\n    (10, 24)\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    if not numbers:\n        return (0, 1)\n    total_sum = 0\n    product = 1\n    for num in numbers:\n        total_sum += num\n        product *= num\n    return (total_sum, product)\n    "
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List, Tuple\n\n\ndef sum_product(numbers: List[int]) -> Tuple[int, int]:\n    \"\"\" For a given list of integers, return a tuple consisting of a sum and a product of all the integers in a list.\n    Empty sum should be equal to 0 and empty product should be equal to 1.\n    >>> sum_product([])\n    (0, 1)\n    >>> sum_product([1, 2, 3, 4])\n    (10, 24)\n    \"\"\"\n    if not numbers:\n        return (0, 1)\n    total_sum = 0\n    product = 1\n    for num in numbers:\n        total_sum += num\n        product *= num\n    return (total_sum, product)\n    "
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "824ce5aa4c950c95f7552091e91a503853eed5c39b81996b2c4b4cb6ac01194c",
+        "prompt_hash": "84dc98e731928675a91c68cbff1f89d0677596f849fa0e6b34fa9b40335fce03",
+        "target_hash": "e8d54aa9aa37fb3b72a5d48e9091a6c2ed34e5774e595367a55df55b732fa4f2",
+        "pass@1": 1.0
+      },
+      {
+        "doc_id": 9,
+        "doc": {
+          "task_id": "HumanEval/9",
+          "prompt": "from typing import List, Tuple\n\n\ndef rolling_max(numbers: List[int]) -> List[int]:\n    \"\"\" From a given list of integers, generate a list of rolling maximum element found until given moment\n    in the sequence.\n    >>> rolling_max([1, 2, 3, 2, 3, 4, 2])\n    [1, 2, 3, 3, 3, 4, 4]\n    \"\"\"\n",
+          "canonical_solution": "    running_max = None\n    result = []\n\n    for n in numbers:\n        if running_max is None:\n            running_max = n\n        else:\n            running_max = max(running_max, n)\n\n        result.append(running_max)\n\n    return result\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == []\n    assert candidate([1, 2, 3, 4]) == [1, 2, 3, 4]\n    assert candidate([4, 3, 2, 1]) == [4, 4, 4, 4]\n    assert candidate([3, 2, 3, 100, 3]) == [3, 3, 3, 100, 100]\n",
+          "entry_point": "rolling_max"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == []\n    assert candidate([1, 2, 3, 4]) == [1, 2, 3, 4]\n    assert candidate([4, 3, 2, 1]) == [4, 4, 4, 4]\n    assert candidate([3, 2, 3, 100, 3]) == [3, 3, 3, 100, 100]\n\ncheck(rolling_max)",
+        "arguments": [
+          [
+            "from typing import List, Tuple\n\n\ndef rolling_max(numbers: List[int]) -> List[int]:\n    \"\"\" From a given list of integers, generate a list of rolling maximum element found until given moment\n    in the sequence.\n    >>> rolling_max([1, 2, 3, 2, 3, 4, 2])\n    [1, 2, 3, 3, 3, 4, 4]\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    result = []\n    for i in range(len(numbers)):\n        max_val = max(numbers[i], max(result[-1], numbers[i]))\n        result.append(max_val)\n    return result\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List, Tuple\n\n\ndef rolling_max(numbers: List[int]) -> List[int]:\n    \"\"\" From a given list of integers, generate a list of rolling maximum element found until given moment\n    in the sequence.\n    >>> rolling_max([1, 2, 3, 2, 3, 4, 2])\n    [1, 2, 3, 3, 3, 4, 4]\n    \"\"\"\n    result = []\n    for i in range(len(numbers)):\n        max_val = max(numbers[i], max(result[-1], numbers[i]))\n        result.append(max_val)\n    return result\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "7696892563b99334d3d40e7a9c039e012efb7faabe7f6d4888a296b7b4f18c8c",
+        "prompt_hash": "583b281fbe1bf261fbade6e1a03119de96084ac87b508387f0d23c3b0cfdbbdb",
+        "target_hash": "b29a7f7984b716a48958329f54954e6f190843d331e5b523b2cb1b40ca572cba",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 10,
+        "doc": {
+          "task_id": "HumanEval/10",
+          "prompt": "\n\ndef is_palindrome(string: str) -> bool:\n    \"\"\" Test if given string is a palindrome \"\"\"\n    return string == string[::-1]\n\n\ndef make_palindrome(string: str) -> str:\n    \"\"\" Find the shortest palindrome that begins with a supplied string.\n    Algorithm idea is simple:\n    - Find the longest postfix of supplied string that is a palindrome.\n    - Append to the end of the string reverse of a string prefix that comes before the palindromic suffix.\n    >>> make_palindrome('')\n    ''\n    >>> make_palindrome('cat')\n    'catac'\n    >>> make_palindrome('cata')\n    'catac'\n    \"\"\"\n",
+          "canonical_solution": "    if not string:\n        return ''\n\n    beginning_of_suffix = 0\n\n    while not is_palindrome(string[beginning_of_suffix:]):\n        beginning_of_suffix += 1\n\n    return string + string[:beginning_of_suffix][::-1]\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == ''\n    assert candidate('x') == 'x'\n    assert candidate('xyz') == 'xyzyx'\n    assert candidate('xyx') == 'xyx'\n    assert candidate('jerry') == 'jerryrrej'\n",
+          "entry_point": "make_palindrome"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == ''\n    assert candidate('x') == 'x'\n    assert candidate('xyz') == 'xyzyx'\n    assert candidate('xyx') == 'xyx'\n    assert candidate('jerry') == 'jerryrrej'\n\ncheck(make_palindrome)",
+        "arguments": [
+          [
+            "\n\ndef is_palindrome(string: str) -> bool:\n    \"\"\" Test if given string is a palindrome \"\"\"\n    return string == string[::-1]\n\n\ndef make_palindrome(string: str) -> str:\n    \"\"\" Find the shortest palindrome that begins with a supplied string.\n    Algorithm idea is simple:\n    - Find the longest postfix of supplied string that is a palindrome.\n    - Append to the end of the string reverse of a string prefix that comes before the palindromic suffix.\n    >>> make_palindrome('')\n    ''\n    >>> make_palindrome('cat')\n    'catac'\n    >>> make_palindrome('cata')\n    'catac'\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    # Find the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "\n\ndef is_palindrome(string: str) -> bool:\n    \"\"\" Test if given string is a palindrome \"\"\"\n    return string == string[::-1]\n\n\ndef make_palindrome(string: str) -> str:\n    \"\"\" Find the shortest palindrome that begins with a supplied string.\n    Algorithm idea is simple:\n    - Find the longest postfix of supplied string that is a palindrome.\n    - Append to the end of the string reverse of a string prefix that comes before the palindromic suffix.\n    >>> make_palindrome('')\n    ''\n    >>> make_palindrome('cat')\n    'catac'\n    >>> make_palindrome('cata')\n    'catac'\n    \"\"\"\n    # Find the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is a palindrome.\n    # Then, the rest of the string is the suffix.\n    # Then, the palindrome is the prefix + suffix.\n    # So, the problem reduces to finding the longest prefix of the input string that is"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "739acbaf363b7ed11a7c2eccb61dbeeacb45773cc8f85dca124cd79eda1d6e26",
+        "prompt_hash": "60e80406bde04ba96808271e9ba8fd58129b6e8570d3ef23a2eb4c8a79370913",
+        "target_hash": "8976a1448b6dc528c20e6b817d7aa42cdc271122da3b14af695be63e81d4a2c9",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 11,
+        "doc": {
+          "task_id": "HumanEval/11",
+          "prompt": "from typing import List\n\n\ndef string_xor(a: str, b: str) -> str:\n    \"\"\" Input are two strings a and b consisting only of 1s and 0s.\n    Perform binary XOR on these inputs and return result also as a string.\n    >>> string_xor('010', '110')\n    '100'\n    \"\"\"\n",
+          "canonical_solution": "    def xor(i, j):\n        if i == j:\n            return '0'\n        else:\n            return '1'\n\n    return ''.join(xor(x, y) for x, y in zip(a, b))\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('111000', '101010') == '010010'\n    assert candidate('1', '1') == '0'\n    assert candidate('0101', '0000') == '0101'\n",
+          "entry_point": "string_xor"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('111000', '101010') == '010010'\n    assert candidate('1', '1') == '0'\n    assert candidate('0101', '0000') == '0101'\n\ncheck(string_xor)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef string_xor(a: str, b: str) -> str:\n    \"\"\" Input are two strings a and b consisting only of 1s and 0s.\n    Perform binary XOR on these inputs and return result also as a string.\n    >>> string_xor('010', '110')\n    '100'\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    # Your code goes here\n    # Convert a and b to binary strings\n    a_bin = bin(a)\n    b_bin = bin(b)\n    # XOR each character\n    xor = []\n    for i in range(len(a_bin)):\n        xor.append(str(int(a_bin[i]) ^ int(b_bin[i])))\n    return ''.join(xor)\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef string_xor(a: str, b: str) -> str:\n    \"\"\" Input are two strings a and b consisting only of 1s and 0s.\n    Perform binary XOR on these inputs and return result also as a string.\n    >>> string_xor('010', '110')\n    '100'\n    \"\"\"\n    # Your code goes here\n    # Convert a and b to binary strings\n    a_bin = bin(a)\n    b_bin = bin(b)\n    # XOR each character\n    xor = []\n    for i in range(len(a_bin)):\n        xor.append(str(int(a_bin[i]) ^ int(b_bin[i])))\n    return ''.join(xor)\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "26d4542ace59da4ec92f78514a6479c7007e33a5404f944650ce8ad6d6527843",
+        "prompt_hash": "ab1ec5c88f83f3fd16def18381c88b33bd5109b84f05147a54f50f95eca66c89",
+        "target_hash": "950e57250c44b34606393a3fe69c75e3d2776248a3909335f32b25bb4fe1bb5e",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 12,
+        "doc": {
+          "task_id": "HumanEval/12",
+          "prompt": "from typing import List, Optional\n\n\ndef longest(strings: List[str]) -> Optional[str]:\n    \"\"\" Out of list of strings, return the longest one. Return the first one in case of multiple\n    strings of the same length. Return None in case the input list is empty.\n    >>> longest([])\n\n    >>> longest(['a', 'b', 'c'])\n    'a'\n    >>> longest(['a', 'bb', 'ccc'])\n    'ccc'\n    \"\"\"\n",
+          "canonical_solution": "    if not strings:\n        return None\n\n    maxlen = max(len(x) for x in strings)\n    for s in strings:\n        if len(s) == maxlen:\n            return s\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == None\n    assert candidate(['x', 'y', 'z']) == 'x'\n    assert candidate(['x', 'yyy', 'zzzz', 'www', 'kkkk', 'abc']) == 'zzzz'\n",
+          "entry_point": "longest"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate([]) == None\n    assert candidate(['x', 'y', 'z']) == 'x'\n    assert candidate(['x', 'yyy', 'zzzz', 'www', 'kkkk', 'abc']) == 'zzzz'\n\ncheck(longest)",
+        "arguments": [
+          [
+            "from typing import List, Optional\n\n\ndef longest(strings: List[str]) -> Optional[str]:\n    \"\"\" Out of list of strings, return the longest one. Return the first one in case of multiple\n    strings of the same length. Return None in case the input list is empty.\n    >>> longest([])\n\n    >>> longest(['a', 'b', 'c'])\n    'a'\n    >>> longest(['a', 'bb', 'ccc'])\n    'ccc'\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    if not strings:\n        return None\n    max_len = 0\n    max_str = ''\n    for s in strings:\n        if len(s) > max_len:\n            max_len = len(s)\n            max_str = s\n        elif len(s) == max_len:\n            # if the current string is same length as max, but longer than previous, then replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            #"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List, Optional\n\n\ndef longest(strings: List[str]) -> Optional[str]:\n    \"\"\" Out of list of strings, return the longest one. Return the first one in case of multiple\n    strings of the same length. Return None in case the input list is empty.\n    >>> longest([])\n\n    >>> longest(['a', 'b', 'c'])\n    'a'\n    >>> longest(['a', 'bb', 'ccc'])\n    'ccc'\n    \"\"\"\n    if not strings:\n        return None\n    max_len = 0\n    max_str = ''\n    for s in strings:\n        if len(s) > max_len:\n            max_len = len(s)\n            max_str = s\n        elif len(s) == max_len:\n            # if the current string is same length as max, but longer than previous, then replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            # but since we have already set max_len, we can just replace\n            #"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "1df4531514872a3736463c36e60400373b2b78acef112f6ea92241ba176c2fcb",
+        "prompt_hash": "aa62f2bdcae005c83ed5eede68f25a798ece3609af2bf7db30ef714aa7a33927",
+        "target_hash": "d944394c4927df509883f567347c9473340dc8ca95622307f53ebae28761e630",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 13,
+        "doc": {
+          "task_id": "HumanEval/13",
+          "prompt": "\n\ndef greatest_common_divisor(a: int, b: int) -> int:\n    \"\"\" Return a greatest common divisor of two integers a and b\n    >>> greatest_common_divisor(3, 5)\n    1\n    >>> greatest_common_divisor(25, 15)\n    5\n    \"\"\"\n",
+          "canonical_solution": "    while b:\n        a, b = b, a % b\n    return a\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate(3, 7) == 1\n    assert candidate(10, 15) == 5\n    assert candidate(49, 14) == 7\n    assert candidate(144, 60) == 12\n",
+          "entry_point": "greatest_common_divisor"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate(3, 7) == 1\n    assert candidate(10, 15) == 5\n    assert candidate(49, 14) == 7\n    assert candidate(144, 60) == 12\n\ncheck(greatest_common_divisor)",
+        "arguments": [
+          [
+            "\n\ndef greatest_common_divisor(a: int, b: int) -> int:\n    \"\"\" Return a greatest common divisor of two integers a and b\n    >>> greatest_common_divisor(3, 5)\n    1\n    >>> greatest_common_divisor(25, 15)\n    5\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    while b != 0:\n        a, b = b, a % b\n    return a\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "\n\ndef greatest_common_divisor(a: int, b: int) -> int:\n    \"\"\" Return a greatest common divisor of two integers a and b\n    >>> greatest_common_divisor(3, 5)\n    1\n    >>> greatest_common_divisor(25, 15)\n    5\n    \"\"\"\n    while b != 0:\n        a, b = b, a % b\n    return a\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "decb83884e5c8ab268e814a0d9d08daafdac143bcdea4d3a998954f87ddd4c08",
+        "prompt_hash": "a7946546bc3a483bb5f2249ced878d510d6765d3c987a3e56dd878fe5bb60c19",
+        "target_hash": "2a81e9cd57afe5eb3d6d37d7b450890264f5021f84ce58205a14fd195a395f6a",
+        "pass@1": 1.0
+      },
+      {
+        "doc_id": 14,
+        "doc": {
+          "task_id": "HumanEval/14",
+          "prompt": "from typing import List\n\n\ndef all_prefixes(string: str) -> List[str]:\n    \"\"\" Return list of all prefixes from shortest to longest of the input string\n    >>> all_prefixes('abc')\n    ['a', 'ab', 'abc']\n    \"\"\"\n",
+          "canonical_solution": "    result = []\n\n    for i in range(len(string)):\n        result.append(string[:i+1])\n    return result\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == []\n    assert candidate('asdfgh') == ['a', 'as', 'asd', 'asdf', 'asdfg', 'asdfgh']\n    assert candidate('WWW') == ['W', 'WW', 'WWW']\n",
+          "entry_point": "all_prefixes"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == []\n    assert candidate('asdfgh') == ['a', 'as', 'asd', 'asdf', 'asdfg', 'asdfgh']\n    assert candidate('WWW') == ['W', 'WW', 'WWW']\n\ncheck(all_prefixes)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef all_prefixes(string: str) -> List[str]:\n    \"\"\" Return list of all prefixes from shortest to longest of the input string\n    >>> all_prefixes('abc')\n    ['a', 'ab', 'abc']\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    result = []\n    for i in range(len(string)):\n        result.append(string[:i+1])\n    return result\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef all_prefixes(string: str) -> List[str]:\n    \"\"\" Return list of all prefixes from shortest to longest of the input string\n    >>> all_prefixes('abc')\n    ['a', 'ab', 'abc']\n    \"\"\"\n    result = []\n    for i in range(len(string)):\n        result.append(string[:i+1])\n    return result\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "279939faaaee297594722ded1c6707e20ec738eeb45f28f7c14c23c6b32307ca",
+        "prompt_hash": "f4eca2c1c9ceb5ca5b0b0885dfd75fb4f768967fd2e53640176e413a499cc165",
+        "target_hash": "526c5c7e53b3aa7a6bb21509943e0ab49a2571b6f09adc7cc7011a5f15934dd8",
+        "pass@1": 1.0
+      },
+      {
+        "doc_id": 15,
+        "doc": {
+          "task_id": "HumanEval/15",
+          "prompt": "\n\ndef string_sequence(n: int) -> str:\n    \"\"\" Return a string containing space-delimited numbers starting from 0 upto n inclusive.\n    >>> string_sequence(0)\n    '0'\n    >>> string_sequence(5)\n    '0 1 2 3 4 5'\n    \"\"\"\n",
+          "canonical_solution": "    return ' '.join([str(x) for x in range(n + 1)])\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate(0) == '0'\n    assert candidate(3) == '0 1 2 3'\n    assert candidate(10) == '0 1 2 3 4 5 6 7 8 9 10'\n",
+          "entry_point": "string_sequence"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate(0) == '0'\n    assert candidate(3) == '0 1 2 3'\n    assert candidate(10) == '0 1 2 3 4 5 6 7 8 9 10'\n\ncheck(string_sequence)",
+        "arguments": [
+          [
+            "\n\ndef string_sequence(n: int) -> str:\n    \"\"\" Return a string containing space-delimited numbers starting from 0 upto n inclusive.\n    >>> string_sequence(0)\n    '0'\n    >>> string_sequence(5)\n    '0 1 2 3 4 5'\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    return ' '.join(str(i) for i in range(n + 1))\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "\n\ndef string_sequence(n: int) -> str:\n    \"\"\" Return a string containing space-delimited numbers starting from 0 upto n inclusive.\n    >>> string_sequence(0)\n    '0'\n    >>> string_sequence(5)\n    '0 1 2 3 4 5'\n    \"\"\"\n    return ' '.join(str(i) for i in range(n + 1))\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "9c402f52ac7f23ac74a9ca6c94bb7bba600bd3c506da73f4d89f6484a1d12c2e",
+        "prompt_hash": "1eb46648867a6e499ee7e4fa6500b594937f325209204606d7391c8cad9df9c4",
+        "target_hash": "100bbeedd9b422ec1f46606b37aa2fb2ff4e30139a1601fd6368112573de55b3",
+        "pass@1": 1.0
+      },
+      {
+        "doc_id": 16,
+        "doc": {
+          "task_id": "HumanEval/16",
+          "prompt": "\n\ndef count_distinct_characters(string: str) -> int:\n    \"\"\" Given a string, find out how many distinct characters (regardless of case) does it consist of\n    >>> count_distinct_characters('xyzXYZ')\n    3\n    >>> count_distinct_characters('Jerry')\n    4\n    \"\"\"\n",
+          "canonical_solution": "    return len(set(string.lower()))\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == 0\n    assert candidate('abcde') == 5\n    assert candidate('abcde' + 'cade' + 'CADE') == 5\n    assert candidate('aaaaAAAAaaaa') == 1\n    assert candidate('Jerry jERRY JeRRRY') == 5\n",
+          "entry_point": "count_distinct_characters"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == 0\n    assert candidate('abcde') == 5\n    assert candidate('abcde' + 'cade' + 'CADE') == 5\n    assert candidate('aaaaAAAAaaaa') == 1\n    assert candidate('Jerry jERRY JeRRRY') == 5\n\ncheck(count_distinct_characters)",
+        "arguments": [
+          [
+            "\n\ndef count_distinct_characters(string: str) -> int:\n    \"\"\" Given a string, find out how many distinct characters (regardless of case) does it consist of\n    >>> count_distinct_characters('xyzXYZ')\n    3\n    >>> count_distinct_characters('Jerry')\n    4\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    return len(set(string))\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "\n\ndef count_distinct_characters(string: str) -> int:\n    \"\"\" Given a string, find out how many distinct characters (regardless of case) does it consist of\n    >>> count_distinct_characters('xyzXYZ')\n    3\n    >>> count_distinct_characters('Jerry')\n    4\n    \"\"\"\n    return len(set(string))\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "854cabc855abce4019a15c644d192baa0df5a682a93b1a06fd8a3658db680475",
+        "prompt_hash": "33374da5d17599a9d2b60a77489c71576ed0c7230529febb273810fe327d80f9",
+        "target_hash": "96a4cb8b4f679615f1a336fae3bc54ae071582575f3fa7b49f0820d12c8c011a",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 17,
+        "doc": {
+          "task_id": "HumanEval/17",
+          "prompt": "from typing import List\n\n\ndef parse_music(music_string: str) -> List[int]:\n    \"\"\" Input to this function is a string representing musical notes in a special ASCII format.\n    Your task is to parse this string and return list of integers corresponding to how many beats does each\n    not last.\n\n    Here is a legend:\n    'o' - whole note, lasts four beats\n    'o|' - half note, lasts two beats\n    '.|' - quater note, lasts one beat\n\n    >>> parse_music('o o| .| o| o| .| .| .| .| o o')\n    [4, 2, 1, 2, 2, 1, 1, 1, 1, 4, 4]\n    \"\"\"\n",
+          "canonical_solution": "    note_map = {'o': 4, 'o|': 2, '.|': 1}\n    return [note_map[x] for x in music_string.split(' ') if x]\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == []\n    assert candidate('o o o o') == [4, 4, 4, 4]\n    assert candidate('.| .| .| .|') == [1, 1, 1, 1]\n    assert candidate('o| o| .| .| o o o o') == [2, 2, 1, 1, 4, 4, 4, 4]\n    assert candidate('o| .| o| .| o o| o o|') == [2, 1, 2, 1, 4, 2, 4, 2]\n",
+          "entry_point": "parse_music"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == []\n    assert candidate('o o o o') == [4, 4, 4, 4]\n    assert candidate('.| .| .| .|') == [1, 1, 1, 1]\n    assert candidate('o| o| .| .| o o o o') == [2, 2, 1, 1, 4, 4, 4, 4]\n    assert candidate('o| .| o| .| o o| o o|') == [2, 1, 2, 1, 4, 2, 4, 2]\n\ncheck(parse_music)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef parse_music(music_string: str) -> List[int]:\n    \"\"\" Input to this function is a string representing musical notes in a special ASCII format.\n    Your task is to parse this string and return list of integers corresponding to how many beats does each\n    not last.\n\n    Here is a legend:\n    'o' - whole note, lasts four beats\n    'o|' - half note, lasts two beats\n    '.|' - quater note, lasts one beat\n\n    >>> parse_music('o o| .| o| o| .| .| .| .| o o')\n    [4, 2, 1, 2, 2, 1, 1, 1, 1, 4, 4]\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    result = []\n    i = 0\n    while i < len(music_string):\n        if music_string[i] == 'o':\n            result.append(4)\n            i += 1\n        elif music_string[i] == 'o|':\n            result.append(2)\n            i += 2\n        elif music_string[i] == '.|':\n            result.append(1)\n            i += 1\n        else:\n            # invalid input\n            raise ValueError(\"Invalid input\")\n    return result\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef parse_music(music_string: str) -> List[int]:\n    \"\"\" Input to this function is a string representing musical notes in a special ASCII format.\n    Your task is to parse this string and return list of integers corresponding to how many beats does each\n    not last.\n\n    Here is a legend:\n    'o' - whole note, lasts four beats\n    'o|' - half note, lasts two beats\n    '.|' - quater note, lasts one beat\n\n    >>> parse_music('o o| .| o| o| .| .| .| .| o o')\n    [4, 2, 1, 2, 2, 1, 1, 1, 1, 4, 4]\n    \"\"\"\n    result = []\n    i = 0\n    while i < len(music_string):\n        if music_string[i] == 'o':\n            result.append(4)\n            i += 1\n        elif music_string[i] == 'o|':\n            result.append(2)\n            i += 2\n        elif music_string[i] == '.|':\n            result.append(1)\n            i += 1\n        else:\n            # invalid input\n            raise ValueError(\"Invalid input\")\n    return result\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "46e4586fa14e358fd736d3b47f60fe5d10500fffd0d045a42736ec40983d3a5f",
+        "prompt_hash": "713553ae9220b08678d575238a702f883cc1d37b1986a6bfa010f8d641601d36",
+        "target_hash": "9b170100bd00bf4c11b1952f03572df8610496e03e8c4f85d6eacc9471279009",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 18,
+        "doc": {
+          "task_id": "HumanEval/18",
+          "prompt": "\n\ndef how_many_times(string: str, substring: str) -> int:\n    \"\"\" Find how many times a given substring can be found in the original string. Count overlaping cases.\n    >>> how_many_times('', 'a')\n    0\n    >>> how_many_times('aaa', 'a')\n    3\n    >>> how_many_times('aaaa', 'aa')\n    3\n    \"\"\"\n",
+          "canonical_solution": "    times = 0\n\n    for i in range(len(string) - len(substring) + 1):\n        if string[i:i+len(substring)] == substring:\n            times += 1\n\n    return times\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('', 'x') == 0\n    assert candidate('xyxyxyx', 'x') == 4\n    assert candidate('cacacacac', 'cac') == 4\n    assert candidate('john doe', 'john') == 1\n",
+          "entry_point": "how_many_times"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('', 'x') == 0\n    assert candidate('xyxyxyx', 'x') == 4\n    assert candidate('cacacacac', 'cac') == 4\n    assert candidate('john doe', 'john') == 1\n\ncheck(how_many_times)",
+        "arguments": [
+          [
+            "\n\ndef how_many_times(string: str, substring: str) -> int:\n    \"\"\" Find how many times a given substring can be found in the original string. Count overlaping cases.\n    >>> how_many_times('', 'a')\n    0\n    >>> how_many_times('aaa', 'a')\n    3\n    >>> how_many_times('aaaa', 'aa')\n    3\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    # code here\n    # O(nm) time and O(1) space\n    # O(nm) time and O(n) space\n    # O(nm) time and O(n) space\n    # O(nm) time and O(n) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "\n\ndef how_many_times(string: str, substring: str) -> int:\n    \"\"\" Find how many times a given substring can be found in the original string. Count overlaping cases.\n    >>> how_many_times('', 'a')\n    0\n    >>> how_many_times('aaa', 'a')\n    3\n    >>> how_many_times('aaaa', 'aa')\n    3\n    \"\"\"\n    # code here\n    # O(nm) time and O(1) space\n    # O(nm) time and O(n) space\n    # O(nm) time and O(n) space\n    # O(nm) time and O(n) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n    # O(nm) time and O(1) space\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "518034f48a41091f53baaf2a1c698c336a3aa39376ba75ac3723010815eb4b25",
+        "prompt_hash": "6fc9c00aa6b110ecf79f34e36f14b6b4c9a27128463ef6733b948e32a35c2bfc",
+        "target_hash": "5a5fec4a45a396b4e5da16be79bd3b2f4ca193c34d0f6b291da66637a4d0e163",
+        "pass@1": 0.0
+      },
+      {
+        "doc_id": 19,
+        "doc": {
+          "task_id": "HumanEval/19",
+          "prompt": "from typing import List\n\n\ndef sort_numbers(numbers: str) -> str:\n    \"\"\" Input is a space-delimited string of numberals from 'zero' to 'nine'.\n    Valid choices are 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight' and 'nine'.\n    Return the string with numbers sorted from smallest to largest\n    >>> sort_numbers('three one five')\n    'one three five'\n    \"\"\"\n",
+          "canonical_solution": "    value_map = {\n        'zero': 0,\n        'one': 1,\n        'two': 2,\n        'three': 3,\n        'four': 4,\n        'five': 5,\n        'six': 6,\n        'seven': 7,\n        'eight': 8,\n        'nine': 9\n    }\n    return ' '.join(sorted([x for x in numbers.split(' ') if x], key=lambda x: value_map[x]))\n",
+          "test": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == ''\n    assert candidate('three') == 'three'\n    assert candidate('three five nine') == 'three five nine'\n    assert candidate('five zero four seven nine eight') == 'zero four five seven eight nine'\n    assert candidate('six five four three two one zero') == 'zero one two three four five six'\n",
+          "entry_point": "sort_numbers"
+        },
+        "target": "\n\nMETADATA = {\n    'author': 'jt',\n    'dataset': 'test'\n}\n\n\ndef check(candidate):\n    assert candidate('') == ''\n    assert candidate('three') == 'three'\n    assert candidate('three five nine') == 'three five nine'\n    assert candidate('five zero four seven nine eight') == 'zero four five seven eight nine'\n    assert candidate('six five four three two one zero') == 'zero one two three four five six'\n\ncheck(sort_numbers)",
+        "arguments": [
+          [
+            "from typing import List\n\n\ndef sort_numbers(numbers: str) -> str:\n    \"\"\" Input is a space-delimited string of numberals from 'zero' to 'nine'.\n    Valid choices are 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight' and 'nine'.\n    Return the string with numbers sorted from smallest to largest\n    >>> sort_numbers('three one five')\n    'one three five'\n    \"\"\"\n",
+            {
+              "until": [
+                "\nclass",
+                "\ndef",
+                "\n#",
+                "\nif",
+                "\nprint"
+              ],
+              "max_gen_toks": 1024,
+              "do_sample": false
+            }
+          ]
+        ],
+        "resps": [
+          [
+            "    numbers = numbers.split()\n    numbers.sort()\n    return ' '.join(numbers)\n"
+          ]
+        ],
+        "filtered_resps": [
+          [
+            "from typing import List\n\n\ndef sort_numbers(numbers: str) -> str:\n    \"\"\" Input is a space-delimited string of numberals from 'zero' to 'nine'.\n    Valid choices are 'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight' and 'nine'.\n    Return the string with numbers sorted from smallest to largest\n    >>> sort_numbers('three one five')\n    'one three five'\n    \"\"\"\n    numbers = numbers.split()\n    numbers.sort()\n    return ' '.join(numbers)\n"
+          ]
+        ],
+        "filter": "create_test",
+        "metrics": [
+          "pass@1"
+        ],
+        "doc_hash": "773637f801e4df51c81aab58c072b6457190e90a2dd08c5ab64a62793ac12bb6",
+        "prompt_hash": "61b0d963a0d3797bc5ef83253bf35a531d7e31eedbd18181ff117b0e07e5c940",
+        "target_hash": "1851e44c1ef7c9eb9acee47f4d798dc6020e17a669f3d209a19468e77c7ead42",
+        "pass@1": 0.0
+      }
+    ]
+  },
+  "config": {
+    "model": "custom-local-completions-qwen",
+    "model_args": "base_url=http://127.0.0.1:9998/v1/completions,engine=Qwen3-0.6B,model=Qwen3-0.6B,api_key=EMPTY,timeout=3600,tokenizer_backend=huggingface,tokenizer=Qwen/Qwen3-0.6B,truncate=True,prefix_completions=True,num_concurrent=1,max_length=16384,model_alias_for_qwen_check=Qwen3-0.6B,no_prefix_tasks_str=humaneval;mbpp",
+    "batch_size": 1,
+    "batch_sizes": [],
+    "device": null,
+    "use_cache": null,
+    "limit": 20.0,
+    "bootstrap_iters": 100000,
+    "gen_kwargs": null,
+    "random_seed": 0,
+    "numpy_seed": 1234,
+    "torch_seed": 1234,
+    "fewshot_seed": 1234
+  },
+  "git_hash": "276a386",
+  "date": 1747137761.1866822,
+  "pretty_env_info": "PyTorch version: 2.7.0\nIs debug build: False\nCUDA used to build PyTorch: None\nROCM used to build PyTorch: N/A\n\nOS: macOS 15.4.1 (arm64)\nGCC version: Could not collect\nClang version: 17.0.0 (clang-1700.0.13.3)\nCMake version: version 4.0.1\nLibc version: N/A\n\nPython version: 3.13.3 (main, Apr  8 2025, 13:54:08) [Clang 16.0.0 (clang-1600.0.26.6)] (64-bit runtime)\nPython platform: macOS-15.4.1-arm64-arm-64bit-Mach-O\nIs CUDA available: False\nCUDA runtime version: No CUDA\nCUDA_MODULE_LOADING set to: N/A\nGPU models and configuration: No CUDA\nNvidia driver version: No CUDA\ncuDNN version: No CUDA\nHIP runtime version: N/A\nMIOpen runtime version: N/A\nIs XNNPACK available: True\n\nCPU:\nApple M3 Max\n\nVersions of relevant libraries:\n[pip3] numpy==2.2.5\n[pip3] torch==2.7.0\n[conda] Could not collect",
+  "transformers_version": "4.51.3",
+  "upper_git_hash": null,
+  "tokenizer_pad_token": [
+    "<|endoftext|>",
+    "151643"
+  ],
+  "tokenizer_eos_token": [
+    "<|im_end|>",
+    "151645"
+  ],
+  "tokenizer_bos_token": [
+    null,
+    "None"
+  ],
+  "eot_token_id": 151645,
+  "max_length": 16383
+}
