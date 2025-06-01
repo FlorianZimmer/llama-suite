@@ -6,3 +6,4 @@ llama.cpp
 logs*
 llm_memscan_persistent_logs
 config.effective.yaml
+__pycache__
