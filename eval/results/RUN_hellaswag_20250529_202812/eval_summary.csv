@@ -1,0 +1,3 @@
+ModelAlias,Task,Metric,Value,Version,NumFewshot,Limit,Timestamp,Error
+DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL,hellaswag,"acc,none",0.2846,1.0,TaskDef,0.1,2025-05-29 20:28:23,
+DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL,hellaswag,"acc_norm,none",0.2368,1.0,TaskDef,0.1,2025-05-29 20:28:23,

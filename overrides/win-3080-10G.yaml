@@ -19,13 +19,13 @@ models:
 
   Qwen3-30B-A3B:
     cmd:
-      gpu-layers: 48   # As per your spec
+      gpu-layers: 40   # As per your spec
       threads: 28
       override-tensor: "blk\\.([0-3][0-9])\\.ffn_.*_exps.=CPU"
 
   Qwen3-32B-Think:
     cmd:
-      gpu-layers: 24   # As per your spec
+      gpu-layers: 22   # As per your spec
       threads: 28
 
   Qwen3-0.6B:
@@ -43,11 +43,11 @@ models:
       gpu-layers: 99 # Your spec
       threads: 28
 
-  Qwen3-32B-SpeculativeDecoding-40960:
+  Qwen3-32B-SpeculativeDecoding-32768:
     cmd:
       gpu-layers: 10 # Your spec
       threads: 28
-      devd: CUDA0    # Specific for RTX 3080
+      device-draft: CUDA0    # Specific for RTX 3080
 
   Qwen3-8B-Q4_K_M-Bart:
     cmd:
@@ -72,12 +72,12 @@ models:
 
   gemma-3-12b-it:
     cmd:
-      gpu-layers: 50
+      gpu-layers: 48
       threads: 26
 
   gemma-3-27b-it:
     cmd:
-      gpu-layers: 29
+      gpu-layers: 22
       threads: 28
 
   Mistral-Small-3.1-24B:
@@ -85,27 +85,44 @@ models:
       gpu-layers: 21
       threads: 28
 
-  "QwQ-32B-Q4_K_M.gguf": # Ensure model name matches base config
+  QwQ-32B-Q4_K_M:
     cmd:
       gpu-layers: 22
       threads: 28
 
-  gemma-3-27b-it-SpeculativeDecoding:
-    cmd:
-      gpu-layers: 14
-      threads: 28
-      devd: CUDA0
+  # gemma-3-27b-it-SpeculativeDecoding:
+  #   cmd:
+  #     gpu-layers: 14
+  #     threads: 28
+  #     device-draft: CUDA0
 
   Qwen3-30B-A3B-UD:
     cmd:
-      gpu-layers: 48
+      gpu-layers: 40
+      threads: 28
+      override-tensor: "blk\\.([0-3][0-9])\\.ffn_.*_exps.=CPU"
+
+  Qwen3-32B-SpeculativeDecoding-16384:
+    cmd:
+      gpu-layers: 0
+      threads: 28
+      device-draft: CUDA0
+
+  Mistral-Small-3.1-24B-SpeculativeDecoding:
+    cmd:
+      gpu-layers: 16
+      threads: 28
+      device-draft: CUDA0
+
+  OpenCodeReasoning-Nemotron-32B-IOI:
+    cmd:
+      gpu-layers: 22
       threads: 28
 
-  "Qwen3-32B-SpeculativeDecoding-16384": # Ensure model name matches base config
+  DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL:
     cmd:
-      gpu-layers: 10
+      gpu-layers: 999 # Effectively all layers
       threads: 28
-      devd: CUDA0
 
 # The top-level keys like healthCheckTimeout, logLevel, and profiles from your
 # llama-swap native config are NOT currently handled by llama_swap_watch.py.

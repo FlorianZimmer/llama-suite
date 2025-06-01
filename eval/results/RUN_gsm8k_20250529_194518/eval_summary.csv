@@ -1,0 +1,3 @@
+ModelAlias,Task,Metric,Value,Version,NumFewshot,Limit,Timestamp,Error
+DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL,gsm8k,"exact_match,strict-match",0.7998,3.0,TaskDef,None,2025-05-29 19:45:31,
+DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL,gsm8k,"exact_match,flexible-extract",0.8074,3.0,TaskDef,None,2025-05-29 19:45:31,

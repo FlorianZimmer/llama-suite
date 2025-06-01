@@ -1,129 +1,84 @@
 models:
   Qwen3-8B-Q4_K_M:
-    hf_tokenizer_for_model: Qwen/Qwen3-8B
-    supports_no_think_toggle: true
-    aliases:
-    - Qwen3-8B-NoThink
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-8B-Q4_K_M.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-8B --supports-no-think-toggle --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-8B-Q4_K_M.gguf --ctx-size 16384 --gpu-layers 999 --threads 28 --reasoning-format
+      deepseek --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   Qwen3-30B-A3B:
-    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-30B-A3B-Q4_K_M.gguf --ctx-size 40960 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-30B-A3B --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-30B-A3B-Q4_K_M.gguf --ctx-size 40960 --gpu-layers 40 --threads 28 --reasoning-format
+      deepseek --parallel 1 --override-tensor blk\.([0-3][0-9])\.ffn_.*_exps.=CPU --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k
+      20
   Qwen3-32B-Think:
-    hf_tokenizer_for_model: Qwen/Qwen3-32B
-    aliases:
-    - Qwen3-32B-NoThink
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-32B-Q4_K_M.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-32B --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-32B-Q4_K_M.gguf --ctx-size 16384 --gpu-layers 22 --threads 28 --reasoning-format
+      deepseek --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   Qwen3-0.6B:
-    hf_tokenizer_for_model: Qwen/Qwen3-0.6B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-0.6B-Q4_K_M.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-0.6B --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-0.6B-Q4_K_M.gguf --ctx-size 16384 --gpu-layers 999 --threads 28 --reasoning-format
+      deepseek --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   Qwen3-4B-Q4-Bart:
-    hf_tokenizer_for_model: Qwen/Qwen3-4B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen_Qwen3-4B-Q4_K_M.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-4B --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen_Qwen3-4B-Q4_K_M.gguf --ctx-size 16384 --gpu-layers 99 --threads 28 --reasoning-format
+      deepseek --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   Qwen3-32B-SpeculativeDecoding-32768:
-    hf_tokenizer_for_model: Qwen/Qwen3-32B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-32B-Q4_K_M.gguf --ctx-size 32768 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --model-draft /Users/florian/Documents/code/llama-suite-py/models/Qwen3-0.6B-Q4_K_M.gguf
-      --gpu-layers-draft 99 --ctx-size-draft 8192 --parallel 1 --hf-tokenizer-for-model Qwen/Qwen3-32B
-      --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-32B-Q4_K_M.gguf --ctx-size 32768 --gpu-layers 10 --threads 28 --reasoning-format
+      deepseek --model-draft D:\LLMs\GGUF\Qwen3-0.6B-Q4_K_M.gguf --gpu-layers-draft 99 --device-draft CUDA0 --ctx-size-draft
+      8192 --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   Qwen3-8B-Q4_K_M-Bart:
-    hf_tokenizer_for_model: Qwen/Qwen3-8B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-8B-Q4_K_M-Bart.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-8B --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-8B-Q4_K_M-Bart.gguf --ctx-size 16384 --gpu-layers 999 --threads 28 --reasoning-format
+      deepseek --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   GLM-4-32B-0414:
-    hf_tokenizer_for_model: THUDM/GLM-4-32B-0414
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/GLM-4-32B-0414-Q4_K_M.gguf --ctx-size 8192 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --override-kv glm4.rope.dimension_count=int:64 --chat-template
-      chatglm4 --parallel 1 --hf-tokenizer-for-model THUDM/GLM-4-32B-0414 --temp 0.6 --min-p 0.0 --top-p
-      0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\GLM-4-32B-0414-Q4_K_M.gguf --ctx-size 8192 --gpu-layers 24 --threads 28 --override-kv glm4.rope.dimension_count=int:64
+      --chat-template chatglm4 --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   gemma-3-1b-it:
-    hf_tokenizer_for_model: google/gemma-3-1b-it
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/gemma-3-1b-it-q4_0.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --chat-template gemma --parallel 1 --hf-tokenizer-for-model
-      google/gemma-3-1b-it --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\gemma-3-1b-it-q4_0.gguf --ctx-size 16384 --gpu-layers 99 --threads 28 --chat-template gemma
+      --parallel 1 --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
   gemma-3-4b-it:
-    hf_tokenizer_for_model: google/gemma-3-4b-it
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/gemma-3-4b-it-q4_0.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --chat-template gemma --parallel 1 --hf-tokenizer-for-model
-      google/gemma-3-4b-it --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\gemma-3-4b-it-q4_0.gguf --ctx-size 16384 --gpu-layers 99 --threads 28 --chat-template gemma
+      --parallel 1 --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
   gemma-3-12b-it:
-    hf_tokenizer_for_model: google/gemma-3-12b-it
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/gemma-3-12b-it-q4_0.gguf --ctx-size 8192 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --chat-template gemma --parallel 1 --hf-tokenizer-for-model
-      google/gemma-3-12b-it --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\gemma-3-12b-it-q4_0.gguf --ctx-size 8192 --gpu-layers 48 --threads 26 --chat-template gemma
+      --parallel 1 --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
   gemma-3-27b-it:
-    hf_tokenizer_for_model: google/gemma-3-27b-it
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/gemma-3-27b-it-q4_0.gguf --ctx-size 8192 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --chat-template gemma --parallel 1 --hf-tokenizer-for-model
-      google/gemma-3-27b-it --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\gemma-3-27b-it-q4_0.gguf --ctx-size 8192 --gpu-layers 22 --threads 28 --chat-template gemma
+      --parallel 1 --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64 --repeat-penalty 1.0
   Mistral-Small-3.1-24B:
-    hf_tokenizer_for_model: mistralai/Mistral-Small-3.1-24B-Instruct-2503
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
-      --ctx-size 8192 --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --hf-tokenizer-for-model
-      mistralai/Mistral-Small-3.1-24B-Instruct-2503 --temp 0.15
-  QwQ-32B-Q4_K_M.gguf:
-    hf_tokenizer_for_model: Qwen/QwQ-32B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/QwQ-32B-Q4_K_M.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --hf-tokenizer-for-model Qwen/QwQ-32B --temp
-      0.6 --min-p 0.0 --top-p 0.95 --top-k 40 --repeat-penalty 1.1 --dry-multiplier 0.5
-  gemma-3-27b-it-SpeculativeDecoding:
-    hf_tokenizer_for_model: google/gemma-3-27b-it
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/gemma-3-27b-it-q4_0.gguf --ctx-size 8192 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --model-draft /Users/florian/Documents/code/llama-suite-py/models/gemma-3-1b-it-q4_0.gguf
-      --gpu-layers-draft 99 --device-draft Metal --ctx-size-draft 2048 --chat-template gemma --parallel
-      1 --hf-tokenizer-for-model google/gemma-3-27b-it --temp 1.0 --min-p 0.01 --top-p 0.95 --top-k 64
-      --repeat-penalty 1.0
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf --ctx-size 8192 --gpu-layers 21 --threads
+      28 --parallel 1 --temp 0.15
+  QwQ-32B-Q4_K_M:
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\QwQ-32B-Q4_K_M.gguf --ctx-size 16384 --gpu-layers 22 --threads 28 --parallel 1 --temp 0.6
+      --min-p 0.0 --top-p 0.95 --top-k 40 --repeat-penalty 1.1 --dry-multiplier 0.5 --samplers top_k;top_p;min_p;temperature;dry;typ_p;xtc
   Qwen3-30B-A3B-UD:
-    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-30B-A3B-UD-Q4_K_XL.gguf --ctx-size 40960
-      --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-30B-A3B --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-30B-A3B-UD-Q4_K_XL.gguf --ctx-size 40960 --gpu-layers 40 --threads 28 --reasoning-format
+      deepseek --parallel 1 --override-tensor blk\.([0-3][0-9])\.ffn_.*_exps.=CPU --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k
+      20
   Qwen3-32B-SpeculativeDecoding-16384:
-    hf_tokenizer_for_model: Qwen/Qwen3-32B
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Qwen3-32B-Q4_K_M.gguf --ctx-size 16384 --flash-attn
-      --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen3 --model-draft /Users/florian/Documents/code/llama-suite-py/models/Qwen3-0.6B-Q4_K_M.gguf
-      --gpu-layers-draft 99 --device-draft Metal --ctx-size-draft 8192 --parallel 1 --hf-tokenizer-for-model
-      Qwen/Qwen3-32B --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Qwen3-32B-Q4_K_M.gguf --ctx-size 16384 --gpu-layers 0 --threads 28 --reasoning-format deepseek
+      --model-draft D:\LLMs\GGUF\Qwen3-0.6B-Q4_K_M.gguf --gpu-layers-draft 99 --device-draft CUDA0 --ctx-size-draft 8192 --parallel
+      1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
   Mistral-Small-3.1-24B-SpeculativeDecoding:
-    hf_tokenizer_for_model: mistralai/Mistral-Small-3.1-24B-Instruct-2503
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
-      --ctx-size 8192 --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --model-draft /Users/florian/Documents/code/llama-suite-py/models/alamios_Mistral-Small-3.1-DRAFT-0.5B-Q5_K_L.gguf
-      --gpu-layers-draft 99 --device-draft Metal --ctx-size-draft 2048 --parallel 1 --hf-tokenizer-for-model
-      mistralai/Mistral-Small-3.1-24B-Instruct-2503 --temp 0.15
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf --ctx-size 8192 --gpu-layers 16 --threads
+      28 --model-draft D:\LLMs\GGUF\alamios_Mistral-Small-3.1-DRAFT-0.5B-Q5_K_L.gguf --gpu-layers-draft 99 --device-draft
+      CUDA0 --ctx-size-draft 2048 --parallel 1 --temp 0.15
   OpenCodeReasoning-Nemotron-32B-IOI:
-    hf_tokenizer_for_model: nvidia/OpenCodeReasoning-Nemotron-32B-IOI
-    cmd: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server --port ${PORT} --model
-      /Users/florian/Documents/code/llama-suite-py/models/OpenCodeReasoning-Nemotron-32B-IOI.Q4_K_M.gguf
-      --ctx-size 16384 --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --reasoning-format qwen2 --parallel
-      1 --hf-tokenizer-for-model nvidia/OpenCodeReasoning-Nemotron-32B-IOI --temp 0.6 --min-p 0.0 --top-p
-      0.95 --top-k 20
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\OpenCodeReasoning-Nemotron-32B-IOI-Q4_K_M.gguf --ctx-size 16384 --gpu-layers 22 --threads
+      28 --reasoning-format deepseek --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
+  DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL:
+    cmd: D:\LLMs\llama-suite\llama.cpp\build\bin\llama-server --flash-attn --cache-type-k q8_0 --cache-type-v q8_0 --port
+      ${PORT} --model D:\LLMs\GGUF\DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL.gguf --ctx-size 16384 --gpu-layers 999 --threads 28
+      --reasoning-format deepseek --parallel 1 --temp 0.6 --min-p 0.0 --top-p 0.95 --top-k 20
 healthCheckTimeout: 60
 logLevel: info

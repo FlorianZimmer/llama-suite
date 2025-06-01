@@ -26,6 +26,7 @@ QWQ_SAMPLING: &QWQ_SAMPLING
   top-k: 40
   repeat-penalty: 1.1
   dry-multiplier: 0.5
+  samplers: top_k;top_p;min_p;temperature;dry;typ_p;xtc
 
 GLM_SAMPLING: &GLM_SAMPLING
   temp: 0.6
@@ -45,13 +46,13 @@ models:
     aliases: [Qwen3-8B-NoThink]
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin:  llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-8B-Q4_K_M.gguf
       ctx-size: 16384
-      gpu-layers: auto       # overridden per machine
-      threads:    auto       # overridden per machine
-      reasoning-format: qwen3
+      gpu-layers: auto
+      threads:    auto
+      reasoning-format: deepseek
       parallel: 1
 
   Qwen3-30B-A3B:
@@ -59,13 +60,13 @@ models:
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-30B-A3B-Q4_K_M.gguf
       ctx-size: 40960
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       parallel: 1
 
   Qwen3-32B-Think:
@@ -74,13 +75,13 @@ models:
     aliases: [Qwen3-32B-NoThink]
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-32B-Q4_K_M.gguf
       ctx-size: 16384
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       parallel: 1
 
   Qwen3-0.6B:
@@ -88,13 +89,13 @@ models:
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-0.6B-Q4_K_M.gguf
       ctx-size: 16384
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       parallel: 1
 
   # Qwen3-32B-UD-Q4:
@@ -102,13 +103,13 @@ models:
   #   sampling: *QWEN_SAMPLING
   #   cmd:
   #     <<: *COMMON_CMD
-  #     bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+  #     bin: llama.cpp/build/bin/llama-server
   #     port: ${PORT}
   #     model: ./models/Qwen3-32B-UD-Q4_K_XL.gguf
   #     ctx-size: 16384
   #     gpu-layers: auto
   #     threads:    auto
-  #     reasoning-format: qwen3
+  #     reasoning-format: deepseek
   #     parallel: 1
 
   Qwen3-4B-Q4-Bart:
@@ -116,13 +117,13 @@ models:
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen_Qwen3-4B-Q4_K_M.gguf
       ctx-size: 16384
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       parallel: 1
 
   Qwen3-32B-SpeculativeDecoding-32768:
@@ -130,13 +131,13 @@ models:
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-32B-Q4_K_M.gguf
       ctx-size: 32768
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       model-draft: ./models/Qwen3-0.6B-Q4_K_M.gguf
       gpu-layers-draft: 99
       device-draft: auto
@@ -148,13 +149,13 @@ models:
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-8B-Q4_K_M-Bart.gguf
       ctx-size: 16384
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       parallel: 1
 
   GLM-4-32B-0414:
@@ -162,7 +163,7 @@ models:
     sampling: *GLM_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/GLM-4-32B-0414-Q4_K_M.gguf
       ctx-size: 8192
@@ -178,7 +179,7 @@ models:
     sampling: *GEMMA_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/gemma-3-1b-it-q4_0.gguf
       ctx-size: 16384
@@ -192,7 +193,7 @@ models:
     sampling: *GEMMA_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/gemma-3-4b-it-q4_0.gguf
       ctx-size: 16384
@@ -206,7 +207,7 @@ models:
     sampling: *GEMMA_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/gemma-3-12b-it-q4_0.gguf
       ctx-size: 8192
@@ -220,7 +221,7 @@ models:
     sampling: *GEMMA_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/gemma-3-27b-it-q4_0.gguf
       ctx-size: 8192
@@ -234,7 +235,7 @@ models:
     sampling: *MISTRAL_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
       ctx-size: 8192
@@ -242,12 +243,12 @@ models:
       threads:    auto
       parallel: 1
 
-  QwQ-32B-Q4_K_M.gguf:
+  QwQ-32B-Q4_K_M:
     hf_tokenizer_for_model: Qwen/QwQ-32B
     sampling: *QWQ_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/QwQ-32B-Q4_K_M.gguf
       ctx-size: 16384
@@ -255,37 +256,36 @@ models:
       threads:    auto
       parallel: 1
 
-  gemma-3-27b-it-SpeculativeDecoding:
-    hf_tokenizer_for_model: google/gemma-3-27b-it
-    sampling: *GEMMA_SAMPLING
-    cmd:
-      <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gemma-3-27b-it-q4_0.gguf
-      ctx-size: 8192
-      gpu-layers: auto
-      threads:    auto
-      reasoning-format: qwen3
-      model-draft: ./models/gemma-3-1b-it-q4_0.gguf
-      gpu-layers-draft: 99
-      device-draft: Metal
-      ctx-size-draft: 2048
-      chat-template: gemma
-      parallel: 1
+  # gemma-3-27b-it-SpeculativeDecoding:
+  #   hf_tokenizer_for_model: google/gemma-3-27b-it
+  #   sampling: *GEMMA_SAMPLING
+  #   cmd:
+  #     <<: *COMMON_CMD
+  #     bin: llama.cpp/build/bin/llama-server
+  #     port: ${PORT}
+  #     model: ./models/gemma-3-27b-it-q4_0.gguf
+  #     ctx-size: 8192
+  #     gpu-layers: auto
+  #     threads:    auto
+  #     model-draft: ./models/gemma-3-1b-it-q4_0.gguf
+  #     gpu-layers-draft: 99
+  #     device-draft: Metal
+  #     ctx-size-draft: 2048
+  #     chat-template: gemma
+  #     parallel: 1
 
   Qwen3-30B-A3B-UD:
     hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-30B-A3B-UD-Q4_K_XL.gguf
       ctx-size: 40960
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       parallel: 1
 
   Qwen3-32B-SpeculativeDecoding-16384:
@@ -293,13 +293,13 @@ models:
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-32B-Q4_K_M.gguf
       ctx-size: 16384
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen3
+      reasoning-format: deepseek
       model-draft: ./models/Qwen3-0.6B-Q4_K_M.gguf
       gpu-layers-draft: 99
       device-draft: Metal
@@ -311,7 +311,7 @@ models:
     sampling: *MISTRAL_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
       ctx-size: 8192
@@ -328,11 +328,25 @@ models:
     sampling: *QWEN_SAMPLING
     cmd:
       <<: *COMMON_CMD
-      bin: /Users/florian/Documents/code/llama-suite/llama.cpp/build/bin/llama-server
+      bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
-      model: ./models/OpenCodeReasoning-Nemotron-32B-IOI.Q4_K_M.gguf
+      model: ./models/OpenCodeReasoning-Nemotron-32B-IOI-Q4_K_M.gguf
       ctx-size: 16384
       gpu-layers: auto
       threads:    auto
-      reasoning-format: qwen2
+      reasoning-format: deepseek
+      parallel: 1
+
+  DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL:
+    hf_tokenizer_for_model: Qwen/Qwen3-8B
+    sampling: *QWEN_SAMPLING
+    cmd:
+      <<: *COMMON_CMD
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL.gguf
+      ctx-size: 16384
+      gpu-layers: auto
+      threads:    auto
+      reasoning-format: deepseek
       parallel: 1

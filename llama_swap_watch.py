@@ -31,6 +31,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO
+# import shlex # Not strictly needed for this change, but good for robust cmd joining if args have spaces
 
 # --- Dependencies ---
 import yaml # Used only for dumping the final config
@@ -39,15 +40,12 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 # --- Import from shared config utility ---
-# Assume config_utils.py is in parent directory or accessible via PYTHONPATH
 try:
     current_script_dir_setup = Path(__file__).resolve().parent
     parent_dir_setup = current_script_dir_setup.parent
     if str(parent_dir_setup) not in sys.path:
         sys.path.insert(0, str(parent_dir_setup))
-    # Import the necessary function from the utility module
     from utils.config_utils import generate_processed_config, colour_util
-    # We can use colour_util as our local 'colour' if desired
     colour = colour_util
 except ImportError as e:
     print(f"Error: Could not import from config_utils. Make sure config_utils.py is accessible.")
@@ -55,19 +53,32 @@ except ImportError as e:
     print(f"Details: {e}")
     sys.exit(1)
 
-
 # Initialize Colorama
 try:
     init(autoreset=True)
 except Exception:
     print("Warning: colorama init failed or not installed. Proceeding without colors.")
-    # Define dummy Fore/Style if needed, or rely on colour_util's handling
-
 
 # --- Constants ---
 DEFAULT_LOGS_TO_KEEP = 10
 PROCESS_TERMINATE_TIMEOUT_SECONDS = 10
 
+MODEL_CONFIG_META_KEYS_SWAP_WATCH = {
+    "aliases",
+    "sampling", # If 'sampling' is a dict, its contents are expanded into CLI args. The key 'sampling' itself is meta.
+    "_name_for_log",
+    "generated_cmd_str", # We build our own 'cmd' string, so this is meta if present from config_utils.
+    "cmd", # This refers to the original 'cmd' dictionary from config, which we process.
+    "hf_tokenizer_for_model",
+    "supports_no_think_toggle"
+}
+
+# Keys for which the value "auto" (case-insensitive) means the flag should be omitted
+# from the llama-server command line, allowing llama-server to use its internal defaults.
+AUTO_OMIT_KEYS = {
+    "gpu-layers", "n-gpu-layers", # llama-server uses --n-gpu-layers or --gpu-layers
+    "threads", "threads-batch"    # llama-server uses --threads
+}
 
 # -----------------------------------------------------------------------------
 # Utility Functions (Specific to this script)
@@ -86,12 +97,9 @@ def prune_logs(log_dir: Path, keep: int = DEFAULT_LOGS_TO_KEEP) -> None:
             try:
                 old_log.unlink()
             except OSError as exc:
-                # This is a warning, should always be shown
                 print(colour(f"[WARN] Could not delete log {old_log.name}: {exc}", Fore.YELLOW))
     except OSError as exc:
-        # This is a warning, should always be shown
         print(colour(f"[WARN] Could not access or create log directory {log_dir}: {exc}", Fore.YELLOW))
-
 
 # -----------------------------------------------------------------------------
 # LlamaSwap Process Runner and File Watcher
@@ -106,14 +114,13 @@ class LlamaRunner:
         self.exe_path = exe_path
         self.config_path = config_path
         self.listen_address = listen_address
-        self.verbose_logging = verbose # This controls verbosity of this class's messages AND llama-swap
+        self.verbose_logging = verbose 
         self.child_process: Optional[subprocess.Popen] = None
         self.log_file_handle: Optional[TextIO] = None
 
     def start(self) -> None:
         """Starts the llama-swap subprocess using the effective config."""
         if self.child_process and self.child_process.poll() is None:
-            # This is a status warning, should always be shown
             print(colour("llama-swap process already running.", Fore.YELLOW))
             return
 
@@ -122,30 +129,27 @@ class LlamaRunner:
             "--config", str(self.config_path),
             "--listen", self.listen_address,
         ]
-        if self.verbose_logging: # Pass verbose to llama-swap executable
+        if self.verbose_logging: 
             args.append("--verbose")
 
         model_tag = os.getenv("MODEL_NAME", "llama_swap")
         log_dir = Path(__file__).resolve().parent / "logs"
-        prune_logs(log_dir) # prune_logs handles its own warnings
+        prune_logs(log_dir) 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         log_file_path = log_dir / f"{model_tag}_{timestamp}.log"
 
         try:
             self.log_file_handle = log_file_path.open("w", encoding="utf-8")
-            # Part of the desired standard output
             print(colour(f"Starting llama-swap. Logging to: {log_file_path}", Fore.GREEN))
             self.child_process = subprocess.Popen(
                 args, stdout=self.log_file_handle, stderr=subprocess.STDOUT,
                 text=True, bufsize=1
             )
         except OSError as e:
-            # Error, always show
             print(colour(f"Error starting llama-swap process: {e}", Fore.RED))
             if self.log_file_handle:
                 self.log_file_handle.close(); self.log_file_handle = None
         except Exception as e:
-             # Error, always show
              print(colour(f"Unexpected error starting llama-swap: {e}", Fore.RED))
              if self.log_file_handle:
                 self.log_file_handle.close(); self.log_file_handle = None
@@ -155,24 +159,21 @@ class LlamaRunner:
         """Stops the llama-swap subprocess gracefully, with a force-kill fallback."""
         if self.child_process and self.child_process.poll() is None:
             pid = self.child_process.pid
-            if self.verbose_logging: # Conditional output
+            if self.verbose_logging: 
                 print(colour(f"Stopping llama-swap process (PID {pid})...", Fore.CYAN))
             try:
                 self.child_process.terminate()
                 self.child_process.wait(timeout=PROCESS_TERMINATE_TIMEOUT_SECONDS)
-                if self.verbose_logging: # Conditional output (successful stop)
+                if self.verbose_logging: 
                     print(colour(f"llama-swap process (PID {pid}) terminated.", Fore.GREEN))
             except subprocess.TimeoutExpired:
-                # Warning/Error, always show
                 print(colour(f"llama-swap (PID {pid}) did not terminate gracefully. Force-killing...", Fore.RED))
                 try:
                     self.child_process.kill()
                     self.child_process.wait(timeout=5)
                 except Exception as e_kill:
-                    # Error, always show
                     print(colour(f"Error during force kill of PID {pid}: {e_kill}", Fore.RED))
             except Exception as e_term:
-                # Warning, always show
                 print(colour(f"Error during termination of PID {pid} (process might have already exited): {e_term}", Fore.YELLOW))
             finally:
                  self.child_process = None
@@ -184,19 +185,17 @@ class LlamaRunner:
 
     def restart(self) -> None:
         """Stops and then starts the llama-swap subprocess."""
-        if self.verbose_logging: # Conditional output
+        if self.verbose_logging: 
             print(colour("Restarting llama-swap process...", Fore.YELLOW))
         self.stop()
         time.sleep(0.5)
-        self.start() # start() will print its "Starting llama-swap. Logging to..." message
+        self.start() 
 
     def shutdown_handler(self, signum, frame) -> None:
         """Handles SIGINT/SIGTERM signals for graceful shutdown."""
-        # Important lifecycle message, always show
         print(colour(f"\nSignal {signal.Signals(signum).name} received. Shutting down...", Fore.YELLOW))
         self.stop()
         sys.exit(0)
-
 
 # -----------------------------------------------------------------------------
 # Configuration Management (using config_utils)
@@ -235,34 +234,20 @@ def process_and_write_effective_config(
     base_config_path: Path,
     override_config_path_arg: Optional[Path],
     script_dir: Path,
-    verbose_script_logging: bool # For config_utils verbosity
+    verbose_script_logging: bool 
 ) -> Path:
     """
-    Uses config_utils to generate processed config, formats it for llama-swap,
-    and writes it to config.effective.yaml.
+    Uses config_utils to generate processed config, formats it for llama-swap by
+    rebuilding the command string carefully, and writes it to config.effective.yaml.
     """
     try:
-        # generate_processed_config is expected to print "Merged override configuration: ..."
-        # if an override is used. This line is part of the desired standard output.
-        # If verbose_script_logging=False suppresses this, config_utils needs adjustment
-        # or this script would need to print it manually.
-        # Assuming verbose_logging=True in config_utils prints the "Merged..." line and
-        # any OTHER detailed logs from config_utils are what verbose_script_logging controls.
-        # For now, we pass True to ensure "Merged..." line appears as in example.
-        # If this makes config_utils too noisy without -v for other messages,
-        # config_utils verbosity needs refinement.
         processed_dict = generate_processed_config(
             base_config_path,
             override_config_path_arg,
             script_dir_for_overrides=script_dir,
-            verbose_logging=True # Assuming this is needed for "Merged override..." line
-                                 # and doesn't add other non-verbose undesired output.
-                                 # If generate_processed_config has more fine-grained control
-                                 # or prints "Merged..." line unconditionally, then
-                                 # verbose_script_logging could be passed here instead.
+            verbose_logging=True # Keep true for generate_processed_config's own logs
         )
     except (FileNotFoundError, ValueError, OSError, Exception) as e:
-        # Error, always show
         print(colour(f"Error processing configuration: {e}", Fore.RED))
         raise RuntimeError(f"Configuration processing failed: {e}") from e
 
@@ -270,44 +255,105 @@ def process_and_write_effective_config(
     models_data_from_util = processed_dict.get("models", {})
 
     if isinstance(models_data_from_util, dict):
-        for model_name, model_data in models_data_from_util.items():
-            if isinstance(model_data, dict) and "generated_cmd_str" in model_data:
-                llama_swap_model_entry = {
-                    key: val for key, val in model_data.items()
-                    if key not in ["cmd", "generated_cmd_str", "sampling", "_name_for_log"]
-                }
-                llama_swap_model_entry["cmd"] = model_data["generated_cmd_str"]
-                output_for_llama_swap["models"][model_name] = llama_swap_model_entry
-            else:
-                 if isinstance(model_data, dict):
-                      output_for_llama_swap["models"][model_name] = model_data
-                 else:
-                      # Warning, always show
-                      print(colour(f"Skipping invalid model data for '{model_name}' in effective config.", Fore.YELLOW))
+        for model_name, model_config_from_utils in models_data_from_util.items():
+            if not isinstance(model_config_from_utils, dict):
+                print(colour(f"Skipping invalid model data for '{model_name}' (not a dictionary) in effective config.", Fore.YELLOW))
+                continue
 
+            final_model_entry_for_llama_swap = {}
+            server_args_list = [] 
+
+            original_cmd_dict = model_config_from_utils.get("cmd", {})
+            if not isinstance(original_cmd_dict, dict):
+                original_cmd_dict = {}
+                if verbose_script_logging:
+                    print(colour(f"Verbose: Model '{model_name}' has 'cmd' field that is not a dictionary or is missing. "
+                                 f"Value: {model_config_from_utils.get('cmd')}", Fore.MAGENTA))
+            
+            server_executable_path = original_cmd_dict.get("bin")
+            if not server_executable_path or not isinstance(server_executable_path, str):
+                print(colour(f"Error: Model '{model_name}' - 'bin' (executable path) is missing or invalid in its 'cmd' dictionary. "
+                             "Cannot construct command string for llama-swap.", Fore.RED))
+            else:
+                server_args_list.append(str(server_executable_path)) # Part 1: Executable
+
+                # --- Part 2: Add arguments from the 'cmd' dictionary (excluding 'bin') ---
+                for key, value in original_cmd_dict.items():
+                    if key == "bin":
+                        continue
+                    
+                    normalized_key_for_check = key.replace('_', '-')
+                    cli_flag = f"--{normalized_key_for_check}"
+                    
+                    if normalized_key_for_check in AUTO_OMIT_KEYS and str(value).lower() == "auto":
+                        if verbose_script_logging:
+                            print(colour(f"Verbose: Model '{model_name}' (from cmd dict) - Omitted '{cli_flag}' because value is 'auto'.", Fore.MAGENTA))
+                        continue 
+
+                    if isinstance(value, bool):
+                        if value: server_args_list.append(cli_flag)
+                    elif value is not None:
+                        server_args_list.extend([cli_flag, str(value)])
+                
+                # --- Part 3: Add arguments from the root of the model's configuration ---
+                for key, value in model_config_from_utils.items():
+                    if key == "cmd" or key in MODEL_CONFIG_META_KEYS_SWAP_WATCH:
+                        continue 
+
+                    normalized_key_for_check = key.replace('_', '-')
+                    cli_flag = f"--{normalized_key_for_check}"
+
+                    if normalized_key_for_check in AUTO_OMIT_KEYS and str(value).lower() == "auto":
+                        if verbose_script_logging:
+                            print(colour(f"Verbose: Model '{model_name}' (from root config) - Omitted '{cli_flag}' because value is 'auto'.", Fore.MAGENTA))
+                        continue
+
+                    if isinstance(value, bool):
+                        if value: server_args_list.append(cli_flag)
+                    elif value is not None:
+                        server_args_list.extend([cli_flag, str(value)])
+                
+                # --- Part 4: Special handling for 'sampling' dictionary from root ---
+                sampling_config_at_root = model_config_from_utils.get("sampling")
+                if isinstance(sampling_config_at_root, dict): # 'sampling' is in META_KEYS, so this is fine
+                    for skey, sval in sampling_config_at_root.items():
+                        s_cli_flag = f"--{skey.replace('_', '-')}"
+                        if sval is not None: # Assuming sampling values shouldn't be "auto" omitted
+                            server_args_list.extend([s_cli_flag, str(sval)])
+                
+                # --- Part 5: Construct final command string ---
+                final_cmd_str = " ".join(map(str, server_args_list))
+                final_model_entry_for_llama_swap["cmd"] = final_cmd_str
+                if verbose_script_logging:
+                     print(colour(f"Verbose: Model '{model_name}' effective cmd: {final_cmd_str}", Fore.MAGENTA))
+
+            # --- Part 6: Copy other top-level model parameters to the llama-swap config ---
+            for key, value in model_config_from_utils.items():
+                if key != "cmd" and key not in MODEL_CONFIG_META_KEYS_SWAP_WATCH:
+                    final_model_entry_for_llama_swap[key] = value
+            
+            output_for_llama_swap["models"][model_name] = final_model_entry_for_llama_swap
+    
     for key, value in processed_dict.items():
-        if key != "models":
+        if key != "models": 
             output_for_llama_swap[key] = value
 
     effective_config_file_path = script_dir / "config.effective.yaml"
     try:
         yaml_output = yaml.dump(
             output_for_llama_swap,
-            Dumper=yaml.Dumper,
+            Dumper=yaml.Dumper, 
             sort_keys=False,
             allow_unicode=True,
-            width=100
+            width=120 
         )
         effective_config_file_path.write_text(yaml_output, encoding="utf-8")
-        # Part of the desired standard output
         print(colour(f"Wrote effective configuration for llama-swap: {effective_config_file_path}", Fore.GREEN))
     except Exception as e:
-        # Error, always show
         print(colour(f"Error writing effective configuration file {effective_config_file_path}: {e}", Fore.RED))
         raise RuntimeError(f"Failed to write effective configuration: {e}") from e
 
     return effective_config_file_path
-
 
 # -----------------------------------------------------------------------------
 # Main Execution
@@ -335,16 +381,13 @@ def main() -> None:
 
     resolved_base_config = args.config.resolve()
     if not resolved_base_config.is_file():
-        # Error, always show
         print(colour(f"Base configuration file not found: {resolved_base_config}", Fore.RED))
         sys.exit(1)
 
     try:
         llama_swap_exe_path = find_llama_swap_executable(args.exe, script_dir)
-        # Part of the desired standard output
         print(colour(f"Using llama-swap executable: {llama_swap_exe_path}", Fore.BLUE))
     except FileNotFoundError as e:
-        # Error, always show
         print(colour(str(e), Fore.RED))
         sys.exit(1)
 
@@ -353,12 +396,11 @@ def main() -> None:
             resolved_base_config,
             args.override,
             script_dir,
-            args.verbose # Pass main verbose flag for config_utils verbosity
+            args.verbose 
         )
     except (FileNotFoundError, ValueError, RuntimeError, OSError, Exception) as e:
-        # Error, always show (already printed in func, this is for exit)
-        # print(colour(f"Initial configuration processing failed: {e}", Fore.RED)) # Redundant if func prints
-        if args.verbose: # Conditional traceback
+        # Error already printed in func, this is for exit / verbose traceback
+        if args.verbose: 
             import traceback
             traceback.print_exc()
         sys.exit(1)
@@ -367,28 +409,28 @@ def main() -> None:
         llama_swap_exe_path,
         effective_config_path,
         args.listen,
-        args.verbose # Pass main verbose flag to runner
+        args.verbose 
     )
 
     signal.signal(signal.SIGINT, runner.shutdown_handler)
     signal.signal(signal.SIGTERM, runner.shutdown_handler)
 
-    runner.start() # Prints "Starting llama-swap..."
+    runner.start() 
 
     config_observer = Observer()
 
     class BaseConfigChangeHandler(FileSystemEventHandler):
-        def __init__(self, runner_instance: LlamaRunner, base_path: Path, override_path: Optional[Path], script_directory: Path, verbose_logging: bool): # Added verbose_logging
+        def __init__(self, runner_instance: LlamaRunner, base_path: Path, override_path: Optional[Path], script_directory: Path, verbose_logging: bool): 
             self.runner = runner_instance
             self.base_config_path = base_path
             self.override_config_path = override_path
             self.script_dir = script_directory
-            self.verbose_logging = verbose_logging # Store it
+            self.verbose_logging = verbose_logging 
             super().__init__()
 
         def on_modified(self, event):
             if event.src_path == str(self.base_config_path):
-                if self.verbose_logging: # Conditional output
+                if self.verbose_logging: 
                     print(colour(f"Base configuration file {self.base_config_path.name} modified.", Fore.YELLOW))
                     print(colour("Re-processing configurations and restarting llama-swap...", Fore.YELLOW))
                 try:
@@ -396,37 +438,31 @@ def main() -> None:
                         self.base_config_path,
                         self.override_config_path,
                         self.script_dir,
-                        self.verbose_logging # Pass verbose flag down
+                        self.verbose_logging 
                     )
                     self.runner.config_path = new_effective_config_path
-                    self.runner.restart() # restart() handles its own verbose messages
+                    self.runner.restart() 
                 except (FileNotFoundError, ValueError, RuntimeError, OSError, Exception) as e:
-                    # Error, always show
                     print(colour(f"Error during automatic re-configuration: {e}", Fore.RED))
-                    # Warning, always show
                     print(colour("llama-swap may continue with the old configuration if running.", Fore.YELLOW))
-                    if self.verbose_logging: # Conditional traceback
+                    if self.verbose_logging: 
                         import traceback
                         traceback.print_exc()
 
-    event_handler = BaseConfigChangeHandler(runner, resolved_base_config, args.override, script_dir, args.verbose) # Pass args.verbose
+    event_handler = BaseConfigChangeHandler(runner, resolved_base_config, args.override, script_dir, args.verbose) 
     try:
         watch_path = str(resolved_base_config.parent)
         config_observer.schedule(event_handler, watch_path, recursive=False)
         config_observer.start()
-        # Part of the desired standard output
         print(colour(f"Watching base configuration {resolved_base_config.name} in {watch_path} for changes.", Fore.BLUE))
     except Exception as e:
-         # Error, always show
          print(colour(f"Failed to start configuration file watcher: {e}", Fore.RED))
-         # Warning, always show
          print(colour("Proceeding without automatic config reload on change.", Fore.YELLOW))
 
     try:
         port_str = args.listen.split(':')[-1]
-        if not port_str or not port_str.isdigit(): port_str = "8080" # Default if parse fails
-    except Exception: port_str = "8080" # Default on any error
-    # Part of the desired standard output
+        if not port_str or not port_str.isdigit(): port_str = "8080" 
+    except Exception: port_str = "8080" 
     print(colour(f"llama-swap setup complete. If using Open WebUI, try: http://localhost:{port_str}/v1", Fore.GREEN))
 
     try:
@@ -434,25 +470,20 @@ def main() -> None:
             time.sleep(1)
             if runner.child_process and runner.child_process.poll() is not None:
                 exit_code = runner.child_process.returncode
-                # Important status warning, always show
                 print(colour(f"llama-swap process exited unexpectedly (code {exit_code}). Restarting...", Fore.YELLOW))
-                runner.restart() # restart() handles its own verbose messages
+                runner.restart() 
     except KeyboardInterrupt:
-         # Message already printed by shutdown_handler, this is a fallback if signal somehow missed.
-         if args.verbose: # Conditional, as shutdown_handler already prints a message
+         if args.verbose: 
             print(colour("\nKeyboardInterrupt received in main loop.", Fore.YELLOW))
     finally:
-        # Important lifecycle message, always show
         print(colour("\nShutting down watcher and llama-swap...", Fore.BLUE))
         try:
             if config_observer.is_alive():
                 config_observer.stop()
                 config_observer.join(timeout=2)
         except Exception as e_obs:
-             # Warning, always show
              print(colour(f"Error stopping file observer: {e_obs}", Fore.YELLOW))
-        runner.stop() # stop() handles its own verbose messages
-        # Important lifecycle message, always show
+        runner.stop() 
         print(colour("Shutdown complete.", Fore.BLUE))
 
 
