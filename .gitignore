@@ -8,3 +8,4 @@ llm_memscan_persistent_logs
 config.effective.yaml
 __pycache__
 .python-version
+.DS_Store
