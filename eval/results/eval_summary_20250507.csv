@@ -1,0 +1,2 @@
+ModelAlias,Task,Metric,Value,Version,NumFewshot,Limit,Timestamp,Error
+Qwen3-0.6B,hellaswag,-,-,-,0,10,2025-05-07 23:53:36,Eval Script Error: 'token_logprobs'

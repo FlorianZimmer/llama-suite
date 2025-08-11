@@ -3,11 +3,23 @@ COMMON_FLAGS: &COMMON_CMD
   cache-type-k: q8_0
   cache-type-v: q8_0
 
-QWEN_SAMPLING: &QWEN_SAMPLING
+QWEN3_SAMPLING: &QWEN3_SAMPLING
   temp: 0.6
   min-p: 0.0
   top-p: 0.95
   top-k: 20
+
+QWEN3_SAMPLING: &QWEN3_INSTRUCT_SAMPLING
+  temp: 0.7
+  min-p: 0.0
+  top-p: 0.8
+  top-k: 20
+
+QWEN3_SAMPLING: &QWEN25_SAMPLING
+  temp: 0.7
+  min-p: 0.0
+  top-p: 0.8
+  repeat-penalty: 1.05
 
 GEMMA_SAMPLING: &GEMMA_SAMPLING
   temp: 1.0
@@ -18,6 +30,10 @@ GEMMA_SAMPLING: &GEMMA_SAMPLING
 
 MISTRAL_SAMPLING: &MISTRAL_SAMPLING
   temp: 0.15
+
+MISTRAL_SAMPLING: &MISTRAL_THINKING_SAMPLING
+  temp: 0.7
+  top-p: 0.95
 
 QWQ_SAMPLING: &QWQ_SAMPLING
   temp: 0.6
@@ -34,6 +50,11 @@ GLM_SAMPLING: &GLM_SAMPLING
   top-p: 0.95
   top-k: 20
 
+GLM_SAMPLING: &GPTOSS
+  temp: 1
+  top-p: 1.0
+  top-k: 0
+
 healthCheckTimeout: 60
 
 logLevel: info
@@ -42,7 +63,7 @@ models:
   Qwen3-8B-Q4_K_M:
     hf_tokenizer_for_model: Qwen/Qwen3-8B
     supports_no_think_toggle: true
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     aliases: [Qwen3-8B-NoThink]
     cmd:
       <<: *COMMON_CMD
@@ -57,7 +78,7 @@ models:
 
   Qwen3-30B-A3B:
     hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -69,9 +90,37 @@ models:
       reasoning-format: deepseek
       parallel: 1
 
+  Qwen3-30B-A3B-Instruct-2507:
+    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B-Instruct-2507
+    sampling: *QWEN3_INSTRUCT_SAMPLING
+    cmd:
+      <<: *COMMON_CMD
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/Qwen3-30B-A3B-Instruct-2507-UD-Q5_K_XL.gguf
+      ctx-size: 16384
+      gpu-layers: auto
+      threads:    auto
+      reasoning-format: deepseek
+      parallel: 1
+
+  Qwen3-30B-A3B-Thinking-2507:
+    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B-Thinking-2507
+    sampling: *QWEN3_SAMPLING
+    cmd:
+      <<: *COMMON_CMD
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/Qwen3-30B-A3B-Thinking-2507-UD-Q5_K_XL.gguf
+      ctx-size: 32768
+      gpu-layers: auto
+      threads:    auto
+      reasoning-format: deepseek
+      parallel: 1
+
   Qwen3-32B-Think:
     hf_tokenizer_for_model: Qwen/Qwen3-32B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     aliases: [Qwen3-32B-NoThink]
     cmd:
       <<: *COMMON_CMD
@@ -86,7 +135,7 @@ models:
 
   Qwen3-0.6B:
     hf_tokenizer_for_model: Qwen/Qwen3-0.6B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -98,23 +147,9 @@ models:
       reasoning-format: deepseek
       parallel: 1
 
-  # Qwen3-32B-UD-Q4:
-  #   hf_tokenizer_for_model: Qwen/Qwen3-32B
-  #   sampling: *QWEN_SAMPLING
-  #   cmd:
-  #     <<: *COMMON_CMD
-  #     bin: llama.cpp/build/bin/llama-server
-  #     port: ${PORT}
-  #     model: ./models/Qwen3-32B-UD-Q4_K_XL.gguf
-  #     ctx-size: 16384
-  #     gpu-layers: auto
-  #     threads:    auto
-  #     reasoning-format: deepseek
-  #     parallel: 1
-
   Qwen3-4B-Q4-Bart:
     hf_tokenizer_for_model: Qwen/Qwen3-4B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -128,7 +163,7 @@ models:
 
   Qwen3-32B-SpeculativeDecoding-32768:
     hf_tokenizer_for_model: Qwen/Qwen3-32B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -140,13 +175,13 @@ models:
       reasoning-format: deepseek
       model-draft: ./models/Qwen3-0.6B-Q4_K_M.gguf
       gpu-layers-draft: 99
-      device-draft: auto
+      device-draft: Metal
       ctx-size-draft: 8192
       parallel: 1
 
   Qwen3-8B-Q4_K_M-Bart:
     hf_tokenizer_for_model: Qwen/Qwen3-8B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -243,6 +278,19 @@ models:
       threads:    auto
       parallel: 1
 
+  Magistral-Small-2507:
+    hf_tokenizer_for_model: mistralai/Magistral-Small-2507
+    sampling: *MISTRAL_THINKING_SAMPLING
+    cmd:
+      <<: *COMMON_CMD
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/Magistral-Small-2507-UD-Q5_K_XL.gguf
+      ctx-size: 32768
+      gpu-layers: auto
+      threads:    auto
+      parallel: 1
+
   QwQ-32B-Q4_K_M:
     hf_tokenizer_for_model: Qwen/QwQ-32B
     sampling: *QWQ_SAMPLING
@@ -276,7 +324,7 @@ models:
 
   Qwen3-30B-A3B-UD:
     hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -290,7 +338,7 @@ models:
 
   Qwen3-32B-SpeculativeDecoding-16384:
     hf_tokenizer_for_model: Qwen/Qwen3-32B
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -325,7 +373,7 @@ models:
 
   OpenCodeReasoning-Nemotron-32B-IOI:
     hf_tokenizer_for_model:   nvidia/OpenCodeReasoning-Nemotron-32B-IOI
-    sampling: *QWEN_SAMPLING
+    sampling: *QWEN3_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
@@ -337,16 +385,76 @@ models:
       reasoning-format: deepseek
       parallel: 1
 
-  DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL:
-    hf_tokenizer_for_model: Qwen/Qwen3-8B
-    sampling: *QWEN_SAMPLING
+  OpenReasoning-Nemotron-32B-Q4_K_M:
+    hf_tokenizer_for_model: nvidia/OpenReasoning-Nemotron-32B
+    sampling: *QWEN25_SAMPLING
     cmd:
       <<: *COMMON_CMD
       bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
-      model: ./models/DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL.gguf
+      model: ./models/nvidi a_OpenReasoning-Nemotron-32B-Q4_K_M.gguf
       ctx-size: 16384
       gpu-layers: auto
       threads:    auto
       reasoning-format: deepseek
+      parallel: 1
+
+  OpenReasoning-Nemotron-7B:
+    hf_tokenizer_for_model: nvidia/OpenReasoning-Nemotron-7B
+    supports_no_think_toggle: true
+    sampling: *QWEN25_SAMPLING
+    cmd:
+      <<: *COMMON_CMD
+      bin:  llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/nvidia_OpenReasoning-Nemotron-7B-Q4_K_M.gguf
+      ctx-size: 16384
+      gpu-layers: auto
+      threads:    auto
+      reasoning-format: deepseek
+      parallel: 1
+
+  gpt-oss-20b-Q8:
+    hf_tokenizer_for_model: openai/gpt-oss-20b
+    supports_no_think_toggle: true
+    sampling: *GPTOSS
+    cmd:
+      <<: *COMMON_CMD
+      bin:  llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/gpt-oss-20b-UD-Q8_K_XL.gguf
+      ctx-size: 16384
+      n-predict: 16384
+      gpu-layers: auto
+      threads:    auto
+      parallel: 1
+
+  gpt-oss-20b-Q4:
+    hf_tokenizer_for_model: openai/gpt-oss-20b
+    supports_no_think_toggle: true
+    sampling: *GPTOSS
+    cmd:
+      <<: *COMMON_CMD
+      bin:  llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/gpt-oss-20b-UD-Q4_K_XL.gguf
+      ctx-size: 16384
+      n-predict: 16384
+      gpu-layers: auto
+      threads:    auto
+      parallel: 1
+
+  gpt-oss-120b-Q8:
+    hf_tokenizer_for_model: openai/gpt-oss-20b
+    supports_no_think_toggle: true
+    sampling: *GPTOSS
+    cmd:
+      <<: *COMMON_CMD
+      bin:  llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/gpt-oss-120b-UD-Q8_K_XL.gguf
+      ctx-size: 16384
+      n-predict: 16384
+      gpu-layers: auto
+      threads:    auto
       parallel: 1

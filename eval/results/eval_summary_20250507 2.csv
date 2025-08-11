@@ -1,0 +1,2 @@
+ModelAlias,Task,Metric,Value,Version,NumFewshot,Limit,Timestamp,Error
+Qwen3-0.6B,hellaswag,-,-,-,0,10,2025-05-07 20:33:52,"Eval Script Error: Attempted to load model 'llamacpp', but no model for this name found! Supported model names: local-completions, local-chat-completions, openai-completions, openai-chat-completions, anthropic-completio"

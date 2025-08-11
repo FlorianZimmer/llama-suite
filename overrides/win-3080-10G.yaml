@@ -124,6 +124,12 @@ models:
       gpu-layers: 999 # Effectively all layers
       threads: 28
 
+  gpt-oss-120b-Q8:
+    cmd:
+      gpu-layers: 5
+      threads: 28
+      override-tensor: "blk\\.([0-3][0-9])\\.ffn_.*_exps.=CPU"
+
 # The top-level keys like healthCheckTimeout, logLevel, and profiles from your
 # llama-swap native config are NOT currently handled by llama_swap_watch.py.
 # llama_swap_watch.py focuses on generating the model command strings for a
