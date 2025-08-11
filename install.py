@@ -29,6 +29,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 import venv
+import re
 
 # -----------------------------------------------------------------------------
 # Constants / Configuration
@@ -49,7 +50,7 @@ OPEN_WEBUI_IMAGE = "ghcr.io/open-webui/open-webui:main"
 
 VENV_NAME = "llama-suite-venv"
 REQUIRED_PACKAGES: list[str] = [
-    "lm-eval[llama_cpp,api]",
+    "lm-eval[api]",
     "PyYAML",
     "requests",
     "psutil",
@@ -222,47 +223,76 @@ def get_venv_paths(venv_dir: Path) -> Tuple[Path, Path]:
 # Release asset selection
 # -----------------------------------------------------------------------------
 
-def asset_for_platform(release: Dict, stem_match: str) -> Optional[Dict]:
+def _has_token(name: str, token: str) -> bool:
+    # true if token appears as a standalone chunk (separated by non-alnum)
+    return re.search(rf'(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])', name) is not None
+
+def asset_for_platform(release: dict, stem_match: str) -> Optional[dict]:
     """
     Find a release asset for current OS/arch containing stem_match in its name.
-    Used for llama-swap.
+    Uses token/word-boundary matches so 'win' doesn't match 'darwin'.
     """
-    system = platform.system().lower()
-    machine = (
-        platform.machine().lower()
-        .replace("x86_64", "amd64")
-        .replace("aarch64", "arm64")
-    )
+    system = platform.system().lower()        # 'windows' | 'linux' | 'darwin'
+    machine = platform.machine().lower()      # 'amd64'/'x86_64' or 'arm64'/...
+
+    arch_ok_tokens = {
+        "x86_64", "amd64", "x64",
+    } if machine in {"x86_64", "amd64"} else {
+        "arm64", "aarch64"
+    }
+
+    def os_match(n: str) -> bool:
+        if system == "windows":
+            return _has_token(n, "windows") or _has_token(n, "win")
+        if system == "darwin":
+            return _has_token(n, "darwin") or _has_token(n, "macos") or _has_token(n, "mac")
+        if system == "linux":
+            return _has_token(n, "linux") or _has_token(n, "ubuntu")
+        return False
+
+    best: Optional[dict] = None
+    best_score = 1_000
 
     for asset in release.get("assets", []):
         name = asset["name"].lower()
         if stem_match not in name:
             continue
-
-        os_ok = (
-            (system == "darwin" and ("darwin" in name or "macos" in name))
-            or (system == "windows" and ("windows" in name or "win" in name))
-            or (system == "linux" and ("linux" in name or "ubuntu" in name))
-        )
-        if not os_ok or machine not in name:
+        if not os_match(name):
             continue
-        return asset
+        if not any(_has_token(name, tok) for tok in arch_ok_tokens):
+            continue
 
-    return None
+        # prefer native archive types per-OS; lower score is better
+        score = 10
+        if system == "windows" and name.endswith(".zip"):
+            score = 0
+        elif system in {"linux", "darwin"} and (name.endswith(".tar.gz") or name.endswith(".tgz")):
+            score = 0
 
+        if score < best_score:
+            best = asset
+            best_score = score
+
+    return best
+
+
+def _os_token_match(n: str, sys_token: str) -> bool:
+    # sys_token is 'win'|'macos'|'ubuntu'
+    if sys_token == "win":
+        return _has_token(n, "windows") or _has_token(n, "win")
+    if sys_token == "macos":
+        return _has_token(n, "macos") or _has_token(n, "darwin") or _has_token(n, "mac")
+    if sys_token == "ubuntu":
+        return _has_token(n, "ubuntu") or _has_token(n, "linux")
+    return False
 
 def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dict]:
-    """
-    Select a llama.cpp server binary asset based on platform and preferred backend.
-    """
     system_token = {"Darwin": "macos", "Windows": "win", "Linux": "ubuntu"}.get(
         platform.system(), platform.system().lower()
     )
     arch_token = {
-        "amd64": "x64",
-        "x86_64": "x64",
-        "arm64": "arm64",
-        "aarch64": "arm64",
+        "amd64": "x64", "x86_64": "x64",
+        "arm64": "arm64", "aarch64": "arm64",
     }.get(platform.machine().lower(), platform.machine().lower())
 
     candidates: list[tuple[int, Dict]] = []
@@ -271,35 +301,33 @@ def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dic
         if not name.endswith(".zip"):
             continue
 
-        system_match = system_token in name or (system_token == "ubuntu" and "linux" in name)
+        # skip runtime/deps-only bundles (these have no server binary)
+        if any(t in name for t in ("cudart", "runtime", "deps", "cudnn", "cutensor")):
+            continue
+
+        system_match = _os_token_match(name, system_token)
         if not (system_match and arch_token in name and "bin" in name):
             continue
 
-        # Score by backend preference (lower is better)
+        # prefer archives that clearly look like the main llama bin bundles
+        looks_like_main = (name.startswith("llama-") or name.startswith("llama-b")) and "-bin-" in name
+
         score = 1000
         has = lambda kw: kw in name
-        full = ("llama-" in name and "-bin-" in name) or ("server" in name and "-bin-" in name and "llama" in name)
 
         if gpu_backend_pref == "cuda":
-            score = 0 if (has("cuda") and full) else (1 if has("cuda") else 1000)
+            score = 0 if (has("cuda") and looks_like_main) else (1 if has("cuda") else 1000)
         elif gpu_backend_pref == "vulkan":
-            score = 0 if (has("vulkan") and full) else (1 if has("vulkan") else 1000)
+            score = 0 if (has("vulkan") and looks_like_main) else (1 if has("vulkan") else 1000)
         elif gpu_backend_pref == "cpu":
-            if has("cpu") and full:
-                score = 0
-            elif not any(has(x) for x in ("cuda", "vulkan", "metal")):
-                score = 1
+            if has("cpu") and looks_like_main: score = 0
+            elif not any(has(x) for x in ("cuda", "vulkan", "metal")): score = 1
         elif gpu_backend_pref == "auto":
-            if system_token == "macos" and has("metal") and full:
-                score = 0
-            elif has("cuda") and full:
-                score = 10
-            elif has("vulkan") and full:
-                score = 20
-            elif has("cpu") and full:
-                score = 30
-            elif not any(has(x) for x in ("metal", "cuda", "vulkan")):
-                score = 40
+            if system_token == "macos" and has("metal") and looks_like_main: score = 0
+            elif has("cuda") and looks_like_main: score = 10
+            elif has("vulkan") and looks_like_main: score = 20
+            elif has("cpu") and looks_like_main: score = 30
+            elif not any(has(x) for x in ("metal", "cuda", "vulkan")): score = 40
 
         if score < 1000:
             candidates.append((score, asset))
@@ -309,6 +337,7 @@ def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dic
 
     candidates.sort(key=lambda x: (x[0], x[1]["name"]))
     return candidates[0][1]
+
 
 
 # -----------------------------------------------------------------------------
@@ -324,17 +353,44 @@ def download_llama_swap(binary_dir: Path) -> Path:
             "Try --build-from-source swap."
         )
 
-    url = asset["browser_download_url"]
-    tmp = binary_dir / asset["name"]
-    download(url, tmp)
-    extract_archive(tmp, binary_dir)
+    # 1) Download to a TEMP folder (not inside binary_dir!)
+    with tempfile.TemporaryDirectory() as td:
+        tmp_archive = Path(td) / asset["name"]
+        download(asset["browser_download_url"], tmp_archive)
 
+        # 2) Clean target bin dir so we don't mix platforms/artifacts
+        binary_dir.mkdir(parents=True, exist_ok=True)
+        for p in list(binary_dir.iterdir()):
+            try:
+                if p.is_file() or p.is_symlink():
+                    p.unlink()
+                elif p.is_dir():
+                    shutil.rmtree(p)
+            except Exception as e:
+                print(f"Warning: could not remove {p}: {e}")
+
+        # 3) Extract into the clean bin dir
+        extract_archive(tmp_archive, binary_dir)
+
+    # 4) Locate and normalize the executable name on Windows
+    exe_name = "llama-swap.exe" if IS_WINDOWS else "llama-swap"
     for cand in binary_dir.iterdir():
-        if cand.name.lower().startswith("llama-swap") and cand.is_file():
+        if cand.is_file() and cand.name.lower().startswith("llama-swap"):
+            target = binary_dir / exe_name
+            if cand != target:
+                try:
+                    if target.exists():
+                        target.unlink()
+                    shutil.copy2(cand, target)
+                    cand = target
+                except Exception:
+                    # best-effort fallback
+                    cand.rename(target)
+                    cand = target
             ensure_executable(cand)
             return cand
 
-    sys.exit("Downloaded llama-swap release but could not locate the binary.")
+    sys.exit("Downloaded release but could not locate llama-swap binary.")
 
 
 def build_llama_swap(src_dir: Path, binary_dir: Path) -> Path:
@@ -416,6 +472,7 @@ def download_llama_cpp(base_install_dir: Path, gpu_backend: str) -> Path:
         )
         err += "Try --gpu-backend auto or --build-from-source cpp."
         raise SystemExit(err)
+    LOG.info("Selected llama.cpp asset: %s", asset["name"])
 
     tmp_archive = llama_cpp_dir / asset["name"]
     download(asset["browser_download_url"], tmp_archive)

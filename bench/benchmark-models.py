@@ -23,6 +23,7 @@ import sys
 import tempfile
 import time
 import copy # For deepcopy
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -101,6 +102,29 @@ def parse_param_size_from_alias(model_alias: str) -> str:
         return size
     logger.debug(f"Could not parse param size from alias '{model_alias}'")
     return "-"
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+LOGS_DIR = SCRIPT_DIR / "logs"
+CSV_BASENAME = "bench/benchmark_results"
+RUN_DIR_PREFIX = "run_"
+RETENTION_KEEP = 10  # keep last 10 CSVs and log runs
+
+def _timestamp() -> str:
+    return datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def _enforce_retention(dir_path: Path, pattern: str, keep: int, delete_dirs: bool = False, logger_instance: Optional['Logger'] = None):
+    try:
+        items = sorted(dir_path.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+        for old in items[keep:]:
+            if delete_dirs and old.is_dir():
+                shutil.rmtree(old, ignore_errors=True)
+                if logger_instance: logger_instance.debug(f"Retention: removed directory {old}")
+            elif old.is_file():
+                old.unlink(missing_ok=True)
+                if logger_instance: logger_instance.debug(f"Retention: removed file {old}")
+    except Exception as e:
+        if logger_instance:
+            logger_instance.warn(f"Retention error in {dir_path} ({pattern}): {e}")
 
 def parse_memory_string_to_gb(mem_str: str) -> Optional[float]:
     # Identical to scan_model_memory.py
@@ -541,60 +565,52 @@ def main():
         description="Cross-platform LLM Benchmarking Script.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    
-    # project_root_dir is defined globally
-    default_base_config_path = (project_root_dir / "config.base.yaml").resolve()
 
+    # kept args (no -o/--output, --keep-temp-logs, or --log-file)
+    default_base_config_path = (project_root_dir / "config.base.yaml").resolve()
     parser.add_argument(
         "-c", "--config", type=Path, default=default_base_config_path,
         help="Path to the base YAML configuration file."
     )
-    
     default_override_path_hostname = (project_root_dir / "overrides" / f"{platform.node().split('.')[0].lower()}.yaml").resolve()
-    # Fallback specific override example (can be adjusted or removed if only hostname is desired)
-    # specific_override_filename_example = "my-specific-machine.yaml" 
-    # default_override_path_specific = (project_root_dir / "overrides" / specific_override_filename_example).resolve()
-    # calculated_default_override = default_override_path_hostname if default_override_path_hostname.exists() else \
-    #                              (default_override_path_specific if default_override_path_specific.exists() else None)
     calculated_default_override = default_override_path_hostname if default_override_path_hostname.exists() else None
-    
     parser.add_argument(
         "--override", type=Path, default=calculated_default_override,
-        help=f"Path to override YAML. (Default logic checks hostname based override)"
-    )
-    parser.add_argument(
-        "-o", "--output", type=Path, default=Path.cwd() / DEFAULT_OUTPUT_FILENAME,
-        help="Path for the output CSV file (e.g., 'results/my_bench.csv')."
+        help="Path to override YAML. (Default logic checks hostname based override)"
     )
     parser.add_argument("-q", "--question", type=str, default=DEFAULT_QUESTION, help="Question/prompt for benchmarking.")
     parser.add_argument("--poll-interval", type=float, default=DEFAULT_HEALTH_POLL_INTERVAL_S, help="Health check poll interval (seconds).")
-    parser.add_argument("--health-timeout", type=int, default=DEFAULT_HEALTH_TIMEOUT_S_BENCH, help=f"Override health check timeout (seconds). Default: {DEFAULT_HEALTH_TIMEOUT_S_BENCH}s.")
+    parser.add_argument("--health-timeout", type=int, default=DEFAULT_HEALTH_TIMEOUT_S_BENCH, help=f"Override health check timeout (seconds).")
     parser.add_argument("-m", "--model", type=str, help="Benchmark only this specific model alias (from config).")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose/debug output.")
-    parser.add_argument(
-        "--keep-temp-logs", action="store_true",
-        help="Keep temporary server log files in a subdirectory ('llm_benchmark_persistent_logs') instead of auto-deleting."
-    )
-    parser.add_argument("--log-file", type=Path, default=None, help="Optional path for the main script log file. If not set, defaults to <output_csv_name>.log.")
-    
+
     args = parser.parse_args()
 
-    output_file_abs_csv = args.output.resolve()
+    # --- Forced static locations with timestamp ---
+    ts = _timestamp()
 
-    main_log_file_path = args.log_file
-    if main_log_file_path:
-        main_log_file_path = main_log_file_path.resolve()
-    else: # Default log file next to CSV output
-        main_log_file_path = output_file_abs_csv.with_suffix(".log")
-    
+    # Ensure logs dir exists
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # CSV goes alongside this script, timestamped; CSVs are kept forever
+    output_file_abs_csv = (SCRIPT_DIR / f"{CSV_BASENAME}_{ts}.csv").resolve()
+    try:
+        output_file_abs_csv.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"CRITICAL ERROR: Could not create directory for CSV file: {output_file_abs_csv.parent} - {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Main script log inside logs/, timestamped (logs are rotated)
+    main_log_file_path = (LOGS_DIR / f"benchmark_{ts}.log").resolve()
     try:
         main_log_file_path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         print(f"CRITICAL ERROR: Could not create directory for main log file: {main_log_file_path.parent} - {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Initialize logger
     logger = Logger(verbose=args.verbose, log_file_path=main_log_file_path)
-    
+
     try:
         logger.header("LLM BENCHMARKER INITIALIZATION")
         logger.info(f"Main script log file: {main_log_file_path}")
@@ -611,171 +627,167 @@ def main():
 
         resolved_override = args.override.resolve() if args.override else None
         if resolved_override:
-            if resolved_override.is_file(): logger.info(f"Using override configuration: {resolved_override}")
+            if resolved_override.is_file():
+                logger.info(f"Using override configuration: {resolved_override}")
             else:
                 logger.warn(f"Specified override configuration not found: {resolved_override}. Proceeding without.")
                 resolved_override = None
-        else: logger.info("No override configuration file specified or found by default logic.")
+        else:
+            logger.info("No override configuration file specified or found by default logic.")
 
+        # --- Initial cleanup of potential lingering llama-server processes on our static port ---
         logger.step(f"Performing initial cleanup of potentially lingering llama-server processes on port {STATIC_BENCHMARK_PORT}...")
         killed_procs = 0
         target_port_arg_bench = f"--port {STATIC_BENCHMARK_PORT}"
-        
-        # Patterns from scan_model_memory.py, can be shared or customized
-        llama_exec_patterns = ["llama-server", "server.exe", "server"] 
-        llama_path_patterns = [ "llama.cpp/server", "llama.cpp/build/bin/server", "build/bin/server" ]
+
+        llama_exec_patterns = ["llama-server", "server.exe", "server"]
+        llama_path_patterns = ["llama.cpp/server", "llama.cpp/build/bin/server", "build/bin/server"]
 
         for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'exe', 'username']):
             try:
-                proc_info = proc.info; pid = proc_info.get('pid')
-                proc_name_raw = proc_info.get('name'); proc_name = proc_name_raw.lower() if proc_name_raw else ""
-                exe_path_raw = proc_info.get('exe'); exe_path = exe_path_raw.lower() if exe_path_raw else ""
-                cmdline_list = proc_info.get('cmdline'); cmdline_str = " ".join(cmdline_list).lower() if cmdline_list else ""
+                proc_info = proc.info
+                pid = proc_info.get('pid')
+                proc_name_raw = proc_info.get('name')
+                proc_name = proc_name_raw.lower() if proc_name_raw else ""
+                exe_path_raw = proc_info.get('exe')
+                exe_path = exe_path_raw.lower() if exe_path_raw else ""
+                cmdline_list = proc_info.get('cmdline')
+                cmdline_str = " ".join(cmdline_list).lower() if cmdline_list else ""
                 username = proc_info.get('username')
                 is_potential_llama_server = False
 
-                if target_port_arg_bench in cmdline_str: is_potential_llama_server = True
-                elif proc_name in llama_exec_patterns: is_potential_llama_server = True
-                elif any(patt in exe_path for patt in llama_path_patterns): is_potential_llama_server = True
-                elif any(patt in cmdline_str for patt in llama_path_patterns): is_potential_llama_server = True
+                if target_port_arg_bench in cmdline_str:
+                    is_potential_llama_server = True
+                elif proc_name in llama_exec_patterns:
+                    is_potential_llama_server = True
+                elif any(patt in exe_path for patt in llama_path_patterns):
+                    is_potential_llama_server = True
+                elif any(patt in cmdline_str for patt in llama_path_patterns):
+                    is_potential_llama_server = True
 
                 if is_potential_llama_server:
-                    # Heuristics to avoid killing unrelated processes, similar to scan_model_memory.py
-                    current_user = psutil.Process().username() # Get current user
-                    if username and username != current_user and "root" in username.lower() and target_port_arg_bench not in cmdline_str:
+                    current_user = psutil.Process().username()
+                    if username and username != current_user and "root" in (username.lower() if username else "") and target_port_arg_bench not in cmdline_str:
                         logger.debug(f"  PID {pid} ('{proc_name_raw}') matched pattern but owned by '{username}' (not current user '{current_user}' or root on target port). Skipping kill.")
                         continue
-                    
-                    system_daemon_names = ["windowserver", "systemuiserver", "cvmserver", "nfstorageserver", "powerd", "logd"] 
+
+                    system_daemon_names = ["windowserver", "systemuiserver", "cvmserver", "nfstorageserver", "powerd", "logd"]
                     if proc_name in system_daemon_names and target_port_arg_bench not in cmdline_str:
                         logger.debug(f"  PID {pid} ('{proc_name_raw}') is a known system daemon not on target port. Skipping kill.")
                         continue
-                    
+
                     cmd_display_str = (" ".join(cmdline_list))[:100] if cmdline_list else ""
                     logger.warn(f"  Terminating potential lingering server: PID={pid}, Name='{proc_name_raw}', User='{username}', Cmd='{cmd_display_str}'")
-                    p_obj = psutil.Process(pid); p_obj.terminate()
-                    try: p_obj.wait(timeout=PROCESS_TERMINATE_TIMEOUT_S / 2.0) # Shorter timeout for terminate
-                    except psutil.TimeoutExpired: 
-                        logger.warn(f"    PID {pid} did not terminate, killing..."); p_obj.kill(); p_obj.wait(timeout=PROCESS_TERMINATE_TIMEOUT_S / 2.0)
-                    killed_procs +=1
+                    p_obj = psutil.Process(pid)
+                    p_obj.terminate()
+                    try:
+                        p_obj.wait(timeout=PROCESS_TERMINATE_TIMEOUT_S / 2.0)
+                    except psutil.TimeoutExpired:
+                        logger.warn(f"    PID {pid} did not terminate, killing...")
+                        p_obj.kill()
+                        p_obj.wait(timeout=PROCESS_TERMINATE_TIMEOUT_S / 2.0)
+                    killed_procs += 1
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 logger.debug(f"  Skipping inaccessible/gone process PID {pid if 'pid' in locals() and pid else 'unknown'}")
                 continue
-            except Exception as e_psutil: 
+            except Exception as e_psutil:
                 logger.warn(f"  Error during psutil check for process {pid if 'pid' in locals() and pid else 'unknown'}: {e_psutil}")
 
-        if killed_procs > 0: logger.success(f"Initial cleanup terminated {killed_procs} process(es).")
-        else: logger.info(f"No lingering server processes found (port {STATIC_BENCHMARK_PORT} or patterns).")
+        if killed_procs > 0:
+            logger.success(f"Initial cleanup terminated {killed_procs} process(es).")
+        else:
+            logger.info(f"No lingering server processes found (port {STATIC_BENCHMARK_PORT} or patterns).")
 
-
+        # --- Load and process configurations ---
         logger.step("Loading and processing configurations...")
         try:
             effective_conf_dict = generate_processed_config(
                 base_config_path_arg=resolved_base_config,
                 override_config_path_arg=resolved_override,
-                script_dir_for_overrides=project_root_dir, # Use global project_root_dir
-                verbose_logging=args.verbose 
+                script_dir_for_overrides=project_root_dir,
+                verbose_logging=args.verbose
             )
             logger.success("Configurations processed successfully.")
-        except Exception as e: 
+        except Exception as e:
             logger.error(f"Failed to load or process configurations: {e}")
-            if args.verbose: import traceback; logger.error("Traceback:\n" + traceback.format_exc())
+            if args.verbose:
+                import traceback
+                logger.error("Traceback:\n" + traceback.format_exc())
             sys.exit(1)
 
-        # Use health_timeout from args if provided, otherwise from config, then script default
-        health_timeout_final = args.health_timeout if args.health_timeout is not None and args.health_timeout != DEFAULT_HEALTH_TIMEOUT_S_BENCH else \
-                               effective_conf_dict.get("healthCheckTimeout", DEFAULT_HEALTH_TIMEOUT_S_BENCH)
+        # Health timeout selection
+        health_timeout_final = (
+            args.health_timeout
+            if args.health_timeout is not None and args.health_timeout != DEFAULT_HEALTH_TIMEOUT_S_BENCH
+            else effective_conf_dict.get("healthCheckTimeout", DEFAULT_HEALTH_TIMEOUT_S_BENCH)
+        )
         if not isinstance(health_timeout_final, int) or health_timeout_final <= 0:
             logger.warn(f"Invalid healthCheckTimeout '{health_timeout_final}'. Using default: {DEFAULT_HEALTH_TIMEOUT_S_BENCH}s.")
             health_timeout_final = DEFAULT_HEALTH_TIMEOUT_S_BENCH
         logger.info(f"Effective health check timeout: {health_timeout_final}s")
         logger.info(f"Health check poll interval: {args.poll_interval}s")
-        
-        try:
-            output_file_abs_csv.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(f"Output CSV will be written to: {output_file_abs_csv}")
-        except OSError as e:
-            logger.error(f"Could not create output directory: {output_file_abs_csv.parent} - {e}"); sys.exit(1)
+
+        # --- Persistent per-run server logs under logs/run_<ts> ---
+        run_logs_dir = LOGS_DIR / f"{RUN_DIR_PREFIX}{ts}"
+        run_logs_dir.mkdir(parents=True, exist_ok=True)
+        TEMP_DIR_MANAGER_PATH = run_logs_dir  # for signal handler info
+
+        logger.info(f"Server logs will be kept in: {run_logs_dir.resolve()}")
+        logger.header("STARTING BENCHMARK RUN")
+
+        processed_models_data = effective_conf_dict.get("models", {})
+        if not isinstance(processed_models_data, dict) or not processed_models_data:
+            logger.error("'models' section not found/empty in config. Cannot run benchmark.")
+            sys.exit(1)
 
         script_start_time = time.monotonic()
-        temp_dir_path_for_run: Path 
 
-        if args.keep_temp_logs:
-            persistent_log_parent_dir = Path.cwd() / "llm_benchmark_persistent_logs"
-            persistent_log_parent_dir.mkdir(parents=True, exist_ok=True)
-            current_run_log_dir_name = f"run_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            temp_dir_path_for_run = persistent_log_parent_dir / current_run_log_dir_name
-            temp_dir_path_for_run.mkdir(parents=True, exist_ok=True)
-            
-            TEMP_DIR_MANAGER_PATH = temp_dir_path_for_run 
-            
-            logger.info(f"PERSISTENT LOGS: Server logs will be kept in: {temp_dir_path_for_run.resolve()}")
-            logger.warn("  REMINDER: This directory and its contents will NOT be automatically cleaned up.")
-            
-            logger.header("STARTING BENCHMARK RUN (Persistent Logs)")
-            processed_models_data = effective_conf_dict.get("models", {})
-            if not isinstance(processed_models_data, dict) or not processed_models_data:
-                logger.error("'models' section not found/empty in config. Cannot run benchmark.")
-                sys.exit(1)
+        run_benchmark(
+            processed_models_config=processed_models_data,
+            output_csv_path=output_file_abs_csv,
+            question=args.question,
+            health_timeout_s=health_timeout_final,
+            health_poll_s=args.poll_interval,
+            model_to_test_alias=args.model,
+            temp_dir_path=run_logs_dir,        # ALWAYS under logs/
+            logger_instance=logger,
+            project_root_path=project_root_dir
+        )
 
-            run_benchmark(
-                processed_models_config=processed_models_data,
-                output_csv_path=output_file_abs_csv,
-                question=args.question,
-                health_timeout_s=health_timeout_final,
-                health_poll_s=args.poll_interval,
-                model_to_test_alias=args.model,
-                temp_dir_path=temp_dir_path_for_run,
-                logger_instance=logger, 
-                project_root_path=project_root_dir # Pass global project_root_dir
-            )
-        else: # Original behavior using tempfile.TemporaryDirectory for auto-cleanup
-            with tempfile.TemporaryDirectory(prefix="llm_bench_") as temp_dir_name:
-                TEMP_DIR_MANAGER_PATH = Path(temp_dir_name) 
-                temp_dir_path_for_run = TEMP_DIR_MANAGER_PATH
-                
-                logger.info(f"Using temporary directory for server logs (will be auto-deleted): {temp_dir_path_for_run}")
-                logger.header("STARTING BENCHMARK RUN (Auto-deleted Logs)")
-                
-                processed_models_data = effective_conf_dict.get("models", {})
-                if not isinstance(processed_models_data, dict) or not processed_models_data:
-                    logger.error("'models' section not found/empty in config. Cannot run benchmark.")
-                    sys.exit(1)
+        # Keep a convenience "latest" CSV copy without timestamp
+        try:
+            latest_csv = SCRIPT_DIR / f"{CSV_BASENAME}.csv"
+            shutil.copy2(output_file_abs_csv, latest_csv)
+            logger.info(f"Also wrote latest CSV copy: {latest_csv}")
+        except Exception as e:
+            logger.warn(f"Could not write latest CSV copy: {e}")
 
-                run_benchmark(
-                    processed_models_config=processed_models_data,
-                    output_csv_path=output_file_abs_csv,
-                    question=args.question,
-                    health_timeout_s=health_timeout_final,
-                    health_poll_s=args.poll_interval,
-                    model_to_test_alias=args.model,
-                    temp_dir_path=temp_dir_path_for_run,
-                    logger_instance=logger, 
-                    project_root_path=project_root_dir # Pass global project_root_dir
-                )
-        
+        # --- Retention: rotate ONLY logs (keep last RETENTION_KEEP) ---
+        _enforce_retention(LOGS_DIR, "benchmark_*.log", keep=RETENTION_KEEP, delete_dirs=False, logger_instance=logger)
+        _enforce_retention(LOGS_DIR, f"{RUN_DIR_PREFIX}*", keep=RETENTION_KEEP, delete_dirs=True, logger_instance=logger)
+        # Note: CSVs are NOT rotated and are kept indefinitely by design.
+
         script_duration_s = time.monotonic() - script_start_time
         logger.header("BENCHMARK SCRIPT COMPLETE")
         logger.success(f"Total script execution time: {script_duration_s:.2f} seconds.")
 
-    except Exception as e_main_global: 
+    except Exception as e_main_global:
         if logger:
             logger.error(f"A critical unexpected error occurred in main execution: {e_main_global}")
-            if args.verbose or (hasattr(logger, 'verbose_flag') and logger.verbose_flag): 
+            if args.verbose or (hasattr(logger, 'verbose_flag') and logger.verbose_flag):
                 import traceback
                 logger.error("Traceback:\n" + traceback.format_exc())
-        else: 
+        else:
             print(f"CRITICAL UNCAUGHT EXCEPTION (Logger not available or failed): {e_main_global}", file=sys.stderr)
             import traceback
             traceback.print_exc(file=sys.stderr)
-        sys.exit(2) 
+        sys.exit(2)
     finally:
         if logger and hasattr(logger, 'close') and callable(logger.close):
             logger.info("Closing main log file at script completion.")
             logger.close()
-        elif logger: 
+        elif logger:
             print("Warning: Logger was initialized but does not have a close method or it's not callable.", file=sys.stderr)
-
 
 if __name__ == "__main__":
     main()

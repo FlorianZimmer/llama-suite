@@ -21,7 +21,25 @@ models:
     cmd:
       gpu-layers: 40   # As per your spec
       threads: 28
-      override-tensor: "blk\\.([0-3][0-9])\\.ffn_.*_exps.=CPU"
+      n-cpu-moe: 36
+
+  Qwen3-30B-A3B-Instruct-2507:
+    cmd:
+      gpu-layers: 40   # As per your spec
+      threads: 28
+      n-cpu-moe: 36
+
+  Qwen3-30B-A3B-Thinking-2507:
+    cmd:
+      gpu-layers: 40   # As per your spec
+      threads: 28
+      n-cpu-moe: 36
+
+  Qwen3-Coder-30B-A3B-Instruct-1M:
+    cmd:
+      gpu-layers: 99   # As per your spec
+      threads: 28
+      n-cpu-moe: 48
 
   Qwen3-32B-Think:
     cmd:
@@ -33,26 +51,21 @@ models:
       gpu-layers: 999
       threads: 28
 
-  # Qwen3-32B-UD-Q4:
-  #   cmd:
-  #     gpu-layers: 24
-  #     threads: 28
-
-  Qwen3-4B-Q4-Bart:
+  Qwen3-4B-Instruct-2507-UD-Q8:
     cmd:
-      gpu-layers: 99 # Your spec
+      gpu-layers: 99
+      threads: 28
+
+  Qwen3-4B-Thinking-2507-UD-Q8:
+    cmd:
+      gpu-layers: 99
       threads: 28
 
   Qwen3-32B-SpeculativeDecoding-32768:
     cmd:
-      gpu-layers: 10 # Your spec
+      gpu-layers: 10
       threads: 28
       device-draft: CUDA0    # Specific for RTX 3080
-
-  Qwen3-8B-Q4_K_M-Bart:
-    cmd:
-      gpu-layers: 999
-      threads: 28
 
   GLM-4-32B-0414:
     cmd:
@@ -62,7 +75,7 @@ models:
 
   gemma-3-1b-it:
     cmd:
-      gpu-layers: 99 # Your spec
+      gpu-layers: 99
       threads: 28
 
   gemma-3-4b-it:
@@ -85,22 +98,15 @@ models:
       gpu-layers: 21
       threads: 28
 
+  Magistral-Small-2507:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
   QwQ-32B-Q4_K_M:
     cmd:
       gpu-layers: 22
       threads: 28
-
-  # gemma-3-27b-it-SpeculativeDecoding:
-  #   cmd:
-  #     gpu-layers: 14
-  #     threads: 28
-  #     device-draft: CUDA0
-
-  Qwen3-30B-A3B-UD:
-    cmd:
-      gpu-layers: 40
-      threads: 28
-      override-tensor: "blk\\.([0-3][0-9])\\.ffn_.*_exps.=CPU"
 
   Qwen3-32B-SpeculativeDecoding-16384:
     cmd:
@@ -119,16 +125,34 @@ models:
       gpu-layers: 22
       threads: 28
 
-  DeepSeek-R1-0528-Qwen3-8B-UD-Q4_K_XL:
+  OpenReasoning-Nemotron-7B:
     cmd:
-      gpu-layers: 999 # Effectively all layers
+      gpu-layers: 99
       threads: 28
 
   gpt-oss-120b-Q8:
     cmd:
-      gpu-layers: 5
+      gpu-layers: 99
       threads: 28
-      override-tensor: "blk\\.([0-3][0-9])\\.ffn_.*_exps.=CPU"
+      n-cpu-moe: 33
+
+  gpt-oss-20b-Q4:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 10
+
+  GLM-4.5-Air-Q3:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 44
+
+  GLM-4.5-Air-IQ4:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 44
 
 # The top-level keys like healthCheckTimeout, logLevel, and profiles from your
 # llama-swap native config are NOT currently handled by llama_swap_watch.py.

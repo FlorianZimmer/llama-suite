@@ -29,6 +29,7 @@ import sys
 import tarfile
 import tempfile
 import zipfile
+import re
 from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
 from urllib.error import HTTPError, URLError
@@ -53,7 +54,7 @@ OPEN_WEBUI_IMAGE_DEFAULT = "ghcr.io/open-webui/open-webui:main"
 
 VENV_NAME = "llama-suite-venv"
 REQUIRED_PACKAGES = [
-    "lm-eval[llama_cpp,api]",
+    "lm-eval[api]",
     "PyYAML",
     "requests",
     "psutil",
@@ -81,6 +82,21 @@ def setup_logging(verbose: bool) -> None:
 # -----------------------------------------------------------------------------
 # Shell helpers
 # -----------------------------------------------------------------------------
+
+def _has_token(name: str, token: str) -> bool:
+    """True if token appears as its own chunk (word-boundary-ish) in name."""
+    name = name.lower()
+    return re.search(rf'(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])', name) is not None
+
+def _os_token_match(asset_name: str, system: str) -> bool:
+    n = asset_name.lower()
+    if system == "windows":
+        return _has_token(n, "windows") or _has_token(n, "win")
+    if system == "darwin":
+        return _has_token(n, "darwin") or _has_token(n, "macos") or _has_token(n, "mac")
+    if system == "linux":
+        return _has_token(n, "linux") or _has_token(n, "ubuntu")
+    return False
 
 def run(cmd: Sequence[str] | str, cwd: Optional[Path] = None, check: bool = True) -> subprocess.CompletedProcess:
     printable = " ".join(map(str, cmd)) if isinstance(cmd, (list, tuple)) else str(cmd)
@@ -209,24 +225,38 @@ def upgrade_packages(pip: Path) -> None:
 # -----------------------------------------------------------------------------
 
 def asset_for_platform_swap(release: Dict) -> Optional[Dict]:
-    system = platform.system().lower()
-    machine = platform.machine().lower().replace("x86_64", "amd64").replace("aarch64", "arm64")
+    system = platform.system().lower()      # 'windows' | 'linux' | 'darwin'
+    machine = platform.machine().lower()
+    # normalize arch aliases to a small set
+    arch_tokens = {"x86_64", "amd64", "x64"} if machine in {"x86_64", "amd64"} else {"arm64", "aarch64"}
+
+    best, best_score = None, 10_000
     for asset in release.get("assets", []):
         name = asset["name"].lower()
         if "llama-swap" not in name:
             continue
-        os_ok = (
-            (system == "darwin" and ("darwin" in name or "macos" in name)) or
-            (system == "windows" and ("windows" in name or "win" in name)) or
-            (system == "linux" and ("linux" in name or "ubuntu" in name))
-        )
-        if os_ok and machine in name:
-            return asset
-    return None
+        if not _os_token_match(name, system):
+            continue
+        if not any(_has_token(name, tok) for tok in arch_tokens):
+            continue
 
+        # Score by “native” archive type preferences
+        score = 10
+        if system == "windows":
+            score = 0 if name.endswith(".zip") else 2
+        else:
+            if name.endswith(".tar.gz") or name.endswith(".tgz"):
+                score = 0
+            elif name.endswith(".zip"):
+                score = 2
+
+        if score < best_score or (score == best_score and name < best["name"].lower() if best else True):
+            best, best_score = asset, score
+
+    return best
 
 def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dict]:
-    sys_token = {"Darwin": "macos", "Windows": "win", "Linux": "ubuntu"}.get(
+    system_token = {"Darwin": "macos", "Windows": "win", "Linux": "ubuntu"}.get(
         platform.system(), platform.system().lower()
     )
     arch_token = {
@@ -234,48 +264,48 @@ def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dic
         "arm64": "arm64", "aarch64": "arm64",
     }.get(platform.machine().lower(), platform.machine().lower())
 
-    cands: list[tuple[int, Dict]] = []
+    candidates: list[tuple[int, Dict]] = []
     for asset in release.get("assets", []):
         name = asset["name"].lower()
-        if not (name.endswith(".zip") and "bin" in name):
-            continue
-        if not (sys_token in name or (sys_token == "ubuntu" and "linux" in name)):
-            continue
-        if arch_token not in name:
+        if not name.endswith(".zip"):
             continue
 
+        # skip runtime/deps-only bundles (these have no server binary)
+        if any(t in name for t in ("cudart", "runtime", "deps", "cudnn", "cutensor")):
+            continue
+
+        system_match = _os_token_match(name, system_token)
+        if not (system_match and arch_token in name and "bin" in name):
+            continue
+
+        # prefer archives that clearly look like the main llama bin bundles
+        looks_like_main = (name.startswith("llama-") or name.startswith("llama-b")) and "-bin-" in name
+
+        score = 1000
         has = lambda kw: kw in name
-        full = ("llama-" in name and "-bin-" in name) or ("server" in name and "-bin-" in name and "llama" in name)
-        score = 10_000
+
         if gpu_backend_pref == "cuda":
-            score = 0 if (has("cuda") and full) else (1 if has("cuda") else 10_000)
+            score = 0 if (has("cuda") and looks_like_main) else (1 if has("cuda") else 1000)
         elif gpu_backend_pref == "vulkan":
-            score = 0 if (has("vulkan") and full) else (1 if has("vulkan") else 10_000)
+            score = 0 if (has("vulkan") and looks_like_main) else (1 if has("vulkan") else 1000)
         elif gpu_backend_pref == "cpu":
-            if has("cpu") and full:
-                score = 0
-            elif not any(has(x) for x in ("cuda", "vulkan", "metal")):
-                score = 1
+            if has("cpu") and looks_like_main: score = 0
+            elif not any(has(x) for x in ("cuda", "vulkan", "metal")): score = 1
         elif gpu_backend_pref == "auto":
-            if sys_token == "macos" and has("metal") and full:
-                score = 0
-            elif has("cuda") and full:
-                score = 10
-            elif has("vulkan") and full:
-                score = 20
-            elif has("cpu") and full:
-                score = 30
-            elif not any(has(x) for x in ("metal", "cuda", "vulkan")):
-                score = 40
+            if system_token == "macos" and has("metal") and looks_like_main: score = 0
+            elif has("cuda") and looks_like_main: score = 10
+            elif has("vulkan") and looks_like_main: score = 20
+            elif has("cpu") and looks_like_main: score = 30
+            elif not any(has(x) for x in ("metal", "cuda", "vulkan")): score = 40
 
-        if score < 10_000:
-            cands.append((score, asset))
+        if score < 1000:
+            candidates.append((score, asset))
 
-    if not cands:
+    if not candidates:
         return None
-    cands.sort(key=lambda t: (t[0], t[1]["name"]))
-    return cands[0][1]
 
+    candidates.sort(key=lambda x: (x[0], x[1]["name"]))
+    return candidates[0][1]
 
 # -----------------------------------------------------------------------------
 # Update steps
@@ -290,9 +320,7 @@ def update_llama_swap(base: Path, method: str) -> Path:
     exe_name = "llama-swap.exe" if IS_WINDOWS else "llama-swap"
     bin_dir.mkdir(parents=True, exist_ok=True)
 
-    effective = method
-    if method == "auto":
-        effective = "build" if src_dir.exists() else "download"
+    effective = "build" if (method == "auto" and src_dir.exists()) else ("download" if method == "auto" else method)
     LOG.info("Updating llama-swap via: %s", effective)
 
     if effective == "build":
@@ -306,27 +334,41 @@ def update_llama_swap(base: Path, method: str) -> Path:
         ensure_executable(out)
         return out
 
-    # download path
+    # download path (TEMP FIRST!)
     rel = get_latest_release(LLAMA_SWAP_RELEASE_REPO)
     asset = asset_for_platform_swap(rel)
     if not asset:
         sys.exit("No suitable llama-swap release asset for this platform.")
-    tmp = bin_dir / asset["name"]
-    download(asset["browser_download_url"], tmp)
-    # clean out old files to avoid confusion
-    for p in bin_dir.iterdir():
-        if p.is_file():
-            p.unlink()
-    extract_archive(tmp, bin_dir)
-    tmp.unlink(missing_ok=True)
 
-    # find the binary
+    with tempfile.TemporaryDirectory() as td:
+        tmp_archive = Path(td) / asset["name"]
+        download(asset["browser_download_url"], tmp_archive)
+
+        # Clean target dir only AFTER successful download
+        for p in list(bin_dir.iterdir()):
+            try:
+                if p.is_file() or p.is_symlink():
+                    p.unlink()
+                elif p.is_dir():
+                    shutil.rmtree(p)
+            except Exception as e:
+                LOG.warning("Could not remove %s: %s", p, e)
+
+        extract_archive(tmp_archive, bin_dir)
+
+    # locate & normalize the exe name
     for cand in bin_dir.iterdir():
-        if cand.name.lower().startswith("llama-swap") and cand.is_file():
+        if cand.is_file() and cand.name.lower().startswith("llama-swap"):
+            target = bin_dir / exe_name
+            if cand != target:
+                if target.exists():
+                    target.unlink(missing_ok=True)
+                shutil.copy2(cand, target)
+                cand = target
             ensure_executable(cand)
             return cand
-    sys.exit("Updated llama-swap but could not locate the binary.")
 
+    sys.exit("Updated llama-swap but could not locate the binary.")
 
 def _copy_server_payload(src_dir: Path, target_bin_dir: Path, final_name: str) -> Path:
     target_bin_dir.mkdir(parents=True, exist_ok=True)
