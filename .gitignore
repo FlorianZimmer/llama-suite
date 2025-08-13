@@ -3,6 +3,7 @@ open-webui-data
 llama-suite-venv*
 llama-swap
 llama.cpp
+custom-eval
 logs*
 llm_memscan_persistent_logs
 config.effective.yaml

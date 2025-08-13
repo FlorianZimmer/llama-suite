@@ -1,0 +1,2 @@
+ModelName,ParameterSize,Quantization,ContextSize,Timestamp,MemoryScanStatus,GpuMemoryGB,CpuMemoryGB,BenchStatus,DurationSeconds,TokensPerSecond,PromptTokens,CompletionTokens,TotalTokens,ProxyUrl,Error
+Qwen3-8B-Q4_K_M,8B,Q4_K_M,16384,2025-08-13 00:35:04,Success,5.93,0.33,Success,7.141,104.75,14,748,762,http://127.0.0.1:9999,

@@ -28,6 +28,7 @@ import signal
 import subprocess
 import sys
 import time
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO
@@ -83,6 +84,96 @@ AUTO_OMIT_KEYS = {
 # -----------------------------------------------------------------------------
 # Utility Functions (Specific to this script)
 # -----------------------------------------------------------------------------
+
+import json, sys, yaml  # ensure these are imported
+
+def _append_flag_args(
+    server_args_list, key, value, model_name, verbose_script_logging
+) -> None:
+    normalized_key = key.replace('_', '-')
+    cli_flag = f"--{normalized_key}"
+
+    # Omit when marked as 'auto'
+    if normalized_key in AUTO_OMIT_KEYS and isinstance(value, str) and value.lower() == "auto":
+        if verbose_script_logging:
+            print(colour(f"Verbose: Model '{model_name}' - Omitted '{cli_flag}' because value is 'auto'.", Fore.MAGENTA))
+        return
+
+    # SPECIAL CASE: any flag ending with '-kwargs' → normalize to compact JSON and quote for the OS
+    if normalized_key.endswith("-kwargs"):
+        def _to_compact_json(val):
+            if isinstance(val, (dict, list, int, float, bool)) or val is None:
+                return json.dumps(val, separators=(',', ':'))
+            if isinstance(val, str):
+                s = val.strip()
+                # try JSON
+                try:
+                    return json.dumps(json.loads(s), separators=(',', ':'))
+                except Exception:
+                    pass
+                # try YAML -> JSON
+                try:
+                    y = yaml.safe_load(s)
+                    if isinstance(y, (dict, list, int, float, bool)) or y is None:
+                        return json.dumps(y, separators=(',', ':'))
+                except Exception:
+                    pass
+                # last resort: pass through unchanged
+                return s
+            return json.dumps(val, separators=(',', ':'))
+
+        compact = _to_compact_json(value)
+
+        # Quote for shell so inner " survive:
+        if sys.platform.startswith("win"):
+            # windows needs double quotes around the whole thing and \" inside
+            compact_quoted = '"' + compact.replace('"', r'\"') + '"'
+        else:
+            # posix: single quotes preserve inner double quotes
+            compact_quoted = "'" + compact + "'"
+
+        server_args_list.extend([cli_flag, compact_quoted])
+        if verbose_script_logging:
+            print(colour(f"Verbose: Model '{model_name}' - Added JSON for '{cli_flag}': {compact_quoted}", Fore.MAGENTA))
+        return
+
+    # Booleans: include flag only if True
+    if isinstance(value, bool):
+        if value:
+            server_args_list.append(cli_flag)
+        return
+
+    # Lists: repeat the flag for each item
+    if isinstance(value, list):
+        if not value:
+            return
+        for item in value:
+            if item is None:
+                continue
+            if isinstance(item, bool):
+                if item:
+                    server_args_list.append(cli_flag)
+            else:
+                server_args_list.extend([cli_flag, str(item)])
+        if verbose_script_logging:
+            print(colour(f"Verbose: Model '{model_name}' - Added {len(value)} occurrences of '{cli_flag}' from list.", Fore.MAGENTA))
+        return
+
+    # Dicts: flatten to '--key subkey=value' per entry
+    if isinstance(value, dict):
+        if not value:
+            return
+        for sub_k, sub_v in value.items():
+            if sub_v is None:
+                continue
+            server_args_list.extend([cli_flag, f"{sub_k}={sub_v}"])
+        if verbose_script_logging:
+            print(colour(f"Verbose: Model '{model_name}' - Added {len(value)} entries for '{cli_flag}' from dict.", Fore.MAGENTA))
+        return
+
+    # Scalars
+    if value is not None:
+        server_args_list.extend([cli_flag, str(value)])
 
 def prune_logs(log_dir: Path, keep: int = DEFAULT_LOGS_TO_KEEP) -> None:
     """Deletes older log files, keeping the newest `keep` files."""
@@ -281,38 +372,14 @@ def process_and_write_effective_config(
                 for key, value in original_cmd_dict.items():
                     if key == "bin":
                         continue
-                    
-                    normalized_key_for_check = key.replace('_', '-')
-                    cli_flag = f"--{normalized_key_for_check}"
-                    
-                    if normalized_key_for_check in AUTO_OMIT_KEYS and str(value).lower() == "auto":
-                        if verbose_script_logging:
-                            print(colour(f"Verbose: Model '{model_name}' (from cmd dict) - Omitted '{cli_flag}' because value is 'auto'.", Fore.MAGENTA))
-                        continue 
+                    _append_flag_args(server_args_list, key, value, model_name, verbose_script_logging)
 
-                    if isinstance(value, bool):
-                        if value: server_args_list.append(cli_flag)
-                    elif value is not None:
-                        server_args_list.extend([cli_flag, str(value)])
-                
                 # --- Part 3: Add arguments from the root of the model's configuration ---
                 for key, value in model_config_from_utils.items():
                     if key == "cmd" or key in MODEL_CONFIG_META_KEYS_SWAP_WATCH:
-                        continue 
-
-                    normalized_key_for_check = key.replace('_', '-')
-                    cli_flag = f"--{normalized_key_for_check}"
-
-                    if normalized_key_for_check in AUTO_OMIT_KEYS and str(value).lower() == "auto":
-                        if verbose_script_logging:
-                            print(colour(f"Verbose: Model '{model_name}' (from root config) - Omitted '{cli_flag}' because value is 'auto'.", Fore.MAGENTA))
                         continue
-
-                    if isinstance(value, bool):
-                        if value: server_args_list.append(cli_flag)
-                    elif value is not None:
-                        server_args_list.extend([cli_flag, str(value)])
-                
+                    _append_flag_args(server_args_list, key, value, model_name, verbose_script_logging)
+                                
                 # --- Part 4: Special handling for 'sampling' dictionary from root ---
                 sampling_config_at_root = model_config_from_utils.get("sampling")
                 if isinstance(sampling_config_at_root, dict): # 'sampling' is in META_KEYS, so this is fine

@@ -69,7 +69,7 @@ models:
 
   GLM-4-32B-0414:
     cmd:
-      gpu-layers: 24
+      gpu-layers: 22
       threads: 28
       # override-kv and chat-template should be in base if not machine-specific
 
@@ -103,24 +103,45 @@ models:
       gpu-layers: 21
       threads: 28
 
+  Devstral-Small-2507:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
+  Mistral-Small-3.2-24B:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
+  # QwQ-32B-Q4_K_M:
+  #   cmd:
+  #     gpu-layers: 22
+  #     threads: 28
+
   QwQ-32B-Q4_K_M:
+    cmd:
+      gpu-layers: 19
+      threads: 28
+      device-draft: CUDA0
+
+  # Qwen3-32B-SpeculativeDecoding-16384:
+  #   cmd:
+  #     gpu-layers: 0
+  #     threads: 28
+  #     device-draft: CUDA0
+
+  # Mistral-Small-3.1-24B-SpeculativeDecoding:
+  #   cmd:
+  #     gpu-layers: 16
+  #     threads: 28
+  #     device-draft: CUDA0
+
+  OpenCodeReasoning-Nemotron-32B-IOI:
     cmd:
       gpu-layers: 22
       threads: 28
 
-  Qwen3-32B-SpeculativeDecoding-16384:
-    cmd:
-      gpu-layers: 0
-      threads: 28
-      device-draft: CUDA0
-
-  Mistral-Small-3.1-24B-SpeculativeDecoding:
-    cmd:
-      gpu-layers: 16
-      threads: 28
-      device-draft: CUDA0
-
-  OpenCodeReasoning-Nemotron-32B-IOI:
+  OpenReasoning-Nemotron-32B-Q4_K_M:
     cmd:
       gpu-layers: 22
       threads: 28
@@ -130,19 +151,67 @@ models:
       gpu-layers: 99
       threads: 28
 
-  gpt-oss-120b-Q8:
+  gpt-oss-120b-Q8-low:
     cmd:
       gpu-layers: 99
       threads: 28
       n-cpu-moe: 33
 
-  gpt-oss-20b-Q4:
+  gpt-oss-120b-Q8-med:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 33
+
+  gpt-oss-120b-Q8-high:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 33
+
+  gpt-oss-20b-Q4-low:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 8
+
+  gpt-oss-20b-Q4-med:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 8
+
+  gpt-oss-20b-Q4-high:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 8
+
+  gpt-oss-20b-Q8-low:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 10
+
+  gpt-oss-20b-Q8-med:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 10
+
+  gpt-oss-20b-Q8-high:
     cmd:
       gpu-layers: 99
       threads: 28
       n-cpu-moe: 10
 
   GLM-4.5-Air-Q3:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 44
+
+  GLM-4.5-Air-Q3-No-Think:
     cmd:
       gpu-layers: 99
       threads: 28

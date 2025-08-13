@@ -92,14 +92,137 @@ import subprocess
 import sys
 import time
 import yaml
+import atexit
+import signal as sig
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import random
 from aiohttp import ClientConnectionError, ServerDisconnectedError, ClientResponseError
+try:
+    from tqdm.asyncio import tqdm as tqdm_async, as_completed as tqdm_as_completed
+    HAS_TQDM = True
+    HAS_TQDM_AS_COMPLETED = True
+except Exception:
+    try:
+        # fallback to classic tqdm (no async helper)
+        from tqdm import tqdm as tqdm_async
+        HAS_TQDM = True
+        HAS_TQDM_AS_COMPLETED = False
+        tqdm_as_completed = None  # sentinel
+    except Exception:
+        HAS_TQDM = False
+        HAS_TQDM_AS_COMPLETED = False
+        tqdm_as_completed = None
 
 
 # ------------------------------- Utilities ---------------------------------- #
+
+# -------- Llama-server process guard (POSIX-first) -------- #
+
+def _list_llama_server_pids() -> list[tuple[int, str]]:
+    """Return [(pid, cmdline), ...] for running llama-server processes."""
+    try:
+        if sys.platform == "win32":
+            # crude fallback: tasklist filter
+            out = subprocess.check_output(["tasklist"], text=True, errors="ignore")
+            pids = []
+            for line in out.splitlines():
+                if "llama-server" in line.lower():
+                    parts = line.split()
+                    # e.g., 'llama-server.exe            1234 Console    1     20,000 K'
+                    for i, tok in enumerate(parts):
+                        if tok.lower().startswith("llama-server"):
+                            try:
+                                pid = int(parts[i+1])
+                                pids.append((pid, "llama-server.exe"))
+                            except Exception:
+                                pass
+                            break
+            return pids
+        else:
+            out = subprocess.check_output(["ps", "-A", "-o", "pid=,command="], text=True)
+            pids = []
+            for line in out.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    pid_str, cmd = line.split(None, 1)
+                except ValueError:
+                    continue
+                if "llama-server" in cmd and "grep" not in cmd:
+                    pids.append((int(pid_str), cmd))
+            return pids
+    except Exception:
+        return []
+
+def _kill_pid_graceful(pid: int, timeout_s: float = 2.0) -> None:
+    """SIGTERM then SIGKILL if needed (POSIX); taskkill on Windows."""
+    try:
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        os.kill(pid, sig.SIGTERM)
+    except Exception:
+        return
+    # wait briefly
+    end = time.time() + timeout_s
+    while time.time() < end:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return  # dead
+        time.sleep(0.1)
+    # force kill
+    try:
+        os.kill(pid, sig.SIGKILL)
+    except Exception:
+        pass
+
+def guard_llama_singleton(keep: int = 1) -> None:
+    """Ensure at most `keep` llama-server processes remain (kill extras)."""
+    procs = _list_llama_server_pids()
+    if len(procs) <= keep:
+        return
+    # keep newest by PID (usually correlates with start time)
+    procs_sorted = sorted(procs, key=lambda x: x[0])
+    keep_set = {pid for pid, _ in procs_sorted[-keep:]}
+    for pid, _ in procs_sorted:
+        if pid not in keep_set:
+            _kill_pid_graceful(pid)
+
+def kill_all_llama_servers() -> None:
+    """Kill ALL llama-server processes (last-resort cleanup)."""
+    for pid, _ in _list_llama_server_pids():
+        _kill_pid_graceful(pid)
+
+
+class ChatRequestError(Exception):
+    """Richer error with HTTP status, URL, and a short body snippet."""
+    def __init__(self, status: int | None = None, url: str | None = None,
+                 body: str | None = None, cause: Exception | None = None):
+        self.status = status
+        self.url = url
+        self.body = body
+        self.cause = cause
+        super().__init__(self.__str__())
+
+    def __str__(self) -> str:
+        parts = []
+        if self.status is not None:
+            parts.append(f"HTTP {self.status}")
+        if self.url:
+            parts.append(self.url)
+        if self.cause:
+            parts.append(f"{type(self.cause).__name__}: {self.cause}")
+        if self.body:
+            snippet = " ".join(self.body.strip().split())
+            if len(snippet) > 240:
+                snippet = snippet[:240] + "…"
+            parts.append(f"body: {snippet}")
+        return " | ".join(parts) if parts else "Chat request failed"
+
 
 def is_heavy_model(name: str) -> bool:
     """
@@ -302,14 +425,18 @@ class SQLiteCache:
 
 @dataclass
 class ClientConfig:
-    endpoint: str  # e.g., http://127.0.0.1:8080/v1
+    endpoint: str
     api_key: Optional[str] = None
-    timeout_s: int = 1800
+    timeout_s: int = 600
     max_concurrency: int = 4
     temperature: Optional[float] = None
-    max_tokens: int = 16384
+    max_tokens: Optional[int] = None
     seed: Optional[int] = None
     stop: Optional[List[str]] = None
+    retries: int = 8
+    backoff_cap_s: float = 16.0
+    health_wait: int = 10
+    health_wait_heavy: int = 60
 
 async def _wait_until_ready(session, base_url: str, timeout_s: int = 30):
     """Best-effort: wait until the backend responds (or timeout)."""
@@ -359,41 +486,40 @@ class OpenAICompatClient:
             headers["Authorization"] = f"Bearer {self.cfg.api_key}"
         url = self.cfg.endpoint.rstrip("/") + "/chat/completions"
 
-        attempts = 5
+        attempts = self.cfg.retries
+        cap = self.cfg.backoff_cap_s
         last_exc = None
-        for attempt in range(attempts):
+
+        for attempt in range(self.cfg.retries):
             try:
                 async with self.sem:
-                    start = time.perf_counter()
                     timeout = aiohttp.ClientTimeout(total=self.cfg.timeout_s)
                     async with session.post(url, headers=headers, json=payload, timeout=timeout) as resp:
-                        resp.raise_for_status()
-                        data = await resp.json()
-                    data["_latency_s"] = time.perf_counter() - start
-                    # success
+                        text = await resp.text()
+                        if resp.status >= 400:
+                            err = ChatRequestError(status=resp.status, url=str(resp.url), body=text)
+                            # 5xx -> retry; 4xx -> fail fast
+                            if resp.status in (502, 503, 504):
+                                raise err
+                            raise err  # will be re-raised below (no retry)
+                        data = json.loads(text)
                     if self.cache and cache_key:
                         self.cache.set(cache_key, data)
                     return data
-            except (ServerDisconnectedError, ClientConnectionError) as e:
+
+            except (ServerDisconnectedError, ClientConnectionError, ChatRequestError, asyncio.TimeoutError) as e:
+                # Only retry for network errors or 5xx ChatRequestError
+                if isinstance(e, ChatRequestError) and (e.status not in (502, 503, 504)):
+                    raise  # non-transient HTTP error → bubble up
                 last_exc = e
-                # brief backoff (exponential + jitter)
-                await asyncio.sleep(min(2 ** attempt, 8) + random.uniform(0, 0.2))
-                # optional quick readiness probe (don’t fail if it errors)
+                await asyncio.sleep(min(2 ** attempt, self.cfg.backoff_cap_s) + random.uniform(0, 0.25))
                 try:
                     await _wait_until_ready(session, self.cfg.endpoint, timeout_s=5)
                 except Exception:
                     pass
                 continue
-            except ClientResponseError as e:
-                # Retry on transient gateway/server errors
-                if e.status in (502, 503, 504):
-                    last_exc = e
-                    await asyncio.sleep(min(2 ** attempt, 8) + random.uniform(0, 0.2))
-                    continue
-                # other HTTP errors → bubble up
-                raise
-        # if we fell out of loop without returning:
-        raise RuntimeError(f"Exceeded retries for chat request: {last_exc}")
+
+        raise ChatRequestError(cause=last_exc)
 
     @staticmethod
     def extract_text(resp: Dict[str, Any]) -> str:
@@ -513,6 +639,8 @@ class RunConfig:
     judge_model: str
     client: ClientConfig
     judge_client: Optional[ClientConfig] = None
+    llama_guard: bool = True
+    kill_llama_on_exit: bool = True
 
 
 @dataclass
@@ -592,6 +720,12 @@ class Benchmark:
         return score, verdict, just
 
     async def run_for_model(self, spec: ModelSpec, tasks: List[Task]) -> List[QAResult]:
+        if getattr(self.cfg, "llama_guard", True):
+            try:
+                guard_llama_singleton(keep=1)
+            except Exception as e:
+                print(f"[warn] llama guard failed: {e}")
+
         self._maybe_swap(spec)
         dsname = spec.display_name or spec.name
 
@@ -599,19 +733,87 @@ class Benchmark:
         self.client.sem = asyncio.Semaphore(1 if heavy else self.client.cfg.max_concurrency)
 
         async with aiohttp.ClientSession() as session:
+            # longer readiness wait for heavy/speculative models
+            wait_s = self.client.cfg.health_wait_heavy if heavy else self.client.cfg.health_wait
             try:
-                await _wait_until_ready(session, self.client.cfg.endpoint, timeout_s=10)
+                await _wait_until_ready(session, self.client.cfg.endpoint, timeout_s=wait_s)
             except Exception:
                 pass
-            # Ask phase
-            ask_jobs = [self._ask_one(session, spec.name, t) for t in tasks]
-            results: List[QAResult] = []
-            for coro in asyncio.as_completed(ask_jobs):
+
+            # bump retries/backoff for heavy models (no warmup)
+            if heavy:
+                self.client.cfg.retries = max(self.client.cfg.retries, 12)
+                self.client.cfg.backoff_cap_s = max(self.client.cfg.backoff_cap_s, 32.0)
+
+            # Build tasks and name them with the dataset id
+            ask_tasks = []
+            for t in tasks:
+                fut = asyncio.create_task(self._ask_one(session, spec.name, t))
                 try:
-                    r, _raw = await coro
-                    results.append(r)
-                except Exception as e:
-                    print(f"[warn] request failed: {e}")
+                    fut.set_name(t.id)  # Python 3.8+
+                except Exception:
+                    pass
+                ask_tasks.append(fut)
+
+            results: List[QAResult] = []
+
+            if HAS_TQDM:
+                if HAS_TQDM_AS_COMPLETED and tqdm_as_completed is not None:
+                    # Preferred: async progress helper
+                    async for fut in tqdm_as_completed(
+                        ask_tasks,
+                        total=len(ask_tasks),
+                        desc=f"[run] Model: {spec.name}",
+                        unit="task",
+                        dynamic_ncols=True,
+                        leave=True,
+                        file=sys.stdout,          # <-- ensure it prints to stdout
+                        mininterval=0.1,
+                        smoothing=0,
+                    ):
+                        try:
+                            r, _raw = await fut
+                            results.append(r)
+                        except Exception as e:
+                            task_id = getattr(fut, "get_name", lambda: "?")()
+                            print(f"[warn] {spec.name} [{task_id}] failed: {e}")
+                else:
+                    # Fallback: manual tqdm + asyncio.as_completed
+                    bar = tqdm_async(
+                        total=len(ask_tasks),
+                        desc=f"[run] Model: {spec.name}",
+                        unit="task",
+                        dynamic_ncols=True,
+                        leave=True,
+                        file=sys.stdout,          # <-- ensure it prints to stdout
+                        mininterval=0.1,
+                        smoothing=0,
+                    )
+                    bar.update(0)   # draw immediately
+                    bar.refresh()
+                    try:
+                        for fut in asyncio.as_completed(ask_tasks):
+                            try:
+                                r, _raw = await fut
+                                results.append(r)
+                            except Exception as e:
+                                task_id = getattr(fut, "get_name", lambda: "?")()
+                                print(f"[warn] {spec.name} [{task_id}] failed: {e}")
+                            finally:
+                                bar.update(1)
+                                bar.refresh()
+                    finally:
+                        bar.close()
+            else:
+                # No tqdm installed: simple fallback
+                print(f"[run] Model: {spec.name}")
+                for fut in asyncio.as_completed(ask_tasks):
+                    try:
+                        r, _raw = await fut
+                        results.append(r)
+                    except Exception as e:
+                        task_id = getattr(fut, "get_name", lambda: "?")()
+                        print(f"[warn] {spec.name} [{task_id}] failed: {e}")
 
 
             # Score deterministic modes
@@ -732,12 +934,24 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--summary-round", type=int, default=4)
     p.add_argument("--summary-include-metric", action="store_true")
 
+    p.add_argument("--http-retries", type=int, default=8)
+    p.add_argument("--backoff-cap", type=float, default=16.0)
+    p.add_argument("--health-wait", type=int, default=10)
+    p.add_argument("--health-wait-heavy", type=int, default=60)
+    p.add_argument("--debug", action="store_true", help="Print extra info on failures.")
+    p.add_argument("--llama-guard", dest="llama_guard", action="store_true",
+               help="Ensure at most one llama-server runs during the benchmark.")
+    p.add_argument("--no-llama-guard", dest="llama_guard", action="store_false")
+    p.set_defaults(llama_guard=True)  # default ON
+
+    p.add_argument("--kill-llama-on-exit", action="store_true",
+                help="Kill all llama-server processes on exit (Ctrl-C or error).")
+    p.set_defaults(kill_llama_on_exit=True)  # default ON
     return p.parse_args()
 
 async def run_all(bench: Benchmark, run_cfg: RunConfig, tasks: list[Task]) -> dict[str, dict]:
     summaries: dict[str, dict] = {}
     for spec in run_cfg.models:
-        print(f"[run] Model: {spec.name}")
         try:
             await bench.run_for_model(spec, tasks)
         except Exception as e:
@@ -791,6 +1005,8 @@ def main():
         max_tokens=args.max_tokens,
         seed=args.seed,
         stop=args.stop,
+        retries=args.http_retries,
+        backoff_cap_s=args.backoff_cap,
     )
     run_cfg = RunConfig(
         data_path=args.data,
@@ -798,13 +1014,38 @@ def main():
         models=models,
         judge_model=args.judge_model,
         client=client_cfg,
-        judge_client=None,  # reuse client settings by default
+        judge_client=None,
+        llama_guard=args.llama_guard,
+        kill_llama_on_exit=args.kill_llama_on_exit,
     )
 
     # --- in main() ---
     bench = Benchmark(run_cfg)
 
-    all_summaries = asyncio.run(run_all(bench, run_cfg, tasks))
+    def _cleanup():
+        if run_cfg.kill_llama_on_exit:
+            print("[info] Cleaning up llama-server processes…")
+            kill_all_llama_servers()
+
+    # atexit + signals
+    atexit.register(_cleanup)
+
+    def _signal_handler(signum, frame):
+        _cleanup()
+        # exit immediately with non-zero for SIGINT/SIGTERM
+        raise SystemExit(130 if signum == sig.SIGINT else 143)
+
+    for s in (sig.SIGINT, sig.SIGTERM):
+        try:
+            signal_prev = sig.getsignal(s)
+            sig.signal(s, _signal_handler)
+        except Exception:
+            pass
+
+    try:
+        all_summaries = asyncio.run(run_all(bench, run_cfg, tasks))
+    finally:
+        _cleanup()
 
     # Write combined summary
     with (run_cfg.out_dir / "summary_all.json").open("w", encoding="utf-8") as f:
