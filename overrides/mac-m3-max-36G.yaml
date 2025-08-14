@@ -4,3 +4,21 @@ models:
     cmd:
       gpu-layers: 99
       threads: 12
+
+  GLM-4.5-Air-Q3:
+    disabled: true
+
+  GLM-4.5-Air-Q3-No-Think:
+    disabled: true
+
+  GLM-4.5-Air-IQ4:
+    disabled: true
+
+  gpt-oss-120b-Q8-low:
+    disabled: true
+
+  gpt-oss-120b-Q8-med:
+    disabled: true
+
+  gpt-oss-120b-Q8-high:
+    disabled: true
