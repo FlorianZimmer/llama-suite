@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import random
 from aiohttp import ClientConnectionError, ServerDisconnectedError
 
+
 # tqdm (async if available, otherwise sync, otherwise noop)
 try:
     from tqdm.asyncio import tqdm as tqdm_async, as_completed as tqdm_as_completed
@@ -978,6 +979,16 @@ def main():
             if getattr(args, "summary_include_metric", False):
                 row.append(metric_used)
             writer.writerow(row)
+
+    try:
+        from graph import plot_summary
+        plot_summary(
+            summary_path=run_cfg.out_dir / "summary_all.json",
+            out_path=run_cfg.out_dir / f"plot_{args.summary_metric}.png",
+            metric=args.summary_metric,   # supports auto | composite | specific metric
+        )
+    except Exception as e:
+        print(f"[warn] Plotting failed (non-fatal): {e}")
 
     print(f"[done] Wrote results to: {args.out_dir.resolve()}")
 
