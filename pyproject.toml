@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llama-suite"
+version = "0.1.0"
+description = "Local LLM bench/eval + swap/watch tooling for llama.cpp"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+
+# Put *all* runtime deps here instead of the installer:
+dependencies = [
+  "lm-eval[api]",
+  "PyYAML",
+  "requests",
+  "psutil",
+  "colorama",
+  "watchdog>=4,<5",
+  "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+  "mypy",
+]
+
+# (Optional) CLI entry points once your modules expose `main()` functions:
+[project.scripts]
+# llama-suite-bench = "llama_suite.bench.cli:main"
+# llama-suite-scan-mem = "llama_suite.bench.scan_model_memory:main"
+# llama-suite-swap-watch = "llama_suite.watchers.llama_swap:main"
+# llama-suite-eval = "llama_suite.eval.eval:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

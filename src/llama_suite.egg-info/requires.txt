@@ -1,0 +1,12 @@
+lm-eval[api]
+PyYAML
+requests
+psutil
+colorama
+watchdog<5,>=4
+matplotlib
+
+[dev]
+pytest
+ruff
+mypy

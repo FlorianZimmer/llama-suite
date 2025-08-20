@@ -1,0 +1,250 @@
+# overrides/windows-rtx3080.yaml
+
+# Global overrides if any (none in this example, but could be top-level keys)
+
+models:
+  # For all models, if the binary path is consistently different on Windows:
+  # You could use a YAML alias here if you want to set it for many models,
+  # or repeat it, or handle it in the python script if platform.system() == "Windows".
+  # For now, let's assume the base config has a path that might work or you adjust it per model if needed.
+  # If all binaries are in the same relative place but end with .exe:
+  # SomeModel:
+  #   cmd:
+  #     bin: ./llama.cpp/build/bin/llama-server.exe # Example
+
+  Qwen3-8B-Q4_K_M:
+    cmd:
+      gpu-layers: 999 # Effectively all layers
+      threads: 28
+
+  Qwen3-30B-A3B:
+    cmd:
+      gpu-layers: 40   # As per your spec
+      threads: 28
+      n-cpu-moe: 32
+
+  Qwen3-30B-A3B-Instruct-2507:
+    cmd:
+      gpu-layers: 40   # As per your spec
+      threads: 28
+      n-cpu-moe: 34
+
+  Qwen3-30B-A3B-Thinking-2507:
+    cmd:
+      gpu-layers: 40   # As per your spec
+      threads: 28
+      n-cpu-moe: 34
+
+  Qwen3-Coder-30B-A3B-Instruct-1M:
+    cmd:
+      gpu-layers: 99   # As per your spec
+      threads: 28
+      n-cpu-moe: 48
+
+  Qwen3-32B-Think:
+    cmd:
+      gpu-layers: 23   # As per your spec
+      threads: 28
+
+  Qwen3-0.6B:
+    cmd:
+      gpu-layers: 999
+      threads: 28
+
+  Qwen3-4B-Instruct-2507-UD-Q8:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+
+  Qwen3-4B-Thinking-2507-UD-Q8:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+
+  Qwen3-32B-SpeculativeDecoding-32768:
+    cmd:
+      gpu-layers: 11
+      threads: 28
+      device-draft: CUDA0
+
+  GLM-4-32B-0414:
+    cmd:
+      gpu-layers: 25
+      threads: 28
+      # override-kv and chat-template should be in base if not machine-specific
+
+  gemma-3-1b-it:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+
+  gemma-3-4b-it:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+
+  gemma-3-12b-it:
+    cmd:
+      gpu-layers: 44
+      threads: 26
+
+  gemma-3-27b-it:
+    cmd:
+      gpu-layers: 22
+      threads: 28
+
+  Mistral-Small-3.1-24B:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
+  Magistral-Small-2507:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
+  Devstral-Small-2507:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
+  Mistral-Small-3.2-24B:
+    cmd:
+      gpu-layers: 21
+      threads: 28
+
+  # QwQ-32B-Q4_K_M:
+  #   cmd:
+  #     gpu-layers: 22
+  #     threads: 28
+
+  QwQ-32B-Q4_K_M:
+    cmd:
+      gpu-layers: 19
+      threads: 28
+      device-draft: CUDA0
+
+  # Qwen3-32B-SpeculativeDecoding-16384:
+  #   cmd:
+  #     gpu-layers: 0
+  #     threads: 28
+  #     device-draft: CUDA0
+
+  # Mistral-Small-3.1-24B-SpeculativeDecoding:
+  #   cmd:
+  #     gpu-layers: 16
+  #     threads: 28
+  #     device-draft: CUDA0
+
+  OpenCodeReasoning-Nemotron-32B-IOI:
+    cmd:
+      gpu-layers: 24
+      threads: 28
+
+  OpenReasoning-Nemotron-32B-Q4_K_M:
+    cmd:
+      gpu-layers: 24
+      threads: 28
+
+  OpenReasoning-Nemotron-7B:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+
+  gpt-oss-120b-Q8-low:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 33
+
+  gpt-oss-120b-Q8-med:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 33
+
+  gpt-oss-120b-Q8-high:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 33
+
+  gpt-oss-120b-Q4-med:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 32
+
+  gpt-oss-20b-Q4-low:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 7
+
+  gpt-oss-20b-Q4-med:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 7
+
+  gpt-oss-20b-Q4-high:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 7
+
+  gpt-oss-20b-Q8-low:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 8
+
+  gpt-oss-20b-Q8-med:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 8
+
+  gpt-oss-20b-Q8-high:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 9
+
+  GLM-4.5-Air-Q3:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 43
+
+  GLM-4.5-Air-Q3-No-Think:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 43
+
+  GLM-4.5-Air-IQ4:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 44
+
+  ERNIE-4.5-21B-A3B:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 16
+
+  EXAONE-4.0-32B:
+    cmd:
+      gpu-layers: 26
+      threads: 28
+
+# The top-level keys like healthCheckTimeout, logLevel, and profiles from your
+# llama-swap native config are NOT currently handled by llama_swap_watch.py.
+# llama_swap_watch.py focuses on generating the model command strings for a
+# single llama-swap instance's "models" section.
+# If you need those, llama_swap_watch.py would need to be extended to read them
+# and pass them when it calls the actual llama-swap executable, or llama-swap
+# would need to read its own separate config for those global settings.
+# For now, this override only affects the 'models' part that llama_swap_watch.py processes.

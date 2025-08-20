@@ -1,15 +1,21 @@
-models
-open-webui-data
-llama-suite-venv*
-llama-swap
-llama.cpp
-raw_*
-logs*
-cache*
-summary_*
-!summary_all.json
-llm_memscan_persistent_logs
-config.effective.yaml
-__pycache__
-.python-version
+# Virtual env
+.venv/
+llama-suite-venv/
+
+# Generated configs & outputs
+/configs/generated/
+/runs/
+/var/
+
+# Local data & models (if desired)
+models/
+/vendor/llama.cpp/bin/*.dll
+vendor/llama.cpp/bin/*.exe
+vendor/llama-swap/llama-swap.exe
+
+# OS noise
+Thumbs.db
 .DS_Store
+
+__pycache__
+opencode.json

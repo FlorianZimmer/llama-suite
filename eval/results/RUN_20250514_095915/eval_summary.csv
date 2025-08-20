@@ -1,2 +1,0 @@
-ModelAlias,Task,Metric,Value,Version,NumFewshot,Limit,Timestamp,Error
-Qwen3-0.6B,humaneval,"pass@1,create_test",0.3500,1.0,Task Def,20.0,2025-05-14 09:59:39,
