@@ -9,6 +9,7 @@ llama-suite-venv/
 
 # Local data & models (if desired)
 models
+/models/*
 /vendor/*
 /vendor/llama.cpp/bin/*.exe
 /vendor/llama-swap/llama-swap.exe
