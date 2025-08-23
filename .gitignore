@@ -8,10 +8,10 @@ llama-suite-venv/
 /var/
 
 # Local data & models (if desired)
-models/
-/vendor/llama.cpp/bin/*.dll
-vendor/llama.cpp/bin/*.exe
-vendor/llama-swap/llama-swap.exe
+models
+/vendor/*
+/vendor/llama.cpp/bin/*.exe
+/vendor/llama-swap/llama-swap.exe
 
 # OS noise
 Thumbs.db
