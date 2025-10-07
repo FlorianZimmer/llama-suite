@@ -22,3 +22,6 @@ models:
 
   gpt-oss-120b-Q8-high:
     disabled: true
+  
+  gpt-oss-120b-Q4-med:
+    disabled: true

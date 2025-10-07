@@ -1,9 +1,8 @@
 COMMON_FLAGS: &COMMON_CMD
-  flash-attn: true
   cache-type-k: q8_0
   cache-type-v: q8_0
   jinja: true
-  parallel: 4
+  parallel: 1
   cont-batching: true
 
 QWEN3_SAMPLING: &QWEN3_SAMPLING
@@ -84,21 +83,6 @@ models:
       threads:    auto
       reasoning-format: deepseek
 
-
-  Qwen3-30B-A3B:
-    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B
-    sampling: *QWEN3_SAMPLING
-    cmd:
-      <<: *COMMON_CMD
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-30B-A3B-Q4_K_M.gguf
-      ctx-size: 32768
-      gpu-layers: auto
-      threads:    auto
-      reasoning-format: deepseek
-
-
   Qwen3-30B-A3B-Instruct-2507:
     hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B-Instruct-2507
     sampling: *QWEN3_INSTRUCT_SAMPLING
@@ -135,7 +119,7 @@ models:
       bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-Coder-30B-A3B-Instruct-1M-UD-Q5_K_XL.gguf
-      ctx-size: 131072
+      ctx-size: 40000
       gpu-layers: auto
       threads:    auto
       reasoning-format: deepseek
@@ -216,23 +200,6 @@ models:
       draft-min: 2
       device-draft: Metal
       ctx-size-draft: 8192
-
-
-  GLM-4-32B-0414:
-    hf_tokenizer_for_model: THUDM/GLM-4-32B-0414
-    sampling: *GLM_SAMPLING
-    cmd:
-      <<: *COMMON_CMD
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/GLM-4-32B-0414-Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads:    auto
-      # override-kv:
-      #   - tokenizer.ggml.eos_token_id=int:151336
-      #   - glm4.rope.dimension_count=int:64
-      # chat-template: chatglm4
 
 
   gemma-3-1b-it:
@@ -521,7 +488,6 @@ models:
       n-predict: 16384
       gpu-layers: auto
       threads:    auto
-      chat-template-kwargs: '{"reasoning_effort":"medium"}'
 
 
   gpt-oss-20b-Q8-high:
@@ -663,6 +629,20 @@ models:
       bin:  llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/EXAONE-4.0-32B-Q4_K_M.gguf
+      ctx-size: 16384
+      n-predict: 16384
+      gpu-layers: auto
+      threads:    auto
+
+  Apriel-1.5-15b-Thinker:
+    hf_tokenizer_for_model: ServiceNow-AI/Apriel-1.5-15b-Thinker
+    sampling:
+      temp: 0.6
+    cmd:
+      <<: *COMMON_CMD
+      bin:  llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/Apriel-1.5-15b-Thinker-UD-Q5_K_XL.gguf
       ctx-size: 16384
       n-predict: 16384
       gpu-layers: auto

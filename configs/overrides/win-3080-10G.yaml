@@ -17,12 +17,6 @@ models:
       gpu-layers: 999 # Effectively all layers
       threads: 28
 
-  Qwen3-30B-A3B:
-    cmd:
-      gpu-layers: 40   # As per your spec
-      threads: 28
-      n-cpu-moe: 32
-
   Qwen3-30B-A3B-Instruct-2507:
     cmd:
       gpu-layers: 40   # As per your spec
@@ -66,12 +60,6 @@ models:
       gpu-layers: 11
       threads: 28
       device-draft: CUDA0
-
-  GLM-4-32B-0414:
-    cmd:
-      gpu-layers: 25
-      threads: 28
-      # override-kv and chat-template should be in base if not machine-specific
 
   gemma-3-1b-it:
     cmd:

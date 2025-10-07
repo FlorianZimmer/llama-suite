@@ -6,8 +6,10 @@ src/llama_suite.egg-info/requires.txt
 src/llama_suite.egg-info/top_level.txt
 src/llama_suite/bench/benchmark-models.py
 src/llama_suite/bench/scan_model_memory.py
-src/llama_suite/eval/custom_eval.py
+src/llama_suite/bench/util.py
+src/llama_suite/eval/eval.py
 src/llama_suite/eval/evaluate_models_evalharness.py
+src/llama_suite/utils/check_heads.py
 src/llama_suite/utils/config_utils.py
 src/llama_suite/utils/custom_lm_eval_models.py
 src/llama_suite/utils/graph.py

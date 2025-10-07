@@ -43,6 +43,27 @@ IS_WINDOWS = platform.system() == "Windows"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# filesystem helpers
+# ──────────────────────────────────────────────────────────────────────────────
+
+def ensure_dir(path: Path) -> None:
+    """
+    Ensure 'path' is a directory. If a file or a non-directory symlink exists,
+    exit with a clear message.
+    """
+    if path.exists():
+        if path.is_dir():
+            return
+        # symlink to non-dir or regular file (or broken symlink)
+        try:
+            target = path.resolve(strict=True)
+            target_desc = f" → {target}"
+        except FileNotFoundError:
+            target_desc = " (broken symlink)"
+        raise SystemExit(f"Expected a directory at '{path}', but found a non-directory{target_desc}. "
+                         f"Please move it away or remove it and rerun.")
+
+# ──────────────────────────────────────────────────────────────────────────────
 # logging / running
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -550,7 +571,7 @@ def main() -> None:
 
     # ensure directories
     for d in (vendor_dir, models_dir, configs_dir, configs_gen_dir, runs_dir, webui_data_dir):
-        d.mkdir(parents=True, exist_ok=True)
+        ensure_dir(d)
 
     # venv
     LOG.info("Setting up Python virtual environment: %s", venv_dir)

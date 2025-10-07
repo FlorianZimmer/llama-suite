@@ -7,7 +7,7 @@
 
 llama-swap is a light weight, transparent proxy server that provides automatic model swapping to llama.cpp's server.
 
-Written in golang, it is very easy to install (single binary with no dependencies) and configure (single yaml file). To get started, download a pre-built binary or use the provided docker images.
+Written in golang, it is very easy to install (single binary with no dependencies) and configure (single yaml file). To get started, download a pre-built binary, a provided docker images or Homebrew.
 
 ## Features:
 
@@ -18,9 +18,12 @@ Written in golang, it is very easy to install (single binary with no dependencie
   - `v1/completions`
   - `v1/chat/completions`
   - `v1/embeddings`
-  - `v1/rerank`, `v1/reranking`, `rerank`
   - `v1/audio/speech` ([#36](https://github.com/mostlygeek/llama-swap/issues/36))
   - `v1/audio/transcriptions` ([docs](https://github.com/mostlygeek/llama-swap/issues/41#issuecomment-2722637867))
+- ✅ llama-server (llama.cpp) supported endpoints:
+  - `v1/rerank`, `v1/reranking`, `/rerank`
+  - `/infill` - for code infilling
+  - `/completion` - for completion endpoint
 - ✅ llama-swap custom API endpoints
   - `/ui` - web UI
   - `/log` - remote log monitoring
@@ -31,7 +34,7 @@ Written in golang, it is very easy to install (single binary with no dependencie
 - ✅ Run multiple models at once with `Groups` ([#107](https://github.com/mostlygeek/llama-swap/issues/107))
 - ✅ Automatic unloading of models after timeout by setting a `ttl`
 - ✅ Use any local OpenAI compatible server (llama.cpp, vllm, tabbyAPI, etc)
-- ✅ Reliable Docker and Podman support with `cmdStart` and `cmdStop`
+- ✅ Reliable Docker and Podman support using `cmd` and `cmdStop` together
 - ✅ Full control over server settings per model
 - ✅ Preload models on startup with `hooks` ([#235](https://github.com/mostlygeek/llama-swap/pull/235))
 
@@ -69,6 +72,30 @@ However, there are many more capabilities that llama-swap supports:
 - `${PORT}` automatic port variables for dynamic port assignment
 
 See the [configuration documentation](https://github.com/mostlygeek/llama-swap/wiki/Configuration) in the wiki all options and examples.
+
+## Reverse Proxy Configuration (nginx)
+
+If you deploy llama-swap behind nginx, disable response buffering for streaming endpoints. By default, nginx buffers responses which breaks Server‑Sent Events (SSE) and streaming chat completion. ([#236](https://github.com/mostlygeek/llama-swap/issues/236))
+
+Recommended nginx configuration snippets:
+
+```nginx
+# SSE for UI events/logs
+location /api/events {
+    proxy_pass http://your-llama-swap-backend;
+    proxy_buffering off;
+    proxy_cache off;
+}
+
+# Streaming chat completions (stream=true)
+location /v1/chat/completions {
+    proxy_pass http://your-llama-swap-backend;
+    proxy_buffering off;
+    proxy_cache off;
+}
+```
+
+As a safeguard, llama-swap also sets `X-Accel-Buffering: no` on SSE responses. However, explicitly disabling `proxy_buffering` at your reverse proxy is still recommended for reliable streaming behavior.
 
 ## Web UI
 
@@ -203,5 +230,8 @@ Any OpenAI compatible server would work. llama-swap was originally designed for 
 For Python based inference servers like vllm or tabbyAPI it is recommended to run them via podman or docker. This provides clean environment isolation as well as responding correctly to `SIGTERM` signals to shutdown.
 
 ## Star History
+
+> [!NOTE]
+> ⭐️ Star this project to help others discover it! 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=mostlygeek/llama-swap&type=Date)](https://www.star-history.com/#mostlygeek/llama-swap&Date)
