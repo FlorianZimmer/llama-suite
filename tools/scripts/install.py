@@ -243,13 +243,16 @@ def asset_for_platform(release: dict, stem_match: str) -> Optional[dict]:
     return best
 
 
-def _os_token_match(n: str, sys_token: str) -> bool:
-    if sys_token == "win":
+def _os_token_match(asset_name: str, system: str) -> bool:
+    """Accept common OS synonyms in the selector."""
+    n = asset_name.lower()
+    s = system.lower()
+    if s in ("windows", "win"):
         return _has_token(n, "windows") or _has_token(n, "win")
-    if sys_token == "macos":
-        return _has_token(n, "macos") or _has_token(n, "darwin") or _has_token(n, "mac")
-    if sys_token == "ubuntu":
-        return _has_token(n, "ubuntu") or _has_token(n, "linux")
+    if s in ("darwin", "macos", "mac"):
+        return _has_token(n, "darwin") or _has_token(n, "macos") or _has_token(n, "mac")
+    if s in ("linux", "ubuntu"):
+        return _has_token(n, "linux") or _has_token(n, "ubuntu")
     return False
 
 

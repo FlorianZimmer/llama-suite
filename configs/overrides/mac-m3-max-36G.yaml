@@ -13,6 +13,9 @@ models:
 
   GLM-4.5-Air-IQ4:
     disabled: true
+  
+  GLM-4.5-Air-UD-Q5_K_XL:
+    disabled: true
 
   gpt-oss-120b-Q8-low:
     disabled: true
@@ -24,4 +27,7 @@ models:
     disabled: true
   
   gpt-oss-120b-Q4-med:
+    disabled: true
+  
+  MiniMax-M2-UD-IQ2_M:
     disabled: true

@@ -189,10 +189,15 @@ def _has_token(name: str, token: str) -> bool:
 
 
 def _os_token_match(asset_name: str, system: str) -> bool:
+    """Accept common OS synonyms in the selector."""
     n = asset_name.lower()
-    if system == "windows": return _has_token(n, "windows") or _has_token(n, "win")
-    if system == "darwin":  return _has_token(n, "darwin") or _has_token(n, "macos") or _has_token(n, "mac")
-    if system == "linux":   return _has_token(n, "linux") or _has_token(n, "ubuntu")
+    s = system.lower()
+    if s in ("windows", "win"):
+        return _has_token(n, "windows") or _has_token(n, "win")
+    if s in ("darwin", "macos", "mac"):
+        return _has_token(n, "darwin") or _has_token(n, "macos") or _has_token(n, "mac")
+    if s in ("linux", "ubuntu"):
+        return _has_token(n, "linux") or _has_token(n, "ubuntu")
     return False
 
 

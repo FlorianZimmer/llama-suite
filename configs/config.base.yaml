@@ -62,6 +62,11 @@ GLM45_SAMPLING: &GLM45_SAMPLING
   top-p: 1.0
   top-k: 0
 
+MiniMaxM2_SAMPLING: &MiniMaxM2_SAMPLING
+  temp: 1
+  top-p: 0.95
+  top-k: 40
+
 
 healthCheckTimeout: 60
 
@@ -591,7 +596,7 @@ models:
       n-predict: 16384
       gpu-layers: auto
       threads:    auto
-      chat-template-kwargs: '{"enable_thinking": "False"}'
+      chat-template-kwargs: '{"enable_thinking":"False"}'
 
 
   GLM-4.5-Air-IQ4:
@@ -607,6 +612,18 @@ models:
       gpu-layers: auto
       threads:    auto
 
+  GLM-4.5-Air-UD-Q5_K_XL:
+    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    sampling: *GLM45_SAMPLING
+    cmd:
+      <<: *COMMON_CMD
+      bin:  llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/GLM-4.5-Air-UD-Q5_K_XL-00001-of-00002.gguf
+      ctx-size: 16384
+      n-predict: 16384
+      gpu-layers: auto
+      threads:    auto
 
   ERNIE-4.5-21B-A3B:
     hf_tokenizer_for_model: baidu/ERNIE-4.5-21B-A3B-PT
@@ -671,3 +688,17 @@ models:
       gpu-layers: auto
       threads:    auto
       reasoning-format: deepseek
+
+  MiniMax-M2-UD-IQ2_M:
+    hf_tokenizer_for_model: MiniMaxAI/MiniMax-M2
+    sampling: *MiniMaxM2_SAMPLING
+    cmd:
+      <<: *COMMON_CMD
+      bin:  F:\LLMs\llama.cpp\build-ninja-user-release\bin\llama-server
+      port: ${PORT}
+      model: ./models/MiniMax-M2-UD-IQ2_M-00001-of-00002.gguf
+      ctx-size: 16384
+      gpu-layers: auto
+      threads:    auto
+      reasoning-format: deepseek
+
