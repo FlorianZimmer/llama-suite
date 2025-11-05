@@ -212,7 +212,7 @@ models:
     cmd:
       gpu-layers: 99
       threads: 28
-      n-cpu-moe: 26
+      n-cpu-moe: 32
 
   ERNIE-4.5-21B-A3B:
     cmd:
