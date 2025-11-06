@@ -265,6 +265,37 @@ def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dic
     candidates.sort(key=lambda x: (x[0], x[1]["name"]))
     return candidates[0][1]
 
+def asset_for_cpp_cudart(release: Dict) -> Optional[Dict]:
+    """
+    Pick the Windows CUDA runtime bundle shipped alongside llama.cpp releases,
+    e.g. 'cudart-llama-bin-win-cuda-12.4-x64.zip'.
+    Prefer highest CUDA 12.* version if multiple are present.
+    """
+    if platform.system() != "Windows":
+        return None
+
+    def is_cudart_asset(name: str) -> bool:
+        n = name.lower()
+        return (
+            n.startswith("cudart-llama-bin-win-cuda-")
+            and n.endswith("-x64.zip")
+            and "12." in n  # constrain to CUDA 12.* which ggml-cuda expects today
+        )
+
+    picks = []
+    for asset in release.get("assets", []):
+        n = asset["name"]
+        if is_cudart_asset(n):
+            # Extract the '12.X' part for sorting (fallback to 12.0 if parse fails)
+            m = re.search(r"cuda-(12\.\d+)", n.lower())
+            ver = tuple(map(int, (m.group(1).split("."))) ) if m else (12, 0)
+            picks.append((ver, asset))
+    if not picks:
+        return None
+    # Prefer the highest 12.X
+    picks.sort(key=lambda x: x[0], reverse=True)
+    return picks[0][1]
+
 
 # ─────────────────────────── llama-swap updater ──────────────────────────────
 
@@ -444,6 +475,18 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
             raise SystemExit("Downloaded llama.cpp payload, but server not found.")
 
         final_exe = _copy_server_payload(exe_dir, bin_dir, final_name)
+        # On Windows + CUDA preference: also fetch cudart runtime bundle and drop DLLs next to the server.
+        if IS_WINDOWS and gpu_backend in {"cuda", "auto"}:
+            cudart_asset = asset_for_cpp_cudart(release)
+            if cudart_asset:
+                LOG.info("Fetching CUDA runtime bundle: %s", cudart_asset["name"])
+                cudart_archive = tmp_dir / cudart_asset["name"]
+                download(cudart_asset["browser_download_url"], cudart_archive)
+                # Extract directly into the bin dir so DLLs sit next to llama-server.exe
+                extract_archive(cudart_archive, bin_dir)
+                cudart_archive.unlink(missing_ok=True)
+            else:
+                LOG.warning("CUDA runtime bundle not found in this release; assuming system CUDA 12.x is present.")
         return final_exe
 
 
