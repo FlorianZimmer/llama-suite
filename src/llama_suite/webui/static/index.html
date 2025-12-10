@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>llama-suite | Web UI</title>
+    <meta name="description" content="Web-based management interface for llama-suite">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🦙</span>
+                    <span class="logo-text">llama-suite</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                <a href="#config" class="nav-item" data-section="config">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Configuration</span>
+                </a>
+                <a href="#models" class="nav-item" data-section="models">
+                    <span class="nav-icon">🧠</span>
+                    <span class="nav-label">Models</span>
+                </a>
+                <a href="#bench" class="nav-item" data-section="bench">
+                    <span class="nav-icon">⚡</span>
+                    <span class="nav-label">Benchmark</span>
+                </a>
+                <a href="#memory" class="nav-item" data-section="memory">
+                    <span class="nav-icon">💾</span>
+                    <span class="nav-label">Memory Scan</span>
+                </a>
+                <a href="#eval" class="nav-item" data-section="eval">
+                    <span class="nav-icon">📝</span>
+                    <span class="nav-label">Evaluation</span>
+                </a>
+                <a href="#watcher" class="nav-item" data-section="watcher">
+                    <span class="nav-icon">👁️</span>
+                    <span class="nav-label">Watcher</span>
+                </a>
+                <a href="#results" class="nav-item" data-section="results">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-label">Results</span>
+                </a>
+                <a href="#system" class="nav-item" data-section="system">
+                    <span class="nav-icon">🔧</span>
+                    <span class="nav-label">System</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="connection-status" id="connection-status">
+                    <span class="status-dot disconnected"></span>
+                    <span class="status-text">Disconnected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <h1 class="page-title" id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <div class="override-selector">
+                        <label for="current-override">Override:</label>
+                        <select id="current-override">
+                            <option value="">None (base only)</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Sections -->
+            <div class="content-area" id="content-area">
+                <!-- Dashboard Section -->
+                <section id="section-dashboard" class="section active">
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">🧠</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-models">--</span>
+                                <span class="stat-label">Models Configured</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📁</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-files">--</span>
+                                <span class="stat-label">Model Files</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-bench-runs">--</span>
+                                <span class="stat-label">Benchmark Runs</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">📝</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="stat-eval-runs">--</span>
+                                <span class="stat-label">Eval Runs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">Active Tasks</h2>
+                        <div id="active-tasks" class="task-list">
+                            <p class="empty-message">No active tasks</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">System Information</h2>
+                        <div id="system-info" class="info-grid">
+                            <div class="info-item"><span class="info-label">Platform:</span><span class="info-value"
+                                    id="info-platform">--</span></div>
+                            <div class="info-item"><span class="info-label">Python:</span><span class="info-value"
+                                    id="info-python">--</span></div>
+                            <div class="info-item"><span class="info-label">Project Root:</span><span class="info-value"
+                                    id="info-root">--</span></div>
+                            <div class="info-item"><span class="info-label">Virtual Env:</span><span class="info-value"
+                                    id="info-venv">--</span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Configuration Section -->
+                <section id="section-config" class="section">
+                    <div class="section-tabs">
+                        <button class="tab-btn active" data-tab="config-base">Base Config</button>
+                        <button class="tab-btn" data-tab="config-overrides">Overrides</button>
+                        <button class="tab-btn" data-tab="config-effective">Effective Config</button>
+                    </div>
+
+                    <div id="config-base" class="tab-content active">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">config.base.yaml</h2>
+                                <div class="card-actions">
+                                    <button class="btn btn-primary" id="btn-save-config">Save Changes</button>
+                                </div>
+                            </div>
+                            <div class="editor-container">
+                                <textarea id="config-editor" class="code-editor" spellcheck="false"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="config-overrides" class="tab-content">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">Override Files</h2>
+                                <div class="card-actions">
+                                    <button class="btn btn-secondary" id="btn-new-override">+ New Override</button>
+                                </div>
+                            </div>
+                            <div id="overrides-list" class="list-container"></div>
+                        </div>
+                    </div>
+
+                    <div id="config-effective" class="tab-content">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">Effective Configuration</h2>
+                            </div>
+                            <div class="editor-container">
+                                <pre id="effective-config" class="code-display"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Models Section -->
+                <section id="section-models" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Configured Models</h2>
+                            <div class="card-actions">
+                                <input type="text" id="model-search" class="search-input"
+                                    placeholder="Search models...">
+                                <button class="btn btn-secondary" onclick="App.showAddModelDialog()">+ Add
+                                    Model</button>
+                                <button class="btn btn-secondary" onclick="App.showUploadDialog()">⬆ Upload
+                                    GGUF</button>
+                            </div>
+                        </div>
+                        <div id="models-grid" class="models-grid"></div>
+                    </div>
+                </section>
+
+                <!-- Benchmark Section -->
+                <section id="section-bench" class="section">
+                    <div class="card">
+                        <h2 class="card-title">Run Benchmark</h2>
+                        <form id="bench-form" class="form-grid">
+                            <div class="form-group">
+                                <label for="bench-model">Model (optional)</label>
+                                <select id="bench-model">
+                                    <option value="">All models</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bench-question">Question</label>
+                                <input type="text" id="bench-question" value="What is the capital of France?">
+                            </div>
+                            <div class="form-group">
+                                <label for="bench-timeout">Health Timeout (s)</label>
+                                <input type="number" id="bench-timeout" value="120" min="30">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn primary-btn" onclick="runBenchmark()">
+                                    <i class="fas fa-play"></i> Run Benchmark
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">Output</h2>
+                        <div id="bench-output" class="output-container"></div>
+                    </div>
+                </section>
+
+                <!-- Memory Scan Section -->
+                <section id="section-memory" class="section">
+                    <div class="card">
+                        <h2 class="card-title">Memory Scan</h2>
+                        <form id="memory-form" class="form-grid">
+                            <div class="form-group">
+                                <label for="memory-model">Model (optional)</label>
+                                <select id="memory-model">
+                                    <option value="">All models</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="memory-timeout">Health Timeout (s)</label>
+                                <input type="number" id="memory-timeout" value="120" min="30">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn primary-btn" onclick="runMemoryScan()">
+                                    <i class="fas fa-search"></i> Run Memory Scan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">Output</h2>
+                        <div id="memory-output" class="output-container"></div>
+                    </div>
+                </section>
+
+                <!-- Evaluation Section -->
+                <section id="section-eval" class="section">
+                    <div class="section-tabs">
+                        <button class="tab-btn active" data-tab="eval-harness">Eval Harness</button>
+                        <button class="tab-btn" data-tab="eval-custom">Custom Eval</button>
+                    </div>
+
+                    <div id="eval-harness" class="tab-content active">
+                        <div class="card">
+                            <h2 class="card-title">lm-evaluation-harness</h2>
+                            <form id="eval-harness-form" class="form-grid">
+                                <div class="form-group">
+                                    <label for="eval-model">Model (optional)</label>
+                                    <select id="eval-model">
+                                        <option value="">All models</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="eval-tasks">Tasks</label>
+                                    <input type="text" id="eval-tasks" value="humaneval"
+                                        placeholder="e.g., humaneval,mbpp">
+                                </div>
+                                <div class="form-group">
+                                    <label for="eval-limit">Limit (samples)</label>
+                                    <input type="number" id="eval-limit" placeholder="All samples">
+                                </div>
+                                <div class="form-group">
+                                    <label for="eval-fewshot">Few-shot</label>
+                                    <input type="number" id="eval-fewshot" placeholder="Default">
+                                </div>
+                                <div class="form-group">
+                                    <label for="eval-batch">Batch Size</label>
+                                    <input type="text" id="eval-batch" value="1">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn primary-btn" onclick="runEvalHarness()">
+                                        <i class="fas fa-play"></i> Run Evaluation
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="eval-custom" class="tab-content">
+                        <div class="card">
+                            <h2 class="card-title">Custom Evaluation</h2>
+                            <form id="eval-custom-form" class="form-grid">
+                                <div class="form-group">
+                                    <label for="custom-model">Model (optional)</label>
+                                    <select id="custom-model">
+                                        <option value="">All models</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom-dataset">Dataset</label>
+                                    <select id="custom-dataset"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom-max-tasks">Max Tasks</label>
+                                    <input type="number" id="custom-max-tasks" placeholder="All tasks">
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom-temp">Temperature</label>
+                                    <input type="number" id="custom-temp" step="0.1" placeholder="Default">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn primary-btn" onclick="runCustomEval()">
+                                        <i class="fas fa-play"></i> Run Evaluation
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">Output</h2>
+                        <div id="eval-output" class="output-container"></div>
+                    </div>
+                </section>
+
+                <!-- Watcher Section -->
+                <section id="section-watcher" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">llama-swap Watcher</h2>
+                            <div class="card-actions">
+                                <span id="watcher-status" class="status-badge status-stopped">Stopped</span>
+                            </div>
+                        </div>
+                        <form id="watcher-form" class="form-grid">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="watcher-verbose">
+                                    Verbose logging
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="watcher-dry-run">
+                                    Dry run (don't execute)
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" id="btn-watcher-start" class="btn btn-primary">▶ Start
+                                    Watcher</button>
+                                <button type="button" id="btn-watcher-stop" class="btn btn-danger" disabled>⏹ Stop
+                                    Watcher</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">Watcher Logs</h2>
+                        <div id="watcher-output" class="output-container"></div>
+                    </div>
+                </section>
+
+                <!-- Results Section -->
+                <section id="section-results" class="section">
+                    <div class="section-tabs">
+                        <button class="tab-btn active" data-tab="results-bench">⚡ Benchmarks</button>
+                        <button class="tab-btn" data-tab="results-memory">💾 Memory Scans</button>
+                        <button class="tab-btn" data-tab="results-eval">📝 Evaluations</button>
+                    </div>
+
+                    <!-- Benchmark Results Tab -->
+                    <div id="results-bench" class="tab-content active">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">Benchmark Results</h2>
+                                <div class="card-actions">
+                                    <span id="bench-results-count" class="results-count">0 results</span>
+                                </div>
+                            </div>
+                            <div class="results-toolbar">
+                                <input type="text" id="bench-search" class="search-input"
+                                    placeholder="🔍 Search models...">
+                                <select id="bench-status-filter">
+                                    <option value="">All Status</option>
+                                    <option value="Success">✓ Success</option>
+                                    <option value="Failed">✗ Failed</option>
+                                </select>
+                                <button class="btn btn-secondary" id="btn-bench-compare" disabled>
+                                    Compare Selected (<span id="bench-selected-count">0</span>)
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table class="results-table" id="bench-results-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-checkbox"><input type="checkbox" id="bench-select-all"
+                                                    title="Select all"></th>
+                                            <th class="col-model sortable" data-sort="ModelName">Model <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-size sortable" data-sort="ParameterSize">Size <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-quant sortable" data-sort="Quantization">Quant <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_tokens_per_second">Tok/s <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_gpu_memory_gb">GPU Mem <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_duration_seconds">Duration <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-status sortable" data-sort="BenchStatus">Status <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-date sortable" data-sort="Timestamp">Date <span
+                                                    class="sort-icon"></span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bench-results-tbody">
+                                        <tr>
+                                            <td colspan="9" class="empty-message">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Memory Scan Results Tab -->
+                    <div id="results-memory" class="tab-content">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">Memory Scan Results</h2>
+                                <div class="card-actions">
+                                    <span id="memory-results-count" class="results-count">0 results</span>
+                                </div>
+                            </div>
+                            <div class="results-toolbar">
+                                <input type="text" id="memory-search" class="search-input"
+                                    placeholder="🔍 Search models...">
+                                <select id="memory-status-filter">
+                                    <option value="">All Status</option>
+                                    <option value="Success">✓ Success</option>
+                                    <option value="Failed">✗ Failed</option>
+                                </select>
+                                <button class="btn btn-secondary" id="btn-memory-compare" disabled>
+                                    Compare Selected (<span id="memory-selected-count">0</span>)
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table class="results-table" id="memory-results-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-checkbox"><input type="checkbox" id="memory-select-all"
+                                                    title="Select all"></th>
+                                            <th class="col-model sortable" data-sort="ModelName">Model <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_gpu_memory_gb">GPU Memory <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_cpu_memory_gb">CPU Memory <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-status sortable" data-sort="ScanStatus">Status <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-date sortable" data-sort="Timestamp">Date <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-error">Error <span class="sort-icon"></span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="memory-results-tbody">
+                                        <tr>
+                                            <td colspan="7" class="empty-message">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Evaluation Results Tab -->
+                    <div id="results-eval" class="tab-content">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">Evaluation Results</h2>
+                                <div class="card-actions">
+                                    <span id="eval-results-count" class="results-count">0 results</span>
+                                </div>
+                            </div>
+                            <div class="results-toolbar">
+                                <input type="text" id="eval-search" class="search-input"
+                                    placeholder="🔍 Search models or runs...">
+                                <button class="btn btn-secondary" id="btn-eval-compare" disabled>
+                                    Compare Selected (<span id="eval-selected-count">0</span>)
+                                </button>
+                            </div>
+                            <div class="table-container">
+                                <table class="results-table" id="eval-results-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-checkbox"><input type="checkbox" id="eval-select-all"
+                                                    title="Select all"></th>
+                                            <th class="col-model sortable" data-sort="ModelName">Model <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-run sortable" data-sort="RunName">Run <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="gen_judge_score">Score <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="count_total">Tasks <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="tokens_total_avg">Avg Tokens
+                                                <span class="sort-icon"></span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="eval-results-tbody">
+                                        <tr>
+                                            <td colspan="6" class="empty-message">Loading...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- System Section -->
+                <section id="section-system" class="section">
+                    <div class="card">
+                        <h2 class="card-title">Update Components</h2>
+                        <form id="update-form" class="form-grid">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="update-python" checked>
+                                    Update Python dependencies
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="update-swap" checked>
+                                    Update llama-swap
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="update-cpp" checked>
+                                    Update llama.cpp
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="update-gpu">GPU Backend</label>
+                                <select id="update-gpu">
+                                    <option value="auto">Auto-detect</option>
+                                    <option value="cuda">CUDA</option>
+                                    <option value="metal">Metal (macOS)</option>
+                                    <option value="vulkan">Vulkan</option>
+                                    <option value="cpu">CPU only</option>
+                                </select>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">⬆ Run Update</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">Download Models</h2>
+                        <form id="download-form" class="form-grid">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="download-drafts">
+                                    Include draft models
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="download-tokenizers" checked>
+                                    Download tokenizers
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="download-force">
+                                    Force re-download
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">⬇ Download Models</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-title">Output</h2>
+                        <div id="system-output" class="output-container"></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Modal Container -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Modal</h3>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-footer" id="modal-footer"></div>
+        </div>
+    </div>
+    <!-- Persistent Task Manager Window -->
+    <div id="task-manager-window" class="task-manager-window hidden">
+        <div class="task-manager-header">
+            <h3><i class="fas fa-tasks"></i> Active Tasks</h3>
+            <span class="task-count" id="active-task-count">0</span>
+        </div>
+        <div class="task-list" id="task-list">
+            <!-- Task items will be injected here -->
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>

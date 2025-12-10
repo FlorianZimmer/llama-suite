@@ -214,6 +214,12 @@ models:
       threads: 28
       n-cpu-moe: 32
 
+  GLM-4.6-REAP-218B-A32B-FP8-Q2_K_S:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 60
+
   ERNIE-4.5-21B-A3B:
     cmd:
       gpu-layers: 99
@@ -230,7 +236,22 @@ models:
       threads: 28
       n-cpu-moe: 42
 
+  MiniMax-M2-REAP-139B-A10B-Q3_K_M:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 36
 
+  MiniMax-M2-REAP-139B-A10B-MXFP4:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+      n-cpu-moe: 39
+
+  Huihui-Qwen3-VL-32B-Instruct-abliterated:
+    cmd:
+      gpu-layers: 99
+      threads: 28
 
 # The top-level keys like healthCheckTimeout, logLevel, and profiles from your
 # llama-swap native config are NOT currently handled by llama_swap_watch.py.

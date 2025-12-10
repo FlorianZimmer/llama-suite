@@ -524,24 +524,41 @@ class LlamaRunner:
             if self.verbose:
                 print(colour(f"Starting llama-swap. Logging to: {log_file_path}", Fore.GREEN))
 
+            # Use PIPE for stdout to capture and forward to both file and stdout
+            kwargs = {
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.STDOUT,
+                "text": True,
+                "bufsize": 1,
+            }
+
             if sys.platform.startswith("win"):
-                self.child_process = subprocess.Popen(
-                    cmd,
-                    stdout=self.log_file_handle,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    creationflags=0x00000200,  # CREATE_NEW_PROCESS_GROUP
-                )
+                kwargs["creationflags"] = 0x00000200  # CREATE_NEW_PROCESS_GROUP
             else:
-                self.child_process = subprocess.Popen(
-                    cmd,
-                    stdout=self.log_file_handle,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    start_new_session=True,
-                )
+                kwargs["start_new_session"] = True
+
+            self.child_process = subprocess.Popen(cmd, **kwargs)
+
+            # Start a thread to forward logs to both file and stdout
+            def _log_forwarder():
+                proc = self.child_process
+                if not proc or not proc.stdout:
+                    return
+                try:
+                    for line in proc.stdout:
+                        sys.stdout.write(line)
+                        sys.stdout.flush()
+                        if self.log_file_handle and not self.log_file_handle.closed:
+                            try:
+                                self.log_file_handle.write(line)
+                                self.log_file_handle.flush()
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+            t = threading.Thread(target=_log_forwarder, daemon=True)
+            t.start()
 
         except OSError as e:
             print(colour(f"Error starting llama-swap process: {e}", Fore.RED))

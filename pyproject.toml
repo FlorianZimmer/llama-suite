@@ -19,6 +19,10 @@ dependencies = [
   "colorama",
   "watchdog>=4,<5",
   "matplotlib",
+  "fastapi>=0.104.0",
+  "uvicorn[standard]>=0.24.0",
+  "websockets>=12.0",
+  "python-multipart>=0.0.6",
 ]
 
 [project.optional-dependencies]
