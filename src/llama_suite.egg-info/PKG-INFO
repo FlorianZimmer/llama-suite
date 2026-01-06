@@ -12,6 +12,10 @@ Requires-Dist: psutil
 Requires-Dist: colorama
 Requires-Dist: watchdog<5,>=4
 Requires-Dist: matplotlib
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: uvicorn[standard]>=0.24.0
+Requires-Dist: websockets>=12.0
+Requires-Dist: python-multipart>=0.0.6
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: ruff; extra == "dev"
