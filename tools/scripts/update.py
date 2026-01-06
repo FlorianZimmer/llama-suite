@@ -442,6 +442,67 @@ def _copy_server_payload(src_dir: Path, target_bin_dir: Path, final_name: str) -
     return final_exe
 
 
+def _macos_fix_rpath_to_executable_dir(exe: Path) -> None:
+    if platform.system() != "Darwin":
+        return
+
+    install_name_tool = shutil.which("install_name_tool")
+    if not install_name_tool:
+        LOG.warning("install_name_tool not found; cannot adjust rpath for %s", exe)
+        return
+
+    try:
+        proc = subprocess.run(["otool", "-l", str(exe)], check=True, capture_output=True, text=True)
+        lines = proc.stdout.splitlines()
+    except Exception as e:
+        LOG.warning("Failed to inspect rpaths for %s: %s", exe, e)
+        return
+
+    rpaths: list[str] = []
+    for i, line in enumerate(lines):
+        if "cmd LC_RPATH" not in line:
+            continue
+        for j in range(i + 1, min(i + 8, len(lines))):
+            m = re.match(r"\s*path\s+(.+?)\s+\(offset\s+\d+\)\s*$", lines[j])
+            if m:
+                rpaths.append(m.group(1))
+                break
+
+    desired = "@executable_path"
+    for rp in rpaths:
+        # Delete absolute build paths (common after moving the repo or rebuilding).
+        if rp.startswith("/") and "llama-suite" in rp:
+            run([install_name_tool, "-delete_rpath", rp, str(exe)], check=False)
+
+    if desired not in rpaths:
+        run([install_name_tool, "-add_rpath", desired, str(exe)], check=False)
+
+
+def _copy_macos_dylibs_next_to_exe(build_dir: Path, bin_dir: Path) -> None:
+    if platform.system() != "Darwin":
+        return
+
+    dylibs = list(bin_dir.glob("*.dylib"))
+    if dylibs:
+        return
+
+    # When building llama.cpp from source, the dylibs often land in build/bin while
+    # executables go elsewhere unless CMAKE_LIBRARY_OUTPUT_DIRECTORY is set.
+    candidates = list((build_dir / "bin").glob("*.dylib"))
+    if not candidates:
+        candidates = list(build_dir.rglob("*.dylib"))
+
+    if not candidates:
+        LOG.warning("No .dylib files found under %s; llama-server may not be runnable", build_dir)
+        return
+
+    for lib in candidates:
+        dest = bin_dir / lib.name
+        if not dest.exists():
+            shutil.copy2(lib, dest)
+            ensure_executable(dest)
+
+
 def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
     """
     method: 'auto' | 'build' | 'download'
@@ -472,6 +533,10 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
         cmake_flags = [
             f"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY={str(bin_dir)}",
             f"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE={str(bin_dir)}",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={str(bin_dir)}",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={str(bin_dir)}",
+            f"-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY={str(bin_dir)}",
+            f"-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE={str(bin_dir)}",
             "-DCMAKE_BUILD_TYPE=Release",
         ]
         if gpu_backend == "cuda":
@@ -487,6 +552,8 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
         jobs = str(os.cpu_count() or 4)
         run(["cmake", "--build", ".", "--config", "Release", "-j", jobs], cwd=build_dir)
 
+        _copy_macos_dylibs_next_to_exe(build_dir, bin_dir)
+
         # normalize name
         candidates = [bin_dir / final_name, bin_dir / ("server.exe" if IS_WINDOWS else "server")]
         for c in candidates:
@@ -497,8 +564,10 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
                         final_exe.unlink(missing_ok=True)
                     shutil.copy2(c, final_exe)
                     ensure_executable(final_exe)
+                    _macos_fix_rpath_to_executable_dir(final_exe)
                     return final_exe
                 ensure_executable(c)
+                _macos_fix_rpath_to_executable_dir(c)
                 return c
         raise SystemExit("Build complete, but server executable not found.")
 
