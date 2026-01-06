@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import zipfile
 from pathlib import Path
 from typing import Dict, Optional, Sequence, Tuple
@@ -89,13 +90,67 @@ def venv_paths(venv_dir: Path) -> Tuple[Path, Path]:
     return venv_dir / "bin" / "python", venv_dir / "bin" / "pip"
 
 
+def _venv_python_looks_usable(venv_dir: Path, venv_python: Path) -> bool:
+    """
+    Return True if `venv_python` is runnable and reports a sys.prefix equal to `venv_dir`.
+
+    This catches common macOS/Homebrew breakage where a venv python points at a removed
+    Python.framework path after a brew upgrade, and also catches moved venv directories.
+    """
+    if not venv_python.exists():
+        return False
+
+    try:
+        proc = subprocess.run(
+            [str(venv_python), "-c", "import json, sys; print(json.dumps(sys.prefix))"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception as e:
+        LOG.warning("Venv python is not runnable (%s): %s", venv_python, e)
+        return False
+
+    # Be tolerant of extra output; prefer the last non-empty line.
+    lines = [ln.strip() for ln in proc.stdout.splitlines() if ln.strip()]
+    if not lines:
+        return False
+
+    try:
+        prefix = Path(json.loads(lines[-1])).resolve()
+    except Exception:
+        return False
+
+    return prefix == venv_dir.resolve()
+
+
+def _move_aside(dir_path: Path) -> Path:
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    base = dir_path.with_name(f"{dir_path.name}.broken-{stamp}")
+    candidate = base
+    i = 1
+    while candidate.exists():
+        candidate = dir_path.with_name(f"{dir_path.name}.broken-{stamp}-{i}")
+        i += 1
+    shutil.move(str(dir_path), str(candidate))
+    return candidate
+
+
 def ensure_venv(repo: Path, venv: Optional[Path]) -> Tuple[Path, Path, Path]:
     venv_dir = (venv or (repo / ".venv")).resolve()
     py, pip = venv_paths(venv_dir)
+    import venv as _venv
+
     if not venv_dir.exists():
         LOG.info("Virtualenv missing; creating at %s", venv_dir)
-        import venv as _venv
         _venv.EnvBuilder(with_pip=True, upgrade_deps=True).create(str(venv_dir))
+    elif not py.exists() or not pip.exists() or not _venv_python_looks_usable(venv_dir, py):
+        LOG.warning("Virtualenv seems broken/stale at %s", venv_dir)
+        backup = _move_aside(venv_dir)
+        LOG.info("Moved broken venv aside to %s", backup)
+        LOG.info("Recreating virtualenv at %s", venv_dir)
+        _venv.EnvBuilder(with_pip=True, upgrade_deps=True).create(str(venv_dir))
+
     if not py.exists() or not pip.exists():
         sys.exit(f"Venv seems broken: expected {py} and {pip}")
     return venv_dir, py, pip
