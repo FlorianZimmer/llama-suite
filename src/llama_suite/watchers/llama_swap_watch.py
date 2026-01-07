@@ -23,6 +23,10 @@ Run:
 
 Requires:
   pip install watchdog~=4.0 colorama~=0.4 pyyaml
+
+Notes:
+  - On stop/restart (Ctrl-C), this tool can also clean up leftover `llama-server` processes that
+    `llama-swap` may leave behind. Use `--kill-llama-servers ports|all|none`.
 """
 
 from __future__ import annotations
@@ -46,6 +50,11 @@ import yaml
 from colorama import Fore, Style, init as colorama_init
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+
+try:
+    import psutil  # type: ignore
+except Exception:  # pragma: no cover
+    psutil = None  # type: ignore
 
 # --- Imports from package (new structure) + safe colour wrapper ----------------
 
@@ -486,6 +495,128 @@ def prune_logs(log_dir: Path, keep: int = DEFAULT_LOGS_TO_KEEP) -> None:
 
 # --- Runner -------------------------------------------------------------------
 
+def _collect_llama_server_ports_from_config(config_path: Path) -> List[int]:
+    """
+    Best-effort extraction of per-model --port values from the llama-swap YAML config.
+    Used to safely clean up orphaned llama-server processes on shutdown/restart.
+    """
+    try:
+        raw = config_path.read_text(encoding="utf-8")
+        data = yaml.safe_load(raw) or {}
+    except Exception:
+        return []
+
+    models = data.get("models", {}) if isinstance(data, dict) else {}
+    if not isinstance(models, dict):
+        return []
+
+    ports: List[int] = []
+    for _name, model_cfg in models.items():
+        if not isinstance(model_cfg, dict):
+            continue
+        cmd = model_cfg.get("cmd", {})
+        if not isinstance(cmd, dict):
+            continue
+        port_val = cmd.get("port")
+        if port_val in (None, ""):
+            continue
+        try:
+            ports.append(int(str(port_val).strip()))
+        except Exception:
+            continue
+    return sorted(set(ports))
+
+
+def _extract_ports_from_cmdline(cmdline: List[str]) -> List[int]:
+    ports: List[int] = []
+    for i, tok in enumerate(cmdline):
+        if tok == "--port" and i + 1 < len(cmdline):
+            try:
+                ports.append(int(str(cmdline[i + 1]).strip()))
+            except Exception:
+                pass
+        elif tok.startswith("--port="):
+            try:
+                ports.append(int(tok.split("=", 1)[1].strip()))
+            except Exception:
+                pass
+    return ports
+
+
+def _is_llama_server_proc(name: str, cmdline: List[str]) -> bool:
+    n = (name or "").lower()
+    if "llama-server" in n:
+        return True
+    for a in cmdline or []:
+        if "llama-server" in (a or "").lower():
+            return True
+    return False
+
+
+def _kill_llama_servers(*, ports: List[int], mode: str, verbose: bool) -> int:
+    """
+    mode:
+      - "none": no-op
+      - "ports": kill only llama-server processes whose --port matches `ports`
+      - "all": kill all llama-server processes owned by current user
+    """
+    if mode == "none":
+        return 0
+    if psutil is None:
+        if verbose and mode != "none":
+            print(colour("[WARN] psutil not available; cannot clean up orphaned llama-server processes.", Fore.YELLOW))
+        return 0
+
+    ports_set = set(ports or [])
+    killed = 0
+    for proc in psutil.process_iter(["pid", "name", "cmdline", "username"]):
+        try:
+            pid = int(proc.info.get("pid") or 0)
+            if pid <= 0:
+                continue
+            name = str(proc.info.get("name") or "")
+            cmdline = proc.info.get("cmdline") or []
+            if not isinstance(cmdline, list):
+                cmdline = []
+
+            if not _is_llama_server_proc(name, cmdline):
+                continue
+
+            if mode == "ports":
+                if not ports_set:
+                    continue
+                found_ports = set(_extract_ports_from_cmdline([str(x) for x in cmdline]))
+                if not (found_ports & ports_set):
+                    continue
+
+            # "all" is still limited to current user when possible
+            try:
+                current_user = psutil.Process().username()
+                username = proc.info.get("username") or ""
+                if current_user and username and username != current_user:
+                    continue
+            except Exception:
+                pass
+
+            p = psutil.Process(pid)
+            if verbose:
+                why = "all" if mode == "all" else f"ports={sorted(ports_set)}"
+                print(colour(f"[cleanup] Terminating llama-server PID {pid} ({why})", Fore.CYAN))
+            p.terminate()
+            try:
+                p.wait(timeout=PROCESS_TERMINATE_TIMEOUT_SECONDS / 2.0)
+            except psutil.TimeoutExpired:
+                p.kill()
+                p.wait(timeout=PROCESS_TERMINATE_TIMEOUT_SECONDS / 2.0)
+            killed += 1
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+        except Exception:
+            continue
+
+    return killed
+
+
 @dataclass
 class LlamaRunner:
     exe_path: Path
@@ -493,6 +624,7 @@ class LlamaRunner:
     listen_address: str
     verbose: bool
     log_root: Path
+    kill_llama_servers: str = "ports"  # none|ports|all
 
     child_process: Optional[subprocess.Popen[str]] = None
     log_file_handle: Optional[Any] = None
@@ -572,6 +704,10 @@ class LlamaRunner:
                 self.log_file_handle = None
 
     def stop(self) -> None:
+        managed_ports = _collect_llama_server_ports_from_config(self.config_path)
+        if self.verbose and managed_ports:
+            print(colour(f"[info] Managed llama-server ports from config: {managed_ports}", Fore.BLUE))
+
         if self.child_process and self.child_process.poll() is None:
             pid = self.child_process.pid
             if self.verbose:
@@ -584,6 +720,21 @@ class LlamaRunner:
                     )
                     self.child_process.wait(timeout=5)
                 else:
+                    # Best-effort terminate direct descendants first (in case llama-swap spawned outside its PG).
+                    if psutil is not None:
+                        try:
+                            parent = psutil.Process(pid)
+                            children = parent.children(recursive=True)
+                            if children and self.verbose:
+                                print(colour(f"[cleanup] Found {len(children)} descendant process(es) of llama-swap.", Fore.CYAN))
+                            for ch in children:
+                                try:
+                                    ch.terminate()
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+
                     getpgid = getattr(os, "getpgid", None)
                     killpg = getattr(os, "killpg", None)
                     if callable(getpgid) and callable(killpg):
@@ -613,6 +764,15 @@ class LlamaRunner:
                 print(colour(f"Error stopping llama-swap: {e_term}", Fore.YELLOW))
             finally:
                 self.child_process = None
+
+        # Clean up orphaned llama-server processes that llama-swap may have left behind.
+        try:
+            killed = _kill_llama_servers(ports=managed_ports, mode=self.kill_llama_servers, verbose=self.verbose)
+            if self.verbose and killed:
+                print(colour(f"[cleanup] Killed {killed} orphaned llama-server process(es).", Fore.GREEN))
+        except Exception as e_cleanup:
+            if self.verbose:
+                print(colour(f"[WARN] Orphan llama-server cleanup failed: {e_cleanup}", Fore.YELLOW))
 
         if self.log_file_handle:
             try:
@@ -891,6 +1051,12 @@ def main() -> None:
     parser.add_argument("--listen", default=":8080", help="Listen address for llama-swap.")
     parser.add_argument("-o", "--override", type=Path, help="Override YAML file path.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
+    parser.add_argument(
+        "--kill-llama-servers",
+        choices=["none", "ports", "all"],
+        default="ports",
+        help="Cleanup strategy for leftover llama-server processes on stop/restart.",
+    )
 
     cli = parser.parse_args()
 
@@ -926,6 +1092,7 @@ def main() -> None:
         listen_address=cli.listen,
         verbose=cli.verbose,
         log_root=logs_dir(repo_root),
+        kill_llama_servers=cli.kill_llama_servers,
     )
 
     signal.signal(signal.SIGINT, runner.shutdown_handler)
