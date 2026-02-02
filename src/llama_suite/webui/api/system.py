@@ -53,6 +53,7 @@ class UpdateRequest(BaseModel):
     update_llama_swap: bool = True
     update_llama_cpp: bool = True
     update_open_webui: bool = True
+    open_webui_data_volume: Optional[str] = None
     gpu_backend: str = "auto"
 
 
@@ -78,6 +79,10 @@ async def run_update(request: UpdateRequest):
             cmd.extend(["--skip", "cpp"])
         if not kwargs.get("update_open_webui"):
             cmd.extend(["--skip", "webui"])
+        else:
+            data_volume = kwargs.get("open_webui_data_volume")
+            if data_volume:
+                cmd.extend(["--webui-data-volume", str(data_volume)])
         if kwargs.get("gpu_backend") and kwargs["gpu_backend"] != "auto":
             cmd.extend(["--gpu-backend", kwargs["gpu_backend"]])
         
@@ -112,6 +117,7 @@ async def run_update(request: UpdateRequest):
 class InstallRequest(BaseModel):
     """Request to run install."""
     gpu_backend: str = "auto"
+    open_webui_data_volume: Optional[str] = None
 
 
 @router.post("/install")
@@ -128,6 +134,10 @@ async def run_install(request: InstallRequest):
         
         if kwargs.get("gpu_backend") and kwargs["gpu_backend"] != "auto":
             cmd.extend(["--gpu-backend", kwargs["gpu_backend"]])
+
+        data_volume = kwargs.get("open_webui_data_volume")
+        if data_volume:
+            cmd.extend(["--webui-data-volume", str(data_volume)])
         
         async def on_output(line: str):
             await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="steps")
@@ -249,6 +259,79 @@ async def get_all_tasks():
             for t in sorted(tasks.values(), key=lambda x: x.started_at, reverse=True)
         ]
     }
+
+
+class OpenWebUIStartRequest(BaseModel):
+    """Request to start (or ensure) the Open WebUI container."""
+
+    name: str = "open-webui"
+    port: int = 3000
+    image: str = "ghcr.io/open-webui/open-webui:main"
+    runtime: Optional[str] = None  # docker|podman|nerdctl (optional)
+    data_volume: Optional[str] = None  # named volume mounted to /app/backend/data (optional)
+
+
+@router.post("/openwebui/start")
+async def start_openwebui(request: OpenWebUIStartRequest):
+    """Start (or ensure) the Open WebUI container is running."""
+
+    async def run_openwebui_task(task_id: str, **kwargs):
+        root = get_project_root()
+        venv_python = root / ".venv" / ("Scripts" if sys.platform == "win32" else "bin") / "python"
+
+        if not venv_python.exists():
+            venv_python = Path(sys.executable)
+
+        data_dir = root / "var" / "open-webui" / "data"
+
+        cmd = [
+            str(venv_python),
+            "-u",
+            "-m",
+            "llama_suite.utils.openwebui",
+            "--name",
+            str(kwargs.get("name") or "open-webui"),
+            "--port",
+            str(int(kwargs.get("port") or 3000)),
+            "--image",
+            str(kwargs.get("image") or "ghcr.io/open-webui/open-webui:main"),
+        ]
+
+        data_volume = kwargs.get("data_volume")
+        if data_volume:
+            cmd.extend(["--data-volume", str(data_volume)])
+        else:
+            cmd.extend(["--data-dir", str(data_dir)])
+
+        rt = kwargs.get("runtime")
+        if rt:
+            cmd.extend(["--runtime", str(rt)])
+
+        async def on_output(line: str):
+            await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="indeterminate")
+
+        async def on_error(line: str):
+            await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="indeterminate")
+
+        await ws_manager.send_progress(task_id, 0, "Starting Open WebUI container...")
+
+        returncode = await process_manager.run_subprocess(
+            task_id, cmd, cwd=root,
+            on_stdout=on_output, on_stderr=on_error
+        )
+
+        success = returncode == 0
+        await ws_manager.send_complete(task_id, success, {"returncode": returncode})
+        return {"returncode": returncode, "success": success}
+
+    task_id = await process_manager.start_task(
+        task_type="system",
+        description="Open WebUI container",
+        coro=run_openwebui_task,
+        **request.model_dump()
+    )
+
+    return {"task_id": task_id, "status": "started"}
 
 
 @router.post("/cancel/{task_id}")

@@ -51,8 +51,8 @@
                     <span class="nav-label">Evaluation</span>
                 </a>
                 <a href="#watcher" class="nav-item" data-section="watcher">
-                    <span class="nav-icon">👁️</span>
-                    <span class="nav-label">Watcher</span>
+                    <span class="nav-icon">🔌</span>
+                    <span class="nav-label">Endpoint</span>
                 </a>
                 <a href="#results" class="nav-item" data-section="results">
                     <span class="nav-icon">📈</span>
@@ -126,6 +126,37 @@
                         <h2 class="card-title">Active Tasks</h2>
                         <div id="active-tasks" class="task-list">
                             <p class="empty-message">No active tasks</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Quick Start</h2>
+                        </div>
+                        <div class="quickstart-grid">
+                            <div class="quickstart-item">
+                                <div class="quickstart-title">LLM Endpoint (llama-swap)</div>
+                                <div class="quickstart-meta">
+                                    <span id="dashboard-endpoint-status" class="status-badge status-stopped">Stopped</span>
+                                    <span class="muted">API: http://localhost:8080/v1</span>
+                                </div>
+                                <div class="quickstart-actions">
+                                    <button type="button" id="btn-quickstart-endpoint-start" class="btn btn-primary">▶ Start Endpoint</button>
+                                    <button type="button" id="btn-quickstart-endpoint-stop" class="btn btn-danger" disabled>⏹ Stop Endpoint</button>
+                                    <a class="btn btn-secondary" href="http://localhost:8080/ui" target="_blank" rel="noopener">Open llama-swap UI</a>
+                                </div>
+                            </div>
+
+                            <div class="quickstart-item">
+                                <div class="quickstart-title">Open WebUI (container)</div>
+                                <div class="quickstart-meta">
+                                    <span class="muted">UI: http://localhost:3000</span>
+                                </div>
+                                <div class="quickstart-actions">
+                                    <button type="button" id="btn-quickstart-openwebui-start" class="btn btn-primary">▶ Start Open WebUI</button>
+                                    <a class="btn btn-secondary" href="http://localhost:3000" target="_blank" rel="noopener">Open Open WebUI</a>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -354,11 +385,15 @@
                 <section id="section-watcher" class="section">
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title">llama-swap Watcher</h2>
+                            <h2 class="card-title">LLM Endpoint (llama-swap)</h2>
                             <div class="card-actions">
                                 <span id="watcher-status" class="status-badge status-stopped">Stopped</span>
                             </div>
                         </div>
+                        <p class="card-subtitle">
+                            Starts <code>llama-swap</code> and regenerates an effective config from base + override.
+                            The OpenAI-compatible API is typically available at <code>http://localhost:8080/v1</code>.
+                        </p>
                         <form id="watcher-form" class="form-grid">
                             <div class="form-group">
                                 <label class="checkbox-label">
@@ -373,16 +408,14 @@
                                 </label>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" id="btn-watcher-start" class="btn btn-primary">▶ Start
-                                    Watcher</button>
-                                <button type="button" id="btn-watcher-stop" class="btn btn-danger" disabled>⏹ Stop
-                                    Watcher</button>
+                                <button type="submit" id="btn-watcher-start" class="btn btn-primary">▶ Start Endpoint</button>
+                                <button type="button" id="btn-watcher-stop" class="btn btn-danger" disabled>⏹ Stop Endpoint</button>
                             </div>
                         </form>
                     </div>
 
                     <div class="card">
-                        <h2 class="card-title">Watcher Logs</h2>
+                        <h2 class="card-title">Endpoint Logs</h2>
                         <div id="watcher-output" class="output-container"></div>
                     </div>
                 </section>
@@ -548,6 +581,24 @@
 
                 <!-- System Section -->
                 <section id="section-system" class="section">
+                    <div class="card">
+                        <h2 class="card-title">Open WebUI</h2>
+                        <form id="openwebui-form" class="form-grid">
+                            <div class="form-group">
+                                <label for="openwebui-port">Port</label>
+                                <input type="number" id="openwebui-port" value="3000" min="1" max="65535">
+                            </div>
+                            <div class="form-group">
+                                <label for="openwebui-data-volume">Data volume (optional)</label>
+                                <input type="text" id="openwebui-data-volume" placeholder="open-webui">
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">▶ Start Open WebUI</button>
+                                <a class="btn btn-secondary" href="http://localhost:3000" target="_blank" rel="noopener">Open</a>
+                            </div>
+                        </form>
+                    </div>
+
                     <div class="card">
                         <h2 class="card-title">Update Components</h2>
                         <form id="update-form" class="form-grid">

@@ -182,7 +182,7 @@ class TaskManager {
         if (type === 'bench') icon = 'fa-tachometer-alt';
         else if (type === 'memory') icon = 'fa-memory';
         else if (type === 'eval') icon = 'fa-robot';
-        else if (type === 'watcher') icon = 'fa-eye';
+        else if (type === 'watcher') icon = 'fa-plug';
         else if (type === 'system') icon = 'fa-wrench';
 
         item.innerHTML = `
@@ -276,9 +276,9 @@ class TaskManager {
         const watcherId = 'watcher-service';
         if (isRunning) {
             if (!this.tasks.has(watcherId)) {
-                this.addTask(watcherId, 'watcher', 'Llama Swap Watcher');
+                this.addTask(watcherId, 'watcher', 'LLM Endpoint (llama-swap)');
             }
-            this.updateTask(watcherId, 100, 'Active & Monitoring');
+            this.updateTask(watcherId, 100, 'Running');
             // Make progress bar solid green or pulsing
             const el = this.tasks.get(watcherId).element;
             const fill = el.querySelector('.task-progress-fill');
@@ -491,6 +491,42 @@ const App = {
         });
     },
 
+    updateEndpointStatusUI(isRunning, statusTextOverride = null) {
+        const statusText = statusTextOverride || (isRunning ? 'Running' : 'Stopped');
+
+        const statusEl = document.getElementById('watcher-status');
+        if (statusEl) {
+            statusEl.textContent = statusText;
+            statusEl.className = `status-badge ${isRunning ? 'status-running' : 'status-stopped'}`;
+            if (statusTextOverride === 'Error') {
+                statusEl.className = 'status-badge status-error';
+            }
+        }
+
+        const startBtn = document.getElementById('btn-watcher-start');
+        const stopBtn = document.getElementById('btn-watcher-stop');
+        if (startBtn) startBtn.disabled = isRunning;
+        if (stopBtn) stopBtn.disabled = !isRunning;
+
+        const qsStatusEl = document.getElementById('dashboard-endpoint-status');
+        if (qsStatusEl) {
+            qsStatusEl.textContent = statusText;
+            qsStatusEl.className = `status-badge ${isRunning ? 'status-running' : 'status-stopped'}`;
+            if (statusTextOverride === 'Error') {
+                qsStatusEl.className = 'status-badge status-error';
+            }
+        }
+
+        const qsStart = document.getElementById('btn-quickstart-endpoint-start');
+        const qsStop = document.getElementById('btn-quickstart-endpoint-stop');
+        if (qsStart) qsStart.disabled = isRunning;
+        if (qsStop) qsStop.disabled = !isRunning;
+
+        if (this.taskManager) {
+            this.taskManager.updateWatcherState(isRunning);
+        }
+    },
+
     findOutputContainer(taskId) {
         if (taskId === this.currentBenchTaskId) return 'bench-output';
         if (taskId === this.currentMemoryTaskId) return 'memory-output';
@@ -511,7 +547,7 @@ const App = {
             this.currentEvalCustomTaskId = null;
         } else if (taskId === this.currentWatcherTaskId) {
             this.currentWatcherTaskId = null;
-            this.setWatcherUIState(false);
+            this.updateEndpointStatusUI(false);
         }
     },
 
@@ -525,12 +561,7 @@ const App = {
     },
 
     setWatcherRunningState(isRunning) {
-        const startBtn = document.getElementById('btn-watcher-start');
-        const stopBtn = document.getElementById('btn-watcher-stop');
-        if (startBtn && stopBtn) {
-            startBtn.disabled = isRunning;
-            stopBtn.disabled = !isRunning;
-        }
+        this.updateEndpointStatusUI(isRunning);
     },
 
     appendOutput(taskId, line, level = 'info') {
@@ -612,7 +643,7 @@ const App = {
             bench: 'Benchmark',
             memory: 'Memory Scan',
             eval: 'Evaluation',
-            watcher: 'Llama-Swap Watcher',
+            watcher: 'LLM Endpoint',
             results: 'Results',
             system: 'System'
         };
@@ -710,16 +741,25 @@ const App = {
             if (runningTasks.length === 0) {
                 taskList.innerHTML = '<p class="empty-message">No active tasks</p>';
             } else {
+                const typeLabel = (t) => (t.task_type === 'watcher' ? 'endpoint' : t.task_type);
                 taskList.innerHTML = runningTasks.map(t => `
                     <div class="task-item">
                         <div class="task-spinner"></div>
                         <div class="task-info">
                             <div class="task-name">${t.description}</div>
-                            <div class="task-progress">${t.task_type} • Started ${new Date(t.started_at).toLocaleTimeString()}</div>
+                            <div class="task-progress">${typeLabel(t)} • Started ${new Date(t.started_at).toLocaleTimeString()}</div>
                         </div>
                         <button class="btn btn-secondary" onclick="App.cancelTask('${t.task_id}')">Cancel</button>
                     </div>
                 `).join('');
+            }
+
+            // Update endpoint status for the Quick Start card (and the Endpoint section badge).
+            try {
+                const endpointStatus = await API.get('/api/watcher/status');
+                this.updateEndpointStatusUI(!!endpointStatus.running);
+            } catch (e2) {
+                this.updateEndpointStatusUI(false, 'Error');
             }
         } catch (e) {
             console.error('Failed to refresh dashboard:', e);
@@ -1145,51 +1185,16 @@ const App = {
     async loadWatcherStatus() {
         try {
             const data = await API.get('/api/watcher/status');
-            const statusEl = document.getElementById('watcher-status');
-            const startBtn = document.getElementById('btn-watcher-start');
-            const stopBtn = document.getElementById('btn-watcher-stop');
-
-            if (data.running) {
-                statusEl.textContent = 'Running';
-                statusEl.className = 'status-badge status-running';
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-            } else {
-                statusEl.textContent = 'Stopped';
-                statusEl.className = 'status-badge status-stopped';
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
+            this.updateEndpointStatusUI(!!data.running);
         } catch (e) {
             console.error('Failed to get watcher status:', e);
-            document.getElementById('watcher-status-indicator').className = 'status-indicator status-error';
-            document.getElementById('watcher-status-text').textContent = 'Error';
-            this.taskManager.updateWatcherState(false);
+            this.updateEndpointStatusUI(false, 'Error');
         }
     },
 
+    // Backwards-compat helper used by older code paths
     setWatcherUIState(isRunning) {
-        this.watcherRunning = isRunning;
-        const btnStart = document.getElementById('btn-watcher-start');
-        const btnStop = document.getElementById('btn-watcher-stop');
-        const statusIndicator = document.getElementById('watcher-status-indicator');
-        const statusText = document.getElementById('watcher-status-text');
-
-        if (isRunning) {
-            btnStart.style.display = 'none';
-            btnStop.style.display = 'inline-block';
-            statusIndicator.className = 'status-indicator status-active';
-            statusText.textContent = 'Running';
-            // Update persistent task
-            this.taskManager.updateWatcherState(true);
-        } else {
-            btnStart.style.display = 'inline-block';
-            btnStop.style.display = 'none';
-            statusIndicator.className = 'status-indicator status-inactive';
-            statusText.textContent = 'Stopped';
-            // Update persistent task
-            this.taskManager.updateWatcherState(false);
-        }
+        this.updateEndpointStatusUI(isRunning);
     },
 
     async loadResults() {
@@ -1759,13 +1764,13 @@ const App = {
             this.registerTaskContainer(data.task_id, 'watcher-output');
             this.currentWatcherTaskId = data.task_id;
 
-            Toast.info(`Watcher started: ${data.task_id}`);
+            Toast.info(`Endpoint started: ${data.task_id}`);
             await this.loadWatcherStatus();
             // Watcher button state is handled by checkWatcherStatus/loadWatcherStatus usually,
             // but we can set it here too.
             this.setWatcherRunningState(true);
         } catch (e) {
-            Toast.error(`Failed to start: ${e.message}`);
+            Toast.error(`Failed to start endpoint: ${e.message}`);
         }
     },
 
@@ -1779,11 +1784,32 @@ const App = {
                 this.currentWatcherTaskId = null;
             }
 
-            Toast.success('Watcher stopped');
+            Toast.success('Endpoint stopped');
             await this.loadWatcherStatus();
             this.setWatcherRunningState(false);
         } catch (e) {
-            Toast.error('Failed to stop watcher');
+            Toast.error('Failed to stop endpoint');
+        }
+    },
+
+    async startOpenWebUI(portOverride = null) {
+        const output = document.getElementById('system-output');
+        if (output) output.innerHTML = '';
+
+        try {
+            const port = portOverride ?? parseInt(document.getElementById('openwebui-port')?.value || '3000', 10);
+            const dataVolume = (document.getElementById('openwebui-data-volume')?.value || '').trim();
+            const payload = { port };
+            if (dataVolume) payload.data_volume = dataVolume;
+            const data = await API.post('/api/system/openwebui/start', payload);
+
+            this.taskManager.addTask(data.task_id, 'system', 'Open WebUI container');
+            this.registerTaskContainer(data.task_id, 'system-output');
+
+            Toast.info(`Open WebUI start requested: ${data.task_id}`);
+            this.refreshDashboard();
+        } catch (e) {
+            Toast.error(`Failed to start Open WebUI: ${e.message}`);
         }
     },
 
@@ -1792,11 +1818,13 @@ const App = {
         if (output) output.innerHTML = '';
 
         try {
+            const dataVolume = (document.getElementById('openwebui-data-volume')?.value || '').trim();
             const data = await API.post('/api/system/update', {
                 update_python: document.getElementById('update-python').checked,
                 update_llama_swap: document.getElementById('update-swap').checked,
                 update_llama_cpp: document.getElementById('update-cpp').checked,
                 update_open_webui: document.getElementById('update-webui').checked,
+                open_webui_data_volume: dataVolume || undefined,
                 gpu_backend: document.getElementById('update-gpu').value
             });
 
@@ -2082,6 +2110,17 @@ document.addEventListener('DOMContentLoaded', () => {
         App.startWatcher();
     });
     bind('btn-watcher-stop', 'click', () => App.stopWatcher());
+
+    // Dashboard Quick Start
+    bind('btn-quickstart-endpoint-start', 'click', () => App.startWatcher());
+    bind('btn-quickstart-endpoint-stop', 'click', () => App.stopWatcher());
+    bind('btn-quickstart-openwebui-start', 'click', () => App.startOpenWebUI(3000));
+
+    // System: Open WebUI
+    bind('openwebui-form', 'submit', (e) => {
+        e.preventDefault();
+        App.startOpenWebUI();
+    });
 
     bind('update-form', 'submit', (e) => {
         e.preventDefault();

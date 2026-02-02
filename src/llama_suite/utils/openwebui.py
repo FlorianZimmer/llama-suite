@@ -4,13 +4,18 @@ Ensure an Open WebUI container exists and is running.
 
 Usage (called by installer):
   python -m llama_suite.utils.openwebui --name open-webui \
-      --port 3000 --data-dir F:\LLMs\llama-suite\var\open-webui\data \
+      --port 3000 --data-dir F:\\LLMs\\llama-suite\\var\\open-webui\\data \
+      --image ghcr.io/open-webui/open-webui:main
+
+Or use an existing Docker/Podman named volume (instead of a host directory bind-mount):
+  python -m llama_suite.utils.openwebui --name open-webui \
+      --port 3000 --data-volume open-webui \
       --image ghcr.io/open-webui/open-webui:main
 
 It will:
   - Detect a container runtime: docker, podman, or nerdctl (in that order),
     or use --runtime to force one.
-  - Create the container if it doesn't exist (with volume + port mapping).
+  - Create the container if it doesn't exist (with data mount + port mapping).
   - Start the container if it exists but isn't running.
   - No-op if it's already running.
 """
@@ -116,25 +121,36 @@ def create_container(
     rt_path: str,
     name: str,
     host_port: int,
-    data_dir: Path,
+    data_dir: Optional[Path],
+    data_volume: Optional[str],
     image: str,
     container_port: int = 8080,
 ) -> None:
     """
-    Creates the container with volume + port mapping. Uses flags compatible with docker/podman/nerdctl.
+    Creates the container with data mount + port mapping. Uses flags compatible with docker/podman/nerdctl.
     """
-    data_dir.mkdir(parents=True, exist_ok=True)
+    if (data_dir is None) == (data_volume is None):
+        raise SystemExit("Exactly one of --data-dir or --data-volume must be provided.")
+
+    if data_volume is not None:
+        mount_spec = f"{data_volume}:/app/backend/data"
+        data_desc = f"named volume '{data_volume}'"
+    else:
+        assert data_dir is not None
+        data_dir.mkdir(parents=True, exist_ok=True)
+        mount_spec = f"{str(data_dir)}:/app/backend/data"
+        data_desc = f"host dir {data_dir}"
 
     args = [
         "run", "-d",
         "--name", name,
         "-p", f"{host_port}:{container_port}",
-        "-v", f"{str(data_dir)}:/app/backend/data",
+        "-v", mount_spec,
         "--restart", "unless-stopped",
         image,
     ]
 
-    info(f"Creating container '{name}' ({rt}) on port {host_port} with data at {data_dir}")
+    info(f"Creating container '{name}' ({rt}) on port {host_port} with data at {data_desc}")
     cp = run(rt_path, args)
     if cp.returncode != 0:
         err(f"Failed to create container:\n{cp.stderr.strip()}")
@@ -158,7 +174,9 @@ def main(argv: Optional[List[str]] = None) -> None:
     p = argparse.ArgumentParser(description="Ensure an Open WebUI container exists and is running.")
     p.add_argument("--name", default="open-webui", help="Container name (default: open-webui)")
     p.add_argument("--port", type=int, default=3000, help="Host port to expose (default: 3000)")
-    p.add_argument("--data-dir", type=Path, required=True, help="Host directory to persist /app/backend/data")
+    data_group = p.add_mutually_exclusive_group(required=True)
+    data_group.add_argument("--data-dir", type=Path, help="Host directory to persist /app/backend/data (bind mount)")
+    data_group.add_argument("--data-volume", type=str, help="Named volume to mount at /app/backend/data")
     p.add_argument("--image", default="ghcr.io/open-webui/open-webui:main", help="Container image")
     p.add_argument("--runtime", choices=list(RUNTIMES_ORDER), help="Force a specific runtime (docker|podman|nerdctl)")
     p.add_argument("--container-port", type=int, default=8080, help="Container internal port (default: 8080)")
@@ -174,7 +192,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             rt_path=rt_path,
             name=args.name,
             host_port=args.port,
-            data_dir=args.data_dir.resolve(),
+            data_dir=args.data_dir.resolve() if args.data_dir is not None else None,
+            data_volume=args.data_volume,
             image=args.image,
             container_port=args.container_port,
         )

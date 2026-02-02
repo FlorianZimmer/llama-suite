@@ -551,24 +551,36 @@ def obtain_llama_cpp(vendor_dir: Path, build: bool, gpu_backend: str) -> Path:
 # Open WebUI container via module
 # ──────────────────────────────────────────────────────────────────────────────
 
-def ensure_openwebui_container(venv_python: Path, data_dir: Path, name: str, port: int, image: str) -> None:
+def ensure_openwebui_container(
+    venv_python: Path,
+    data_dir: Path | None,
+    data_volume: str | None,
+    name: str,
+    port: int,
+    image: str,
+) -> None:
     """
     Calls the installed module's CLI: python -m llama_suite.utils.openwebui --args ...
     The module should:
       - create container only if missing
-      - mount data_dir
+      - mount data_dir (bind mount) or data_volume (named volume)
       - map host port
       - start the container
     """
     LOG.info("Ensuring Open WebUI container (name=%s, port=%d, image=%s)", name, port, image)
-    data_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
         str(venv_python), "-m", "llama_suite.utils.openwebui",
         "--name", name,
         "--port", str(port),
-        "--data-dir", str(data_dir),
         "--image", image,
     ]
+    if data_volume:
+        cmd.extend(["--data-volume", data_volume])
+    else:
+        if data_dir is None:
+            raise SystemExit("Open WebUI: data_dir is required when --webui-data-volume is not set.")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        cmd.extend(["--data-dir", str(data_dir)])
     try:
         run(cmd)
     except SystemExit:
@@ -586,6 +598,7 @@ def main() -> None:
     parser.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="auto", help="Preferred GPU backend for llama.cpp.")
     parser.add_argument("--webui-name", default="open-webui", help="Container name for Open WebUI.")
     parser.add_argument("--webui-port", type=int, default=3000, help="Host port for Open WebUI (default: 3000).")
+    parser.add_argument("--webui-data-volume", default=None, help="Named volume for Open WebUI data (mounted to /app/backend/data). If set, overrides var/open-webui/data.")
     parser.add_argument("--no-webui", action="store_true", help="Skip Open WebUI container setup.")
     parser.add_argument("--dev-extras", action="store_true", help="Install project with [dev] extras if defined.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging.")
@@ -709,7 +722,8 @@ def main() -> None:
             LOG.warning("Docker pull failed. You can pull manually later.")
         ensure_openwebui_container(
             venv_python=venv_python,
-            data_dir=webui_data_dir,
+            data_dir=None if args.webui_data_volume else webui_data_dir,
+            data_volume=args.webui_data_volume,
             name=args.webui_name,
             port=args.webui_port,
             image=OPEN_WEBUI_IMAGE,

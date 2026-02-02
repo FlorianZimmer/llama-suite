@@ -659,9 +659,18 @@ def detect_runtime(explicit: Optional[str] = None) -> Tuple[str, str] | None:
     return None
 
 
-def refresh_openwebui(repo: Path, venv_python: Path, container_name: str, port: int, image: str, runtime: Optional[str]) -> None:
+def refresh_openwebui(
+    repo: Path,
+    venv_python: Path,
+    container_name: str,
+    port: int,
+    image: str,
+    runtime: Optional[str],
+    data_volume: Optional[str],
+) -> None:
     data_dir = repo / "var" / "open-webui" / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
+    if data_volume is None:
+        data_dir.mkdir(parents=True, exist_ok=True)
 
     rt = detect_runtime(runtime)
     if rt is None:
@@ -679,11 +688,17 @@ def refresh_openwebui(repo: Path, venv_python: Path, container_name: str, port: 
 
     # Recreate via our helper (keeps data dir; helper uses -v + -p)
     LOG.info("Recreating Open WebUI container via module helper")
-    run([str(venv_python), "-m", "llama_suite.utils.openwebui",
-         "--name", container_name,
-         "--port", str(port),
-         "--data-dir", str(data_dir),
-         "--image", image])
+    cmd = [
+        str(venv_python), "-m", "llama_suite.utils.openwebui",
+        "--name", container_name,
+        "--port", str(port),
+        "--image", image,
+    ]
+    if data_volume is not None:
+        cmd.extend(["--data-volume", data_volume])
+    else:
+        cmd.extend(["--data-dir", str(data_dir)])
+    run(cmd)
 
 
 # ─────────────────────────────────── main ────────────────────────────────────
@@ -702,6 +717,7 @@ def main() -> None:
     p.add_argument("--webui-name", default="open-webui", help="Open WebUI container name.")
     p.add_argument("--webui-port", type=int, default=3000, help="Open WebUI host port.")
     p.add_argument("--webui-image", default=OPEN_WEBUI_IMAGE_DEFAULT, help=f"Open WebUI image (default: {OPEN_WEBUI_IMAGE_DEFAULT})")
+    p.add_argument("--webui-data-volume", default=None, help="Named volume for Open WebUI data (mounted to /app/backend/data). If set, overrides var/open-webui/data.")
     p.add_argument(
         "--skip",
         action="append",
@@ -767,7 +783,7 @@ def main() -> None:
     if "webui" not in skip:
         step_i += 1
         emit_step(step_i, len(step_plan), "Refresh Open WebUI container")
-        refresh_openwebui(repo, venv_python, args.webui_name, args.webui_port, args.webui_image, args.runtime)
+        refresh_openwebui(repo, venv_python, args.webui_name, args.webui_port, args.webui_image, args.runtime, args.webui_data_volume)
         LOG.info("Open WebUI refreshed: %s (port %d)", args.webui_name, args.webui_port)
     else:
         LOG.info("Skipping Open WebUI refresh")
