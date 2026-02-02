@@ -70,14 +70,15 @@ def run(rt_path: str, args: List[str], check: bool = False) -> subprocess.Comple
     Run runtime command and return CompletedProcess.
     """
     cmd = [rt_path, *args]
-    return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=check)
 
 
 # ------------------------------ container helpers ------------------------------
 
 def container_exists(rt_path: str, name: str) -> bool:
-    # `inspect` returns non-zero rc when the container does not exist for docker/podman/nerdctl
-    cp = run(rt_path, ["inspect", name])
+    # IMPORTANT: plain `docker inspect <name>` can succeed for non-container objects
+    # (e.g. volumes/networks/images with the same name). Use container-scoped inspect.
+    cp = run(rt_path, ["container", "inspect", name])
     return cp.returncode == 0
 
 
@@ -87,21 +88,21 @@ def container_running(rt_path: str, name: str) -> Optional[bool]:
     Tries common templates across docker/podman/nerdctl.
     """
     # Try boolean Running flag
-    cp = run(rt_path, ["inspect", "-f", "{{.State.Running}}", name])
+    cp = run(rt_path, ["container", "inspect", "-f", "{{.State.Running}}", name])
     if cp.returncode == 0:
         out = (cp.stdout or "").strip().lower()
         if out in {"true", "false"}:
             return out == "true"
 
     # Fallback: status string
-    cp = run(rt_path, ["inspect", "-f", "{{.State.Status}}", name])
+    cp = run(rt_path, ["container", "inspect", "-f", "{{.State.Status}}", name])
     if cp.returncode == 0:
         out = (cp.stdout or "").strip().lower()
         if out:
             return out == "running"
 
     # Podman older templates sometimes use `.State` directly
-    cp = run(rt_path, ["inspect", "-f", "{{.State}}", name])
+    cp = run(rt_path, ["container", "inspect", "-f", "{{.State}}", name])
     if cp.returncode == 0:
         out = (cp.stdout or "").strip().lower()
         if out:
