@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
+from llama_suite.webui.utils.task_output import handle_task_output
 
 
 router = APIRouter(prefix="/api/system", tags=["system"])
@@ -81,10 +82,10 @@ async def run_update(request: UpdateRequest):
             cmd.extend(["--gpu-backend", kwargs["gpu_backend"]])
         
         async def on_output(line: str):
-            await ws_manager.send_log(task_id, line, "info")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="steps")
         
         async def on_error(line: str):
-            await ws_manager.send_log(task_id, line, "error")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="steps")
         
         await ws_manager.send_progress(task_id, 0, "Starting update...")
         
@@ -129,10 +130,10 @@ async def run_install(request: InstallRequest):
             cmd.extend(["--gpu-backend", kwargs["gpu_backend"]])
         
         async def on_output(line: str):
-            await ws_manager.send_log(task_id, line, "info")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="steps")
         
         async def on_error(line: str):
-            await ws_manager.send_log(task_id, line, "error")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="steps")
         
         await ws_manager.send_progress(task_id, 0, "Starting install...")
         
@@ -191,16 +192,20 @@ async def download_models(request: DownloadRequest):
             cmd.append("--include-drafts")
         
         if kwargs.get("include_tokenizers"):
-            cmd.append("--tokenizers")
+            cmd.append("--also-tokenizers")
+            cmd.extend(["--tokenizers-dir", str(root / "models" / "tokenizers")])
         
         if kwargs.get("force"):
             cmd.append("--force")
-        
+
+        # Prefer plain output in the Web UI (no rich progress bars/markup).
+        cmd.append("--plain")
+
         async def on_output(line: str):
-            await ws_manager.send_log(task_id, line, "info")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="steps")
         
         async def on_error(line: str):
-            await ws_manager.send_log(task_id, line, "error")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="steps")
         
         await ws_manager.send_progress(task_id, 0, "Starting model download...")
         

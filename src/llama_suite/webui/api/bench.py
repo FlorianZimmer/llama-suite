@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Optional
 import sys
-import re
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -11,6 +10,7 @@ from pydantic import BaseModel
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
+from llama_suite.webui.utils.task_output import handle_task_output
 
 
 router = APIRouter(prefix="/api/bench", tags=["benchmark"])
@@ -62,40 +62,27 @@ async def start_benchmark(request: BenchmarkRequest):
         if not venv_python.exists():
             venv_python = Path(sys.executable)
         
+        bench_script = root / "src" / "llama_suite" / "bench" / "benchmark-models.py"
         cmd = [
-            str(venv_python), "-u", "-m", "llama_suite.bench.benchmark-models",
-            "--base-config", str(root / "configs" / "config.base.yaml"),
+            str(venv_python), "-u", str(bench_script),
+            "--config", str(root / "configs" / "config.base.yaml"),
             "--question", question,
-            "--health-timeout", str(health_timeout)
+            "--health-timeout", str(health_timeout),
+            "--plain",
         ]
         
         if override:
             override_path = root / "configs" / "overrides" / f"{override}.yaml"
-            cmd.extend(["--override-config", str(override_path)])
+            cmd.extend(["--override", str(override_path)])
         
         if model:
             cmd.extend(["--model", model])
         
         async def on_output(line: str):
-            # Parse progress: Model (i/N): alias
-            m = re.search(r"Model \((\d+)/(\d+)\):", line)
-            if m:
-                current, total = int(m.group(1)), int(m.group(2))
-                pct = ((current - 1) / total) * 100
-                await ws_manager.send_progress(task_id, pct, f"Processing model {current}/{total}")
-            
-            # Simple progress heuristics for phases
-            if "Extracting static info" in line:
-                await ws_manager.send_progress(task_id, None, "Extracting info...")
-            elif "Scanning memory" in line:
-                await ws_manager.send_progress(task_id, None, "Scanning memory...")
-            elif "Starting server" in line:
-                 await ws_manager.send_progress(task_id, None, "Starting server...")
-
-            await ws_manager.send_log(task_id, line, "info")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="steps")
         
         async def on_error(line: str):
-            await ws_manager.send_log(task_id, line, "error")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="steps")
         
         await ws_manager.send_progress(task_id, 0, "Starting benchmark...")
         

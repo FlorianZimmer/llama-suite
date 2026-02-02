@@ -29,7 +29,8 @@ class ConnectionManager:
         if not self.active_connections:
             return
         
-        data = json.dumps(message)
+        # Use UTF-8 characters directly so the UI can display them (avoid \\uXXXX escapes).
+        data = json.dumps(message, ensure_ascii=False)
         async with self._lock:
             dead_connections = set()
             for connection in self.active_connections:

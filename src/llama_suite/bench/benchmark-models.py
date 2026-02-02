@@ -35,6 +35,10 @@ logger: Optional["Logger"] = None
 TEMP_DIR_MANAGER_PATH: Optional[Path] = None
 
 
+def _truthy_env(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
 def run_benchmark(
     processed_models_config: Dict[str, Any],
     output_csv_path: Path,
@@ -63,6 +67,8 @@ def run_benchmark(
     rows: List[List[str]] = []
 
     for i, (alias, model_cfg) in enumerate(models_to_iterate.items(), 1):
+        # Web UI progress hook (handled by llama_suite.webui.utils.task_output)
+        print(f"STEP {i}/{len(models_to_iterate)}: Benchmarking '{alias}'", flush=True)
         logger_instance.subheader(f"Model ({i}/{len(models_to_iterate)}): {alias}")
         ts = logger_instance._get_timestamp()
 
@@ -90,11 +96,16 @@ def run_benchmark(
             server_exe, server_args, ctx_size = util.build_server_command(
                 alias, model_cfg, static_port=STATIC_BENCHMARK_PORT, logger=logger_instance
             )
-            logger_instance.info(
-                f"  Model Details - Params: {Fore.CYAN}{param_size}{Style.RESET_ALL}, "
-                f"Quant: {Fore.CYAN}{quantization}{Style.RESET_ALL}, "
-                f"Context: {Fore.CYAN}{ctx_size}{Style.RESET_ALL}"
-            )
+            if getattr(logger_instance, "plain", False):
+                logger_instance.info(
+                    f"  Model Details - Params: {param_size}, Quant: {quantization}, Context: {ctx_size}"
+                )
+            else:
+                logger_instance.info(
+                    f"  Model Details - Params: {Fore.CYAN}{param_size}{Style.RESET_ALL}, "
+                    f"Quant: {Fore.CYAN}{quantization}{Style.RESET_ALL}, "
+                    f"Context: {Fore.CYAN}{ctx_size}{Style.RESET_ALL}"
+                )
         except Exception as e:
             err_msg = f"Cmd Prepare Error: {e}"
             logger_instance.error(f"  {err_msg}")
@@ -184,10 +195,15 @@ def run_benchmark(
                             tps = f"{(c / duration):.2f}" if duration > 1e-6 and c > 0 else "0.00"
                             bench_status = "Success"
                             logger_instance.success("  Benchmark completed.")
-                            logger_instance.info(
-                                f"    Duration {Fore.CYAN}{duration_s}s{Style.RESET_ALL}, "
-                                f"Tokens P/C/T: {p}/{c}/{total_t}, TPS {Fore.CYAN}{tps}{Style.RESET_ALL}"
-                            )
+                            if getattr(logger_instance, "plain", False):
+                                logger_instance.info(
+                                    f"    Duration {duration_s}s, Tokens P/C/T: {p}/{c}/{total_t}, TPS {tps}"
+                                )
+                            else:
+                                logger_instance.info(
+                                    f"    Duration {Fore.CYAN}{duration_s}s{Style.RESET_ALL}, "
+                                    f"Tokens P/C/T: {p}/{c}/{total_t}, TPS {Fore.CYAN}{tps}{Style.RESET_ALL}"
+                                )
                         except Exception as e:
                             bench_status = "API Response Error"
                             em = f"JSON parse error: {e}"
@@ -247,14 +263,19 @@ def main():
     p.add_argument("--health-timeout", type=int, default=DEFAULT_HEALTH_TIMEOUT_S_BENCH)
     p.add_argument("-m", "--model", type=str)
     p.add_argument("-v", "--verbose", action="store_true")
+    plain_default = _truthy_env(os.getenv("LLAMA_SUITE_PLAIN", ""))
+    p.add_argument("--plain", dest="plain", action="store_true", default=plain_default, help="Plain output (no colors/timestamps).")
+    p.add_argument("--no-plain", dest="plain", action="store_false", help="Disable plain output.")
     args = p.parse_args()
+    if args.plain:
+        os.environ["LLAMA_SUITE_PLAIN"] = "1"
 
     util.LOGS_DIR.mkdir(parents=True, exist_ok=True)
     util.RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     ts = util.timestamp_str()
     main_log = util.LOGS_DIR / f"benchmark_{ts}.log"
-    logger = Logger(verbose=args.verbose, log_file_path=main_log)
+    logger = Logger(verbose=args.verbose, log_file_path=main_log, plain=args.plain)
     logger.header("LLM BENCHMARKER INITIALIZATION")
     logger.info(f"Log file: {main_log}")
 

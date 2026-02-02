@@ -69,8 +69,13 @@ except Exception as _e:
         "Make sure you run this as a module (python -m ...) and that your project is installed/loaded properly."
     ) from _e
 
+# If True, produce plain, UI-friendly output (no ANSI colors / no fancy punctuation).
+PLAIN = False
+
 # colour() wrapper with a stable signature: (msg: str, _c: Any | None = None) -> str
 def colour(msg: str, _c: Any = None) -> str:
+    if PLAIN:
+        return msg
     try:
         # Support both colour_util(msg) and colour_util(msg, ansi_color) styles
         if _c is None:
@@ -82,11 +87,36 @@ def colour(msg: str, _c: Any = None) -> str:
     except Exception:
         return msg
 
+def emit_step(i: int, n: int, message: str) -> None:
+    # ASCII-only, stable format (parsed by Web UI for progress).
+    print(f"STEP {i}/{n}: {message}", flush=True)
+
+
+def log_info(msg: str, color: Any = Fore.BLUE) -> None:
+    if PLAIN:
+        print(f"INFO: {msg}", flush=True)
+    else:
+        print(colour(msg, color))
+
+
+def log_warn(msg: str, color: Any = Fore.YELLOW) -> None:
+    if PLAIN:
+        print(f"WARN: {msg}", flush=True)
+    else:
+        print(colour(msg, color))
+
+
+def log_error(msg: str, color: Any = Fore.RED) -> None:
+    if PLAIN:
+        print(f"ERROR: {msg}", file=sys.stderr, flush=True)
+    else:
+        print(colour(msg, color))
+
 # Initialize Colorama (non-fatal if unavailable)
 try:
     colorama_init(autoreset=True)
 except Exception:
-    print("Warning: colorama init failed or not installed. Proceeding without colors.")
+    print("WARN: colorama init failed or not installed. Proceeding without colors.", file=sys.stderr, flush=True)
 
 # --- Constants ----------------------------------------------------------------
 
@@ -234,10 +264,10 @@ def _resolve_model_path(val: Any, repo_root: Path, processed_top: Dict[str, Any]
             pass
 
     if verbose:
-        print(colour(
-            "[WARN] Model file not found; leaving best-effort path. Tried:\n  - " + "\n  - ".join(tried),
-            Fore.YELLOW
-        ))
+        log_warn(
+            "Model file not found; leaving best-effort path. Tried:\n  - " + "\n  - ".join(tried),
+            Fore.YELLOW,
+        )
 
     # 4) Best effort fallback
     return str(cand)
@@ -489,9 +519,9 @@ def prune_logs(log_dir: Path, keep: int = DEFAULT_LOGS_TO_KEEP) -> None:
             try:
                 old.unlink()
             except OSError as exc:
-                print(colour(f"[WARN] Could not delete log {old.name}: {exc}", Fore.YELLOW))
+                log_warn(f"Could not delete log {old.name}: {exc}", Fore.YELLOW)
     except OSError as exc:
-        print(colour(f"[WARN] Could not access or create log directory {log_dir}: {exc}", Fore.YELLOW))
+        log_warn(f"Could not access or create log directory {log_dir}: {exc}", Fore.YELLOW)
 
 # --- Runner -------------------------------------------------------------------
 
@@ -564,7 +594,7 @@ def _kill_llama_servers(*, ports: List[int], mode: str, verbose: bool) -> int:
         return 0
     if psutil is None:
         if verbose and mode != "none":
-            print(colour("[WARN] psutil not available; cannot clean up orphaned llama-server processes.", Fore.YELLOW))
+            log_warn("psutil not available; cannot clean up orphaned llama-server processes.", Fore.YELLOW)
         return 0
 
     ports_set = set(ports or [])
@@ -601,7 +631,7 @@ def _kill_llama_servers(*, ports: List[int], mode: str, verbose: bool) -> int:
             p = psutil.Process(pid)
             if verbose:
                 why = "all" if mode == "all" else f"ports={sorted(ports_set)}"
-                print(colour(f"[cleanup] Terminating llama-server PID {pid} ({why})", Fore.CYAN))
+                log_info(f"cleanup: terminating llama-server PID {pid} ({why})", Fore.CYAN)
             p.terminate()
             try:
                 p.wait(timeout=PROCESS_TERMINATE_TIMEOUT_SECONDS / 2.0)
@@ -636,7 +666,7 @@ class LlamaRunner:
     def start(self) -> None:
         if self.child_process and self.child_process.poll() is None:
             if self.verbose:
-                print(colour("llama-swap process already running.", Fore.YELLOW))
+                log_warn("llama-swap process already running.", Fore.YELLOW)
             return
 
         cmd = [
@@ -654,7 +684,7 @@ class LlamaRunner:
         try:
             self.log_file_handle = log_file_path.open("w", encoding="utf-8")
             if self.verbose:
-                print(colour(f"Starting llama-swap. Logging to: {log_file_path}", Fore.GREEN))
+                log_info(f"Starting llama-swap. Logging to: {log_file_path}", Fore.GREEN)
 
             # Use PIPE for stdout to capture and forward to both file and stdout
             kwargs = {
@@ -693,12 +723,12 @@ class LlamaRunner:
             t.start()
 
         except OSError as e:
-            print(colour(f"Error starting llama-swap process: {e}", Fore.RED))
+            log_error(f"Error starting llama-swap process: {e}", Fore.RED)
             if self.log_file_handle:
                 self.log_file_handle.close()
                 self.log_file_handle = None
         except Exception as e:
-            print(colour(f"Unexpected error starting llama-swap: {e}", Fore.RED))
+            log_error(f"Unexpected error starting llama-swap: {e}", Fore.RED)
             if self.log_file_handle:
                 self.log_file_handle.close()
                 self.log_file_handle = None
@@ -706,12 +736,12 @@ class LlamaRunner:
     def stop(self) -> None:
         managed_ports = _collect_llama_server_ports_from_config(self.config_path)
         if self.verbose and managed_ports:
-            print(colour(f"[info] Managed llama-server ports from config: {managed_ports}", Fore.BLUE))
+            log_info(f"Managed llama-server ports from config: {managed_ports}", Fore.BLUE)
 
         if self.child_process and self.child_process.poll() is None:
             pid = self.child_process.pid
             if self.verbose:
-                print(colour(f"Stopping llama-swap process tree (root PID {pid})...", Fore.CYAN))
+                log_info(f"Stopping llama-swap process tree (root PID {pid})...", Fore.CYAN)
             try:
                 if sys.platform.startswith("win"):
                     subprocess.run(
@@ -726,7 +756,7 @@ class LlamaRunner:
                             parent = psutil.Process(pid)
                             children = parent.children(recursive=True)
                             if children and self.verbose:
-                                print(colour(f"[cleanup] Found {len(children)} descendant process(es) of llama-swap.", Fore.CYAN))
+                                log_info(f"cleanup: found {len(children)} descendant process(es) of llama-swap.", Fore.CYAN)
                             for ch in children:
                                 try:
                                     ch.terminate()
@@ -759,9 +789,9 @@ class LlamaRunner:
                         except subprocess.TimeoutExpired:
                             self.child_process.kill()
                 if self.verbose:
-                    print(colour("llama-swap process tree stopped.", Fore.GREEN))
+                    log_info("llama-swap process tree stopped.", Fore.GREEN)
             except Exception as e_term:
-                print(colour(f"Error stopping llama-swap: {e_term}", Fore.YELLOW))
+                log_warn(f"Error stopping llama-swap: {e_term}", Fore.YELLOW)
             finally:
                 self.child_process = None
 
@@ -769,10 +799,10 @@ class LlamaRunner:
         try:
             killed = _kill_llama_servers(ports=managed_ports, mode=self.kill_llama_servers, verbose=self.verbose)
             if self.verbose and killed:
-                print(colour(f"[cleanup] Killed {killed} orphaned llama-server process(es).", Fore.GREEN))
+                log_info(f"cleanup: killed {killed} orphaned llama-server process(es).", Fore.GREEN)
         except Exception as e_cleanup:
             if self.verbose:
-                print(colour(f"[WARN] Orphan llama-server cleanup failed: {e_cleanup}", Fore.YELLOW))
+                log_warn(f"Orphan llama-server cleanup failed: {e_cleanup}", Fore.YELLOW)
 
         if self.log_file_handle:
             try:
@@ -787,18 +817,18 @@ class LlamaRunner:
             now = time.time()
             if now - self._last_restart_ts < self._restart_min_interval_s:
                 if self.verbose:
-                    print(colour("Restart debounced (too soon after previous).", Fore.YELLOW))
+                    log_warn("Restart debounced (too soon after previous).", Fore.YELLOW)
                 return
             self._last_restart_ts = now
 
             if self.verbose:
-                print(colour("Restarting llama-swap process...", Fore.YELLOW))
+                log_warn("Restarting llama-swap process...", Fore.YELLOW)
             self.stop()
             time.sleep(0.5)
             self.start()
 
     def shutdown_handler(self, signum, _frame) -> None:
-        print(colour(f"\nSignal {signal.Signals(signum).name} received. Shutting down...", Fore.YELLOW))
+        log_warn(f"Signal {signal.Signals(signum).name} received. Shutting down...", Fore.YELLOW)
         self.stop()
         sys.exit(0)
 
@@ -848,7 +878,7 @@ def process_and_write_effective_config(
             verbose_logging=verbose,
         )
     except Exception as e:
-        print(colour(f"Error processing configuration: {e}", Fore.RED))
+        log_error(f"Error processing configuration: {e}", Fore.RED)
         raise RuntimeError(f"Configuration processing failed: {e}") from e
 
     output: Dict[str, Any] = {"models": {}}
@@ -860,19 +890,19 @@ def process_and_write_effective_config(
 
     if verbose:
         if only_specs:
-            print(colour(f"only_models filter applied: {only_specs}", Fore.MAGENTA))
+            log_info(f"only_models filter applied: {only_specs}", Fore.MAGENTA)
         if exclude_specs:
-            print(colour(f"exclude_models filter applied: {exclude_specs}", Fore.MAGENTA))
+            log_info(f"exclude_models filter applied: {exclude_specs}", Fore.MAGENTA)
         dropped = sorted(set(all_model_names) - set(selected_names))
         if dropped:
-            print(colour(f"Excluded by filters: {dropped}", Fore.MAGENTA))
+            log_info(f"Excluded by filters: {dropped}", Fore.MAGENTA)
 
     for name in selected_names:
         mcfg: Dict[str, Any] = models.get(name, {}) or {}
         if str(mcfg.get("enabled", "true")).lower() in {"false", "0", "no"} \
            or bool(mcfg.get("skip")) or bool(mcfg.get("_skip")) or bool(mcfg.get("disabled")):
             if verbose:
-                print(colour(f"Model '{name}' skipped due to disable flag.", Fore.MAGENTA))
+                log_info(f"Model '{name}' skipped due to disable flag.", Fore.MAGENTA)
             continue
 
         entry: Dict[str, Any] = {}
@@ -883,7 +913,7 @@ def process_and_write_effective_config(
             final_cmd_str = _sanitize_cmd_string(prebuilt, repo_root)
             entry["cmd"] = final_cmd_str
             if verbose:
-                print(colour(f"Model '{name}' (prebuilt) cmd: {final_cmd_str}", Fore.MAGENTA))
+                log_info(f"Model '{name}' (prebuilt) cmd: {final_cmd_str}", Fore.MAGENTA)
         else:
             # --- Build strictly from cmd.{...} + selected top-level flags ---
             server_args: List[str] = []
@@ -892,14 +922,14 @@ def process_and_write_effective_config(
             if not isinstance(cmd_dict, dict):
                 cmd_dict = {}
                 if verbose:
-                    print(colour(f"Model '{name}' has non-dict or missing 'cmd'. Value: {mcfg.get('cmd')}", Fore.MAGENTA))
+                    log_info(f"Model '{name}' has non-dict or missing 'cmd'. Value: {mcfg.get('cmd')}", Fore.MAGENTA)
 
             server_bin = cmd_dict.get("bin")
             if not server_bin or not isinstance(server_bin, str):
-                print(colour(
-                    f"Error: Model '{name}' - missing/invalid 'cmd.bin' (llama-server path). Skipping command build.",
-                    Fore.RED
-                ))
+                log_error(
+                    f"Model '{name}': missing/invalid 'cmd.bin' (llama-server path). Skipping command build.",
+                    Fore.RED,
+                )
             else:
                 # 1) binary
                 server_args.append(_fix_llama_server_token(_reanchor_configs_path(str(server_bin), repo_root), repo_root).split()[0])
@@ -942,7 +972,7 @@ def process_and_write_effective_config(
                 final_cmd_str = _sanitize_cmd_string(final_cmd_str, repo_root)
                 entry["cmd"] = final_cmd_str
                 if verbose:
-                    print(colour(f"Model '{name}' effective cmd: {final_cmd_str}", Fore.MAGENTA))
+                    log_info(f"Model '{name}' effective cmd: {final_cmd_str}", Fore.MAGENTA)
 
         # Copy non-meta props (don’t re-add cmd/generated strings)
         for k, v in mcfg.items():
@@ -952,7 +982,7 @@ def process_and_write_effective_config(
         output["models"][name] = entry
 
     if not output["models"]:
-        print(colour("[WARN] No models remain after include/exclude/disable rules.", Fore.YELLOW))
+        log_warn("No models remain after include/exclude/disable rules.", Fore.YELLOW)
 
     # Copy other top-level keys
     for k, v in processed.items():
@@ -963,9 +993,9 @@ def process_and_write_effective_config(
     try:
         yaml_text = yaml.dump(output, sort_keys=False, allow_unicode=True, width=120)
         effective_path.write_text(yaml_text, encoding="utf-8")
-        print(colour(f"Wrote effective configuration for llama-swap: {effective_path}", Fore.GREEN))
+        log_info(f"Wrote effective configuration for llama-swap: {effective_path}", Fore.GREEN)
     except Exception as e:
-        print(colour(f"Error writing effective configuration file {effective_path}: {e}", Fore.RED))
+        log_error(f"Error writing effective configuration file {effective_path}: {e}", Fore.RED)
         raise RuntimeError(f"Failed to write effective configuration: {e}") from e
 
     return effective_path
@@ -1016,7 +1046,7 @@ class BaseConfigChangeHandler(FileSystemEventHandler):
         self._last_change_ts = now
 
         if self.verbose:
-            print(colour(f"Configuration changed ({Path(event.src_path).name}). Rebuilding & restarting...", Fore.YELLOW))
+            log_warn(f"Configuration changed ({Path(event.src_path).name}). Rebuilding & restarting...", Fore.YELLOW)
         try:
             new_effective = process_and_write_effective_config(
                 self.base_path,
@@ -1027,8 +1057,8 @@ class BaseConfigChangeHandler(FileSystemEventHandler):
             self.runner.config_path = new_effective
             self.runner.restart()
         except Exception as e:
-            print(colour(f"Error during automatic re-configuration: {e}", Fore.RED))
-            print(colour("llama-swap may continue with the old configuration if running.", Fore.YELLOW))
+            log_error(f"Error during automatic re-configuration: {e}", Fore.RED)
+            log_warn("llama-swap may continue with the old configuration if running.", Fore.YELLOW)
             if self.verbose:
                 import traceback
                 traceback.print_exc()
@@ -1050,6 +1080,8 @@ def main() -> None:
     parser.add_argument("--exe", type=Path, help="Path to the llama-swap executable.")
     parser.add_argument("--listen", default=":8080", help="Listen address for llama-swap.")
     parser.add_argument("-o", "--override", type=Path, help="Override YAML file path.")
+    parser.add_argument("--dry-run", action="store_true", help="Build effective config and exit without starting llama-swap.")
+    parser.add_argument("--plain", action="store_true", help="Plain output for Web UI logs (no ANSI colors).")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
     parser.add_argument(
         "--kill-llama-servers",
@@ -1060,20 +1092,29 @@ def main() -> None:
 
     cli = parser.parse_args()
 
+    global PLAIN
+    PLAIN = bool(cli.plain)
+
+    step_n = 3
+    if PLAIN:
+        emit_step(1, step_n, "Validate configuration")
+
     repo_root = find_repo_root(cli.root)
     base_cfg = cli.config.resolve() if cli.config else default_base_config(repo_root)
     if not base_cfg.is_file():
-        print(colour(f"Base configuration file not found: {base_cfg}", Fore.RED))
+        log_error(f"Base configuration file not found: {base_cfg}", Fore.RED)
         sys.exit(1)
 
     try:
         exe_path = find_llama_swap_executable(cli.exe, repo_root)
-        print(colour(f"Using llama-swap executable: {exe_path}", Fore.BLUE))
+        log_info(f"Using llama-swap executable: {exe_path}", Fore.BLUE)
     except FileNotFoundError as e:
-        print(colour(str(e), Fore.RED))
+        log_error(str(e), Fore.RED)
         sys.exit(1)
 
     try:
+        if PLAIN:
+            emit_step(2, step_n, "Generate effective configuration")
         effective_config = process_and_write_effective_config(
             base_cfg,
             cli.override,
@@ -1085,6 +1126,10 @@ def main() -> None:
             import traceback
             traceback.print_exc()
         sys.exit(1)
+
+    if cli.dry_run:
+        log_info("Dry run complete; effective config generated. Not starting llama-swap.", Fore.GREEN)
+        return
 
     runner = LlamaRunner(
         exe_path=exe_path,
@@ -1101,6 +1146,9 @@ def main() -> None:
     except Exception:
         pass
 
+    if PLAIN:
+        emit_step(3, step_n, "Start llama-swap and file watcher")
+
     runner.start()
 
     observer = Observer()
@@ -1114,14 +1162,14 @@ def main() -> None:
             if override_dir != watch_dir:
                 observer.schedule(handler, override_dir, recursive=False)
         observer.start()
-        print(colour(
+        log_info(
             f"Watching for changes in: {watch_dir}"
             + (f" and {Path(cli.override).parent}" if cli.override else ""),
-            Fore.BLUE
-        ))
+            Fore.BLUE,
+        )
     except Exception as e:
-        print(colour(f"Failed to start file watcher: {e}", Fore.RED))
-        print(colour("Proceeding without automatic config reload on change.", Fore.YELLOW))
+        log_error(f"Failed to start file watcher: {e}", Fore.RED)
+        log_warn("Proceeding without automatic config reload on change.", Fore.YELLOW)
 
     try:
         try:
@@ -1130,27 +1178,27 @@ def main() -> None:
                 port_str = "8080"
         except Exception:
             port_str = "8080"
-        print(colour(f"llama-swap setup complete. If using Open WebUI, try: http://localhost:{port_str}/v1", Fore.GREEN))
+        log_info(f"llama-swap setup complete. If using Open WebUI, try: http://localhost:{port_str}/v1", Fore.GREEN)
 
         while True:
             time.sleep(1)
             if runner.child_process and runner.child_process.poll() is not None:
                 exit_code = runner.child_process.returncode
-                print(colour(f"llama-swap process exited unexpectedly (code {exit_code}). Restarting...", Fore.YELLOW))
+                log_warn(f"llama-swap process exited unexpectedly (code {exit_code}). Restarting...", Fore.YELLOW)
                 runner.restart()
     except KeyboardInterrupt:
         if cli.verbose:
-            print(colour("\nKeyboardInterrupt received in main loop.", Fore.YELLOW))
+            log_warn("KeyboardInterrupt received in main loop.", Fore.YELLOW)
     finally:
-        print(colour("\nShutting down watcher and llama-swap...", Fore.BLUE))
+        log_info("Shutting down watcher and llama-swap...", Fore.BLUE)
         try:
             if observer.is_alive():
                 observer.stop()
                 observer.join(timeout=2)
         except Exception as e_obs:
-            print(colour(f"Error stopping file observer: {e_obs}", Fore.YELLOW))
+            log_warn(f"Error stopping file observer: {e_obs}", Fore.YELLOW)
         runner.stop()
-        print(colour("Shutdown complete.", Fore.BLUE))
+        log_info("Shutdown complete.", Fore.BLUE)
 
 if __name__ == "__main__":
     main()

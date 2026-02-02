@@ -190,6 +190,9 @@ from typing import Mapping
 def _truthy_str(s: str) -> bool:
     return s.strip().lower() in {"1", "true", "yes", "y", "on"}
 
+def _truthy_env(name: str) -> bool:
+    return _truthy_str(os.getenv(name, ""))
+
 def _is_model_disabled(mcfg: Mapping[str, Any]) -> bool:
     """Return True if a model config indicates it should be skipped/disabled."""
     try:
@@ -574,6 +577,8 @@ def run_evaluation(
     is_humaneval_like_task_run = any(t in {"humaneval", "mbpp", "multipleefix", "multipl<x_bin_482>"} for t in tasks_list)
 
     for model_idx, (model_alias, model_data) in enumerate(models_to_iterate.items()):
+        # Web UI progress hook (handled by llama_suite.webui.utils.task_output)
+        print(f"STEP {model_idx + 1}/{len(models_to_iterate)}: Evaluating '{model_alias}'", flush=True)
         logger_instance.subheader(f"Processing Model ({model_idx + 1}/{len(models_to_iterate)}): {model_alias}")
         current_model_output_json_path = results_output_dir / f"{model_alias}_results.json"
         timestamp_str_local = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -886,6 +891,9 @@ def main_eval():
     parser.add_argument("--health-timeout", type=int, default=DEFAULT_HEALTH_TIMEOUT_S_EVAL,
                         help="Server health check timeout (s).")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose/debug output.")
+    parser.add_argument("--plain", dest="plain", action="store_true", default=_truthy_env("LLAMA_SUITE_PLAIN"),
+                        help="Plain output (no colors/timestamps), intended for Web UI logs.")
+    parser.add_argument("--no-plain", dest="plain", action="store_false", help="Disable plain output.")
 
     parser.add_argument(
         "--qwen3-no-prefix-tasks", type=str, default=DEFAULT_QWEN3_NO_PREFIX_TASKS_STR_CLI,
@@ -897,6 +905,8 @@ def main_eval():
     )
 
     args = parser.parse_args()
+    if args.plain:
+        os.environ["LLAMA_SUITE_PLAIN"] = "1"
 
     # Normalize to Paths safely
     base_config_path = Path(args.config).resolve()
@@ -904,7 +914,7 @@ def main_eval():
     runs_eval_parent = Path(args.output_dir).resolve()  # parent of logs/ and results/
 
     # Initialize logger (non-optional alias for Pylance)
-    logger = Logger(verbose=args.verbose)
+    logger = Logger(verbose=args.verbose, plain=args.plain)
     log = logger  # local alias with non-optional type
 
     # Configure lm-eval logging
@@ -912,7 +922,7 @@ def main_eval():
     lm_eval_root_logger = std_logging.getLogger("lm_eval")
     lm_eval_root_logger.setLevel(std_logging.DEBUG if args.verbose else std_logging.INFO)
     if not lm_eval_root_logger.hasHandlers():
-        stream_handler_eval = std_logging.StreamHandler(sys.stderr)
+        stream_handler_eval = std_logging.StreamHandler(sys.stdout if args.plain else sys.stderr)
         formatter_eval = std_logging.Formatter('%(name)s - %(levelname)s - %(message)s')
         stream_handler_eval.setFormatter(formatter_eval)
         lm_eval_root_logger.addHandler(stream_handler_eval)

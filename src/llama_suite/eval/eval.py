@@ -41,6 +41,21 @@ except Exception:  # pragma: no cover
 
 # ------------------------------- Utilities ---------------------------------- #
 
+def _truthy_env(name: str) -> bool:
+    return (os.getenv(name, "")).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _log_info(msg: str) -> None:
+    print(f"INFO: {msg}", flush=True)
+
+
+def _log_warn(msg: str) -> None:
+    print(f"WARN: {msg}", flush=True)
+
+
+def _log_error(msg: str) -> None:
+    print(f"ERROR: {msg}", file=sys.stderr, flush=True)
+
 def _repo_root_from_this_file() -> Path:
     """Infer <repo root> assuming this file is at src/llama_suite/eval/eval.py. Fallback to CWD."""
     try:
@@ -517,6 +532,7 @@ class RunConfig:
     judge_client: Optional[ClientConfig] = None
     llama_guard: bool = True
     kill_llama_on_exit: bool = True
+    plain: bool = False
 
 def load_models_from_swap_config(path: Path,
                                  include_aliases: bool,
@@ -635,7 +651,7 @@ class Benchmark:
             try:
                 guard_llama_singleton(keep=1)
             except Exception as e:
-                print(f"[warn] llama guard (pre) failed: {e}")
+                _log_warn(f"llama guard (pre) failed: {e}")
 
         self._maybe_swap(spec)
 
@@ -678,7 +694,7 @@ class Benchmark:
                            unit="task",
                            dynamic_ncols=True,
                            leave=True,
-                           mininterval=0.1) if tqdm else None
+                           mininterval=0.1) if (tqdm and not self.cfg.plain) else None
                 try:
                     for fut in asyncio.as_completed(ask_tasks):
                         try:
@@ -686,7 +702,7 @@ class Benchmark:
                             results.append(r)
                         except Exception as e:
                             tid = getattr(fut, "get_name", lambda: "?")()
-                            print(f"[warn] {spec.name} [{tid}] failed: {e}")
+                            _log_warn(f"{spec.name} [{tid}] failed: {e}")
                         finally:
                             if bar:
                                 bar.update(1)  # type: ignore
@@ -777,6 +793,9 @@ class Benchmark:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Custom LLM Benchmark for local llama.cpp + llama-swap")
     p.add_argument("--data", type=Path, required=True)
+    p.add_argument("--plain", dest="plain", action="store_true", default=_truthy_env("LLAMA_SUITE_PLAIN"),
+                   help="Plain output (no tqdm progress bars), intended for Web UI logs.")
+    p.add_argument("--no-plain", dest="plain", action="store_false", help="Disable plain output.")
 
     # New: explicit dirs; legacy --out-dir acts as a base
     p.add_argument("--logs-dir", type=Path, default=None,
@@ -858,13 +877,13 @@ def _default_dirs(args: argparse.Namespace) -> tuple[Path, Path]:
 
 async def run_all(bench: Benchmark, run_cfg: RunConfig, tasks: List[Task]) -> Dict[str, Dict]:
     summaries: Dict[str, Dict] = {}
-    for spec in run_cfg.models:
+    for i, spec in enumerate(run_cfg.models, 1):
+        label = spec.display_name or spec.name
+        print(f"STEP {i}/{len(run_cfg.models)}: Evaluating '{label}'", flush=True)
         try:
             await bench.run_for_model(spec, tasks)
         except Exception as e:
-            print(f"[warn] Model {spec.name} failed: {e}")
-
-        label = spec.display_name or spec.name
+            _log_warn(f"Model {spec.name} failed: {e}")
         summ_path = run_cfg.logs_dir / f"summary_{sanitize(label)}.json"
 
         if summ_path.exists():
@@ -872,20 +891,22 @@ async def run_all(bench: Benchmark, run_cfg: RunConfig, tasks: List[Task]) -> Di
                 with summ_path.open("r", encoding="utf-8") as f:
                     summaries[label] = json.load(f)
             except Exception as e:
-                print(f"[warn] Could not read summary for {label}: {e}")
+                _log_warn(f"Could not read summary for {label}: {e}")
         else:
-            print(f"[warn] No summary file for {label}; skipping.")
+            _log_warn(f"No summary file for {label}; skipping.")
     return summaries
 
 def main() -> None:
     args = parse_args()
+    if args.plain:
+        os.environ["LLAMA_SUITE_PLAIN"] = "1"
 
     data_path = resolve_data_path(args.data)
 
     # Resolve swap config
     swap_cfg_path = resolve_swap_config_path(args.swap_config)
     if args.swap_config and Path(args.swap_config) != swap_cfg_path:
-        print(f"[info] Using swap config at: {swap_cfg_path}")
+        _log_info(f"Using swap config at: {swap_cfg_path}")
 
     logs_dir, results_dir = _default_dirs(args)
     ensure_dir(logs_dir); ensure_dir(results_dir)
@@ -907,7 +928,7 @@ def main() -> None:
         ModelSpec(name=m, display_name=None, pre_switch_cmd=(args.swap_cmd or None))
         for m in selected
     ]
-    print(f"[info] Selected {len(models)} models: {', '.join([m.name for m in models])}")
+    _log_info(f"Selected {len(models)} models: {', '.join([m.name for m in models])}")
 
     client_cfg = ClientConfig(
         endpoint=args.endpoint,
@@ -933,13 +954,14 @@ def main() -> None:
         judge_client=None,
         llama_guard=args.llama_guard,
         kill_llama_on_exit=args.kill_llama_on_exit,
+        plain=args.plain,
     )
 
     bench = Benchmark(run_cfg)
 
     def _cleanup() -> None:
         if run_cfg.kill_llama_on_exit:
-            print("[info] Cleaning up llama-server processes…")
+            _log_info("Cleaning up llama-server processes...")
             kill_all_llama_servers()
 
     atexit.register(_cleanup)
@@ -997,12 +1019,12 @@ def main() -> None:
                 metric=args.summary_metric,
             )
         except Exception as e:
-            print(f"[warn] Plotting failed (non-fatal): {e}")
+            _log_warn(f"Plotting failed (non-fatal): {e}")
     else:
-        print("[info] Plotting skipped (graph module not found).")
+        _log_info("Plotting skipped (graph module not found).")
 
-    print(f"[done] Logs:    {run_cfg.logs_dir.resolve()}")
-    print(f"[done] Results: {run_cfg.results_dir.resolve()}")
+    _log_info(f"Logs:    {run_cfg.logs_dir.resolve()}")
+    _log_info(f"Results: {run_cfg.results_dir.resolve()}")
 
 if __name__ == "__main__":
     main()

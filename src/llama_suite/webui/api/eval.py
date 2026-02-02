@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
+from llama_suite.webui.utils.task_output import handle_task_output
 
 
 
@@ -21,6 +22,31 @@ def strip_ansi(text: str) -> str:
     """Remove ANSI escape sequences from text."""
     ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     return ansi_escape.sub('', text)
+
+_TQDM_PCT_RE = re.compile(r"(\d+)%\|")
+_TQDM_COUNT_RE = re.compile(r"\|\s*(\d+)/(\d+)")
+
+
+async def _maybe_update_tqdm_progress(task_id: str, clean_line: str) -> bool:
+    m = _TQDM_PCT_RE.search(clean_line)
+    if not m:
+        return False
+
+    try:
+        pct = int(m.group(1))
+    except Exception:
+        return False
+
+    msg = "Running evaluation..."
+    if "REQUESTING API" in clean_line.upper():
+        msg = "Requesting API..."
+
+    m3 = _TQDM_COUNT_RE.search(clean_line)
+    if m3:
+        msg = f"Evaluating samples ({m3.group(1)}/{m3.group(2)})..."
+
+    await ws_manager.send_progress(task_id, pct, msg)
+    return True
 
 def get_project_root() -> Path:
     """Get the project root directory."""
@@ -87,7 +113,8 @@ async def start_eval_harness(request: EvalHarnessRequest):
             "--config", str(root / "configs" / "config.base.yaml"),
             "--tasks", kwargs["tasks"],
             "--batch-size", kwargs["batch_size"],
-            "--health-timeout", str(kwargs["health_timeout"])
+            "--health-timeout", str(kwargs["health_timeout"]),
+            "--plain",
         ]
         
         if kwargs.get("override"):
@@ -105,45 +132,15 @@ async def start_eval_harness(request: EvalHarnessRequest):
         
         async def on_output(line: str):
             clean_line = strip_ansi(line)
-            # Parse progress: Processing Model (i/N)
-            m = re.search(r"Processing Model.*?\((\d+)/(\d+)\)", clean_line)
-            if m:
-                current, total = int(m.group(1)), int(m.group(2))
-                pct = ((current - 1) / total) * 100
-                await ws_manager.send_progress(task_id, pct, f"Processing model {current}/{total}")
-            
-            # Tqdm percentage (sometimes in stdout)
-            m2 = re.search(r"(\d+)%\|", clean_line)
-            if m2:
-                pct = int(m2.group(1))
-                msg = "Running evaluation..."
-                if "Requesting API" in clean_line:
-                     msg = "Requesting API..."
-
-                m3 = re.search(r"\|\s*(\d+)/(\d+)", clean_line)
-                if m3:
-                    current_sample, total_sample = m3.group(1), m3.group(2)
-                    msg = f"Evaluating samples ({current_sample}/{total_sample})..."
-                
-                await ws_manager.send_progress(task_id, pct, msg)
-
-            await ws_manager.send_log(task_id, line, "info")
+            if await _maybe_update_tqdm_progress(task_id, clean_line):
+                return
+            await handle_task_output(ws_manager, task_id, clean_line, is_stderr=False, progress_style="steps")
         
         async def on_error(line: str):
             clean_line = strip_ansi(line)
-            # Parse progress: Tqdm percentage (often in stderr)
-            m2 = re.search(r"(\d+)%\|", clean_line)
-            if m2:
-                pct = int(m2.group(1))
-                msg = "Running evaluation..."
-                # Try to find specific sample count (e.g. 5/10)
-                m3 = re.search(r"\|\s*(\d+)/(\d+)", clean_line)
-                if m3:
-                    current_sample, total_sample = m3.group(1), m3.group(2)
-                    msg = f"Evaluating samples ({current_sample}/{total_sample})..."
-                await ws_manager.send_progress(task_id, pct, msg)
-            
-            await ws_manager.send_log(task_id, line, "error")
+            if await _maybe_update_tqdm_progress(task_id, clean_line):
+                return
+            await handle_task_output(ws_manager, task_id, clean_line, is_stderr=True, progress_style="steps")
         
         await ws_manager.send_progress(task_id, 0, "Starting eval-harness...")
         
@@ -193,7 +190,8 @@ async def start_custom_eval(request: CustomEvalRequest):
         cmd = [
             str(venv_python), "-u", "-m", "llama_suite.eval.eval",
             "--swap-config", str(root / "configs" / "config.base.yaml"),
-            "--data", dataset
+            "--data", dataset,
+            "--plain",
         ]
         
         if kwargs.get("override"):
@@ -217,39 +215,15 @@ async def start_custom_eval(request: CustomEvalRequest):
         
         async def on_output(line: str):
             clean_line = strip_ansi(line)
-            # Parse progress: Processing Model (i/N)
-            m = re.search(r"Processing Model.*?\((\d+)/(\d+)\)", clean_line)
-            if m:
-                current, total = int(m.group(1)), int(m.group(2))
-                pct = ((current - 1) / total) * 100
-                await ws_manager.send_progress(task_id, pct, f"Processing model {current}/{total}")
-
-            m2 = re.search(r"(\d+)%\|", clean_line)
-            if m2:
-                pct = int(m2.group(1))
-                msg = "Running evaluation..."
-                m3 = re.search(r"\|\s*(\d+)/(\d+)", clean_line)
-                if m3:
-                    current_sample, total_sample = m3.group(1), m3.group(2)
-                    msg = f"Evaluating samples ({current_sample}/{total_sample})..."
-                await ws_manager.send_progress(task_id, pct, msg)
-
-            await ws_manager.send_log(task_id, line, "info")
+            if await _maybe_update_tqdm_progress(task_id, clean_line):
+                return
+            await handle_task_output(ws_manager, task_id, clean_line, is_stderr=False, progress_style="steps")
         
         async def on_error(line: str):
             clean_line = strip_ansi(line)
-            # Parse progress: Tqdm percentage (often in stderr)
-            m2 = re.search(r"(\d+)%\|", clean_line)
-            if m2:
-                pct = int(m2.group(1))
-                msg = "Running evaluation..."
-                m3 = re.search(r"\|\s*(\d+)/(\d+)", clean_line)
-                if m3:
-                    current_sample, total_sample = m3.group(1), m3.group(2)
-                    msg = f"Evaluating samples ({current_sample}/{total_sample})..."
-                await ws_manager.send_progress(task_id, pct, msg)
-
-            await ws_manager.send_log(task_id, line, "error")
+            if await _maybe_update_tqdm_progress(task_id, clean_line):
+                return
+            await handle_task_output(ws_manager, task_id, clean_line, is_stderr=True, progress_style="steps")
         
         await ws_manager.send_progress(task_id, 0, "Starting custom eval...")
         

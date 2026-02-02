@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
+from llama_suite.webui.utils.task_output import handle_task_output
 
 
 router = APIRouter(prefix="/api/watcher", tags=["watcher"])
@@ -72,29 +73,35 @@ async def start_watcher(request: WatcherStartRequest):
             str(venv_python), "-u", "-m", "llama_suite.watchers.llama_swap_watch",
             str(base_config)  # Positional argument for base config
         ]
-        
+
         if kwargs.get("override"):
             override_path = root / "configs" / "overrides" / f"{kwargs['override']}.yaml"
             cmd.extend(["-o", str(override_path)])  # -o for override, not --override-config
         
         if kwargs.get("verbose"):
             cmd.append("-v")
-        
+
+        # Prefer clean, non-ANSI output in the Web UI.
+        cmd.append("--plain")
+
         if kwargs.get("dry_run"):
             cmd.append("--dry-run")
         
         async def on_output(line: str):
-            await ws_manager.send_log(task_id, line, "info")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="indeterminate")
         
         async def on_error(line: str):
-            await ws_manager.send_log(task_id, line, "error")
+            await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="indeterminate")
         
         await ws_manager.send_progress(task_id, 0, "Starting llama-swap watcher...")
+
+        async def on_start(_proc):
+            await ws_manager.send_progress(task_id, -1, "Watcher running")
         
         # The watcher runs indefinitely, so returncode will only come when stopped
         returncode = await process_manager.run_subprocess(
             task_id, cmd, cwd=root,
-            on_stdout=on_output, on_stderr=on_error
+            on_stdout=on_output, on_stderr=on_error, on_start=on_start
         )
         
         success = returncode == 0

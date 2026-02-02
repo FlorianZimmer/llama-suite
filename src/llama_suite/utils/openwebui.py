@@ -8,11 +8,11 @@ Usage (called by installer):
       --image ghcr.io/open-webui/open-webui:main
 
 It will:
-  • Detect a container runtime: docker, podman, or nerdctl (in that order),
+  - Detect a container runtime: docker, podman, or nerdctl (in that order),
     or use --runtime to force one.
-  • Create the container if it doesn’t exist (with volume + port mapping).
-  • Start the container if it exists but isn’t running.
-  • No-op if it’s already running.
+  - Create the container if it doesn't exist (with volume + port mapping).
+  - Start the container if it exists but isn't running.
+  - No-op if it's already running.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ def warn(msg: str) -> None:
 
 
 def err(msg: str) -> None:
-    _print("ERROR", msg)
+    print(f"ERROR: {msg}", file=sys.stderr, flush=True)
 
 
 # ------------------------------ runtime detection ------------------------------
@@ -189,13 +189,13 @@ def main(argv: Optional[List[str]] = None) -> None:
         info(f"Open WebUI at http://localhost:{args.port}")
         return
     elif running is False:
-        info(f"Container '{args.name}' exists but is not running. Starting…")
+        info(f"Container '{args.name}' exists but is not running. Starting...")
         start_container(rt_path, args.name)
         info(f"Open WebUI at http://localhost:{args.port}")
         return
     else:
-        # Unknown state — try start anyway
-        warn(f"Could not determine running state for '{args.name}'. Attempting to start…")
+        # Unknown state - try start anyway
+        warn(f"Could not determine running state for '{args.name}'. Attempting to start...")
         start_container(rt_path, args.name)
         info(f"Open WebUI at http://localhost:{args.port}")
 

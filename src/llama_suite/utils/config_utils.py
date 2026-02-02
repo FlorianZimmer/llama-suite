@@ -79,9 +79,10 @@ def default_paths_from_base_config(base_config_path: Path) -> Dict[str, Path]:
 
 # --- Shared Logger Class ---
 class Logger:
-    def __init__(self, verbose: bool = False, log_file_path: Optional[Path] = None):
+    def __init__(self, verbose: bool = False, log_file_path: Optional[Path] = None, plain: Optional[bool] = None):
         self.verbose_flag = verbose
         self.log_file_path = log_file_path
+        self.plain = _is_plain_mode() if plain is None else bool(plain)
         self.log_file: Optional[TextIO] = None
         if self.log_file_path:
             try:
@@ -95,10 +96,14 @@ class Logger:
         return datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     def _log(self, level: str, message: str, color: str = "", bright: bool = False, console_file: TextIO = sys.stdout):
-        style_prefix = Style.BRIGHT if bright else ""
         timestamp = self._get_timestamp()
-        console_message = f"{timestamp} [{style_prefix}{color}{level}{Style.RESET_ALL}] {style_prefix}{color}{message}{Style.RESET_ALL}"
-        print(console_message, file=console_file)
+        if self.plain:
+            console_message = f"{level}: {message}"
+            print(console_message, file=console_file)
+        else:
+            style_prefix = Style.BRIGHT if bright else ""
+            console_message = f"{timestamp} [{style_prefix}{color}{level}{Style.RESET_ALL}] {style_prefix}{color}{message}{Style.RESET_ALL}"
+            print(console_message, file=console_file)
         if self.log_file:
             file_message = f"{timestamp} [{level}] {message}"
             try:
@@ -115,20 +120,32 @@ class Logger:
         if self.verbose_flag:
             self._log("DEBUG", message, Fore.MAGENTA, console_file=sys.stderr)
     def header(self, title: str):
-        header_str = f"\n{'=' * 70}\n{title.center(70)}\n{'=' * 70}"
-        print(f"{Fore.CYAN}{Style.BRIGHT}{header_str}{Style.RESET_ALL}")
+        if self.plain:
+            print(f"== {title} ==")
+        else:
+            header_str = f"\n{'=' * 70}\n{title.center(70)}\n{'=' * 70}"
+            print(f"{Fore.CYAN}{Style.BRIGHT}{header_str}{Style.RESET_ALL}")
         if self.log_file: self.log_file.write(f"\n{title.center(70)}\n" + "="*70 + "\n")
     def subheader(self, title: str):
-        subheader_str = f"\n{'-' * 70}\n{title.center(70)}\n{'-' * 70}"
-        print(f"{Fore.CYAN}{subheader_str}{Style.RESET_ALL}")
+        if self.plain:
+            print(f"-- {title} --")
+        else:
+            subheader_str = f"\n{'-' * 70}\n{title.center(70)}\n{'-' * 70}"
+            print(f"{Fore.CYAN}{subheader_str}{Style.RESET_ALL}")
         if self.log_file: self.log_file.write(f"\n{title.center(70)}\n" + "-"*70 + "\n")
     def step(self, message: str):
-        console_msg = f"{Fore.CYAN}>> {message}{Style.RESET_ALL}"
-        print(console_msg)
+        if self.plain:
+            print(f">> {message}")
+        else:
+            console_msg = f"{Fore.CYAN}>> {message}{Style.RESET_ALL}"
+            print(console_msg)
         if self.log_file: self.log_file.write(f">> {message}\n")
     def notice(self, message: str):
-        console_msg = f"{Fore.WHITE}{message}{Style.RESET_ALL}"
-        print(console_msg)
+        if self.plain:
+            print(message)
+        else:
+            console_msg = f"{Fore.WHITE}{message}{Style.RESET_ALL}"
+            print(console_msg)
         if self.log_file: self.log_file.write(f"NOTICE: {message}\n")
     def close(self):
         if self.log_file:
@@ -136,7 +153,13 @@ class Logger:
             self.log_file = None
 
 # --- Shared Utility Functions ---
+def _is_plain_mode() -> bool:
+    v = (os.getenv("LLAMA_SUITE_PLAIN") or os.getenv("LLS_PLAIN") or "").strip().lower()
+    return v in {"1", "true", "yes", "y", "on"}
+
 def colour_util(text: str, ansi_color: str) -> str:
+    if _is_plain_mode():
+        return text
     return f"{ansi_color}{text}{Style.RESET_ALL}"
 
 def deep_merge_dicts_util(target: Dict[str, Any], source: Dict[str, Any]) -> None:

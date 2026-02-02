@@ -36,11 +36,21 @@ from functools import lru_cache
 
 from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from huggingface_hub.utils import HfHubHTTPError
-from rich.console import Console
-from rich.table import Table
-from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 
-console = Console()
+Table = None
+Progress = None
+BarColumn = None
+TextColumn = None
+TimeElapsedColumn = None
+
+
+class PlainConsole:
+    def print(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        text = " ".join(str(a) for a in args)
+        print(text, flush=True)
+
+
+console = PlainConsole()
 
 SHARD_RE = re.compile(r"^(?P<prefix>.+)-(?P<i>\d{5})-of-(?P<n>\d{5})\.gguf$", re.IGNORECASE)
 
@@ -210,10 +220,10 @@ def download_file(
             return dest.exists()
         return downloaded.exists()
     except HfHubHTTPError as e:
-        console.print(f"[red]HTTP error[/red] for {repo}/{remote_relpath}: {e}")
+        console.print(f"HTTP error for {repo}/{remote_relpath}: {e}", style="red")
         return False
     except Exception as e:
-        console.print(f"[red]Failed[/red] {repo}/{remote_relpath}: {e}")
+        console.print(f"Failed {repo}/{remote_relpath}: {e}", style="red")
         return False
 
 def download_tokenizer(repo: str, dest_dir: pathlib.Path, force: bool, token: Optional[str]) -> bool:
@@ -228,7 +238,7 @@ def download_tokenizer(repo: str, dest_dir: pathlib.Path, force: bool, token: Op
         )
         return True
     except Exception as e:
-        console.print(f"[yellow]Tokenizer download warning[/yellow] for {repo}: {e}")
+        console.print(f"Tokenizer download warning for {repo}: {e}", style="yellow")
         return False
 
 # ----------------------------------- Main -----------------------------------
@@ -247,7 +257,28 @@ def main():
     parser.add_argument("--org-scan-limit", type=int, default=400, help="Max repos to scan per org (by downloads)")
     parser.add_argument("--global-search-limit", type=int, default=80, help="Max repos from global search to validate")
     parser.add_argument("--plan-only", action="store_true", help="Only print planned downloads and exit")
+    parser.add_argument("--plain", action="store_true", help="Plain, non-interactive output (recommended for Web UI logs).")
     args = parser.parse_args()
+
+    global console, Table, Progress, BarColumn, TextColumn, TimeElapsedColumn
+    if not args.plain:
+        try:
+            from rich.console import Console  # type: ignore
+            from rich.table import Table as RichTable  # type: ignore
+            from rich.progress import Progress as RichProgress  # type: ignore
+            from rich.progress import BarColumn as RichBarColumn  # type: ignore
+            from rich.progress import TextColumn as RichTextColumn  # type: ignore
+            from rich.progress import TimeElapsedColumn as RichTimeElapsedColumn  # type: ignore
+
+            console = Console()
+            Table = RichTable
+            Progress = RichProgress
+            BarColumn = RichBarColumn
+            TextColumn = RichTextColumn
+            TimeElapsedColumn = RichTimeElapsedColumn
+        except Exception:
+            print("WARN: Missing dependency 'rich'. Falling back to --plain output.", file=sys.stderr, flush=True)
+            args.plain = True
 
     api = HfApi(token=args.token)
 
@@ -265,7 +296,7 @@ def main():
 
     for name, cfg in models.items():
         if is_disabled(cfg):
-            console.print(f"[dim]Skipping disabled[/dim] {name}")
+            console.print(f"Skipping disabled {name}", style="dim")
             continue
         paths = extract_cmd_paths(cfg, include_drafts=args.include_drafts)
         if not paths:
@@ -293,46 +324,47 @@ def main():
             seen.add(fname)
             deduped.append((name, fname, repo_hint))
 
-    # Print plan
-    table = Table(title="Planned Downloads", show_lines=False)
-    table.add_column("GGUF Filename", overflow="fold")
-    table.add_column("From Repo (hint or search)", overflow="fold")
-    for _, fname, repo_hint in deduped:
-        table.add_row(fname, repo_hint or "(search)")
-    console.print(table)
+    if args.plain:
+        print(f"INFO: Planned downloads: {len(deduped)} GGUF file(s)", flush=True)
+        for _, fname, repo_hint in deduped:
+            hint = repo_hint or "(search)"
+            print(f"INFO: - {fname}  from {hint}", flush=True)
+    else:
+        # Print plan
+        assert Table is not None
+        table = Table(title="Planned Downloads", show_lines=False)
+        table.add_column("GGUF Filename", overflow="fold")
+        table.add_column("From Repo (hint or search)", overflow="fold")
+        for _, fname, repo_hint in deduped:
+            table.add_row(fname, repo_hint or "(search)")
+        console.print(table)
 
     if args.plan_only:
         return
 
     # Download GGUFs
     success = True
-    with Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("{task.completed}/{task.total}"),
-        TimeElapsedColumn(),
-        console=console,
-        transient=False,
-    ) as progress:
-        task = progress.add_task("Downloading GGUF files", total=len(deduped))
+    if args.plain:
+        total = len(deduped) + (len(tokenizer_repos) if tokenizer_repos else 0)
+        step_idx = 0
         for model_name, fname, repo_hint in deduped:
+            step_idx += 1
+            print(f"STEP {step_idx}/{total}: Download {fname}", flush=True)
             dest = target_dir / fname
             if dest.exists() and not args.force:
-                progress.console.print(f"[green]Exists[/green] {dest.name}")
-                progress.advance(task)
+                print(f"INFO: SKIP (exists): {dest.name}", flush=True)
                 continue
 
-            # Determine (repo, relpath)
             repo_rel: Optional[Tuple[str, str]] = None
             if repo_hint:
                 rel = _repo_find_relpath_for_filename(api, repo_hint, fname)
                 if rel:
                     repo_rel = (repo_hint, rel)
                 else:
-                    progress.console.print(f"[yellow]Hinted repo[/yellow] {repo_hint} does not contain {fname} (by basename). Falling back to search.")
+                    print(f"WARN: Repo hint {repo_hint} does not contain {fname}; falling back to search.", flush=True)
             if not repo_rel:
                 where = f"orgs={','.join(orgs)}" if orgs else "global"
-                progress.console.print(f"[cyan]Searching {where} for[/cyan] {fname} …")
+                print(f"INFO: Searching {where} for {fname} ...", flush=True)
                 rr = find_repo_and_relpath_for_file(
                     api, fname, orgs,
                     org_scan_limit=args.org_scan_limit,
@@ -342,28 +374,101 @@ def main():
                     repo_rel = rr
 
             if not repo_rel:
-                progress.console.print(f"[red]Could not find[/red] {fname}. Add 'hf_repo_for_gguf' to the model entry or expand --orgs.")
+                print(
+                    f"ERROR: Could not find {fname}. Add 'hf_repo_for_gguf' to the model entry or expand --orgs.",
+                    file=sys.stderr,
+                    flush=True,
+                )
                 success = False
-                progress.advance(task)
                 continue
 
             repo_id, relpath = repo_rel
             ok = download_file(api, repo_id, relpath, dest, args.force, args.token)
             if ok:
-                progress.console.print(f"[green]OK[/green] {repo_id}/{relpath} → {dest}")
+                print(f"INFO: OK: {repo_id}/{relpath} -> {dest}", flush=True)
             else:
-                progress.console.print(f"[red]FAIL[/red] {repo_id}/{relpath}")
+                print(f"ERROR: FAIL: {repo_id}/{relpath}", file=sys.stderr, flush=True)
                 success = False
-            progress.advance(task)
+    else:
+        assert Progress is not None and TextColumn is not None and BarColumn is not None and TimeElapsedColumn is not None
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total}"),
+            TimeElapsedColumn(),
+            console=console,
+            transient=False,
+        ) as progress:
+            task = progress.add_task("Downloading GGUF files", total=len(deduped))
+            for model_name, fname, repo_hint in deduped:
+                dest = target_dir / fname
+                if dest.exists() and not args.force:
+                    progress.console.print(f"Exists {dest.name}", style="green")
+                    progress.advance(task)
+                    continue
+
+                # Determine (repo, relpath)
+                repo_rel: Optional[Tuple[str, str]] = None
+                if repo_hint:
+                    rel = _repo_find_relpath_for_filename(api, repo_hint, fname)
+                    if rel:
+                        repo_rel = (repo_hint, rel)
+                    else:
+                        progress.console.print(
+                            f"Repo hint {repo_hint} does not contain {fname} (by basename). Falling back to search.",
+                            style="yellow",
+                        )
+                if not repo_rel:
+                    where = f"orgs={','.join(orgs)}" if orgs else "global"
+                    progress.console.print(f"Searching {where} for {fname} ...", style="cyan")
+                    rr = find_repo_and_relpath_for_file(
+                        api, fname, orgs,
+                        org_scan_limit=args.org_scan_limit,
+                        global_search_limit=args.global_search_limit,
+                    )
+                    if rr:
+                        repo_rel = rr
+
+                if not repo_rel:
+                    progress.console.print(
+                        f"Could not find {fname}. Add 'hf_repo_for_gguf' to the model entry or expand --orgs.",
+                        style="red",
+                    )
+                    success = False
+                    progress.advance(task)
+                    continue
+
+                repo_id, relpath = repo_rel
+                ok = download_file(api, repo_id, relpath, dest, args.force, args.token)
+                if ok:
+                    progress.console.print(f"OK {repo_id}/{relpath} -> {dest}", style="green")
+                else:
+                    progress.console.print(f"FAIL {repo_id}/{relpath}", style="red")
+                    success = False
+                progress.advance(task)
 
     # Download tokenizers (optional)
     if tokenizer_repos:
-        console.print("\n[bold]Tokenizer snapshots[/bold]")
-        for model_name, repo in tokenizer_repos:
-            out_dir = tokenizers_dir / model_name
-            ok = download_tokenizer(repo, out_dir, args.force, args.token)
-            status = "[green]OK[/green]" if ok else "[yellow]WARN[/yellow]"
-            console.print(f"{status} tokenizer {repo} → {out_dir}")
+        if args.plain:
+            print("INFO: Tokenizer snapshots", flush=True)
+            for model_name, repo in tokenizer_repos:
+                step_idx += 1
+                out_dir = tokenizers_dir / model_name
+                print(f"STEP {step_idx}/{total}: Snapshot tokenizer {model_name}", flush=True)
+                ok = download_tokenizer(repo, out_dir, args.force, args.token)
+                if ok:
+                    print(f"INFO: OK: tokenizer {repo} -> {out_dir}", flush=True)
+                else:
+                    print(f"WARN: tokenizer {repo} -> {out_dir}", flush=True)
+        else:
+            console.print("\nTokenizer snapshots", style="bold")
+            for model_name, repo in tokenizer_repos:
+                out_dir = tokenizers_dir / model_name
+                ok = download_tokenizer(repo, out_dir, args.force, args.token)
+                if ok:
+                    console.print(f"OK tokenizer {repo} -> {out_dir}", style="green")
+                else:
+                    console.print(f"WARN tokenizer {repo} -> {out_dir}", style="yellow")
 
     if not success:
         sys.exit(2)

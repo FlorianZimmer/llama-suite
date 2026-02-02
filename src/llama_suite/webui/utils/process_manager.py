@@ -93,15 +93,30 @@ class ProcessManager:
         cmd: list,
         cwd: Optional[Path] = None,
         on_stdout: Optional[Callable[[str], None]] = None,
-        on_stderr: Optional[Callable[[str], None]] = None
+        on_stderr: Optional[Callable[[str], None]] = None,
+        on_start: Optional[Callable[[asyncio.subprocess.Process], Any]] = None,
     ) -> int:
         """Run a subprocess and stream its output."""
+        env = os.environ.copy()
+        # Make Python subprocess output UTF-8 so the Web UI can display it reliably on Windows.
+        # (Without this, many environments default to legacy codepages that can't encode emojis/symbols.)
+        env.setdefault("PYTHONUTF8", "1")
+        env.setdefault("PYTHONIOENCODING", "utf-8")
+        # Prefer predictable, non-ANSI output for Web UI logs.
+        env.setdefault("LLAMA_SUITE_PLAIN", "1")
+        # Avoid noisy tqdm carriage-return updates in captured logs.
+        env.setdefault("TQDM_DISABLE", "1")
+
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=cwd
+            cwd=cwd,
+            env=env,
         )
+
+        if on_start:
+            await on_start(process) if asyncio.iscoroutinefunction(on_start) else on_start(process)
         
         async with self._lock:
             self.processes[task_id] = process

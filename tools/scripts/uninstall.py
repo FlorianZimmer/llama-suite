@@ -3,21 +3,21 @@
 Uninstaller for llama-suite (new layout, pyproject-first).
 
 Removes ONLY dependencies and build artifacts:
-  • .venv/ (virtual environment)
-  • vendor/ (llama-swap + llama.cpp binaries and sources)
-  • src/llama_suite.egg-info (editable install metadata)
-  • __pycache__ / *.pyc / .ruff_cache / .mypy_cache / .pytest_cache
+  - .venv/ (virtual environment)
+  - vendor/ (llama-swap + llama.cpp binaries and sources)
+  - src/llama_suite.egg-info (editable install metadata)
+  - __pycache__ / *.pyc / .ruff_cache / .mypy_cache / .pytest_cache
 
 Keeps ALL runtime/user data:
-  • runs/ (bench + eval results, logs)
-  • var/ (Open WebUI data, other runtime state)
-  • configs/ (incl. configs/generated/)
-  • models/
-  • datasets/
-  • src/, tools/, vendor/*NOT kept* (binaries only), pyproject.toml, etc.
+  - runs/ (bench + eval results, logs)
+  - var/ (Open WebUI data, other runtime state)
+  - configs/ (incl. configs/generated/)
+  - models/
+  - datasets/
+  - src/, tools/, vendor/*NOT kept* (binaries only), pyproject.toml, etc.
 
 Also:
-  • Stops & removes the Open WebUI container (docker/podman/nerdctl), BUT NOT its data dir.
+  - Stops & removes the Open WebUI container (docker/podman/nerdctl), BUT NOT its data dir.
 
 Usage:
   python tools/scripts/uninstall.py [-y] [--runtime docker|podman|nerdctl]
@@ -149,16 +149,16 @@ def main() -> None:
     Repo root: {repo}
     ----------------------------------------------------------------------------
     This will DELETE dependency artifacts:
-      • Virtual environment: {venv_dir}
-      • Vendor binaries/sources: {vendor_dir}
-      • Editable metadata: {egg_info_dir}
-      • Python caches: __pycache__, *.pyc, .ruff_cache, .mypy_cache, .pytest_cache
+      - Virtual environment: {venv_dir}
+      - Vendor binaries/sources: {vendor_dir}
+      - Editable metadata: {egg_info_dir}
+      - Python caches: __pycache__, *.pyc, .ruff_cache, .mypy_cache, .pytest_cache
 
     It will STOP & REMOVE the container '{args.container_name}' (if present),
     but it WILL NOT delete its persisted data under var/open-webui/data.
 
     It will KEEP your runtime data and project sources, including:
-    {chr(10).join("      • " + str(p) for p in keep_items)}
+    {chr(10).join("      - " + str(p) for p in keep_items)}
     ============================================================================
     """).strip())
 
@@ -174,15 +174,15 @@ def main() -> None:
     else:
         rt_name, rt_path = rt
         print(f"  Using container runtime: {rt_name} ({rt_path})")
-        print(f"  Stopping '{args.container_name}' (if running)…")
+        print(f"  Stopping '{args.container_name}' (if running)...")
         run_quiet([rt_path, "stop", args.container_name])
-        print(f"  Removing '{args.container_name}' (if exists)…")
+        print(f"  Removing '{args.container_name}' (if exists)...")
         run_quiet([rt_path, "rm", args.container_name])
 
         if args.remove_image:
             # Best-effort: try to figure latest pulled image from logs/installer; default to the official main tag
             image = "ghcr.io/open-webui/open-webui:main"
-            print(f"  Removing image '{image}' (best effort)…")
+            print(f"  Removing image '{image}' (best effort)...")
             run_quiet([rt_path, "rmi", image])
 
     # ------------------ Delete dependency artifacts ------------------
@@ -200,7 +200,7 @@ def main() -> None:
     print("Kept (if present):")
     for p in keep_items:
         if p.exists():
-            print(f"  • {p}")
+            print(f"  - {p}")
     print("----------------------------------------------------------------------------")
 
 if __name__ == "__main__":

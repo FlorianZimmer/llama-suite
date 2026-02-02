@@ -57,7 +57,7 @@ def ensure_dir(path: Path) -> None:
         # symlink to non-dir or regular file (or broken symlink)
         try:
             target = path.resolve(strict=True)
-            target_desc = f" → {target}"
+            target_desc = f" -> {target}"
         except FileNotFoundError:
             target_desc = " (broken symlink)"
         raise SystemExit(f"Expected a directory at '{path}', but found a non-directory{target_desc}. "
@@ -69,8 +69,13 @@ def ensure_dir(path: Path) -> None:
 
 def setup_logging(verbose: bool) -> None:
     level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(level=level, format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=level, format="%(levelname)s: %(message)s", stream=sys.stdout)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+def emit_step(i: int, n: int, message: str) -> None:
+    # ASCII-only, stable format (parsed by Web UI for progress).
+    print(f"STEP {i}/{n}: {message}", flush=True)
 
 
 def run(cmd: Sequence[str] | str, cwd: Optional[Path] = None) -> None:
@@ -613,11 +618,26 @@ def main() -> None:
     =============================================================================
     """).strip())
 
+    step_plan: list[str] = [
+        "Prepare directories",
+        "Set up Python virtual environment",
+        "Install Python dependencies",
+        "Obtain llama-swap",
+        "Obtain llama.cpp server",
+    ]
+    if not args.no_webui:
+        step_plan.append("Set up Open WebUI container")
+    step_i = 0
+
     # ensure directories
+    step_i += 1
+    emit_step(step_i, len(step_plan), "Prepare directories")
     for d in (vendor_dir, models_dir, configs_dir, configs_gen_dir, runs_dir, webui_data_dir):
         ensure_dir(d)
 
     # venv
+    step_i += 1
+    emit_step(step_i, len(step_plan), "Set up Python virtual environment")
     LOG.info("Setting up Python virtual environment: %s", venv_dir)
     if not venv_dir.exists():
         venv.EnvBuilder(with_pip=True, upgrade_deps=True).create(str(venv_dir))
@@ -629,28 +649,59 @@ def main() -> None:
         sys.exit(f"Venv created but python not found: {venv_python}")
 
     # upgrade base tooling and install this project via pyproject
+    step_i += 1
+    emit_step(step_i, len(step_plan), "Install Python dependencies")
     LOG.info("Upgrading pip/setuptools/wheel")
-    run([str(venv_python), "-m", "pip", "install", "-U", "pip", "setuptools", "wheel", "build"])
+    run([
+        str(venv_python),
+        "-m",
+        "pip",
+        "--disable-pip-version-check",
+        "--no-input",
+        "-q",
+        "install",
+        "-U",
+        "pip",
+        "setuptools",
+        "wheel",
+        "build",
+    ])
 
     # Install project (editable) from repo root
     LOG.info("Installing this project from pyproject.toml (%s)", repo_root / "pyproject.toml")
     install_target = "."
     if args.dev_extras:
         install_target = ".[dev]"
-    run([str(venv_python), "-m", "pip", "install", "-e", install_target], cwd=repo_root)
+    run([
+        str(venv_python),
+        "-m",
+        "pip",
+        "--disable-pip-version-check",
+        "--no-input",
+        "-q",
+        "install",
+        "-e",
+        install_target,
+    ], cwd=repo_root)
 
     # llama-swap
+    step_i += 1
+    emit_step(step_i, len(step_plan), "Obtain llama-swap")
     LOG.info("Obtaining llama-swap")
     swap_path = obtain_llama_swap(vendor_dir, build_swap)
     LOG.info("llama-swap binary: %s", swap_path)
 
     # llama.cpp
+    step_i += 1
+    emit_step(step_i, len(step_plan), "Obtain llama.cpp server")
     LOG.info("Obtaining llama.cpp server")
     cpp_server_path = obtain_llama_cpp(vendor_dir, build_cpp, args.gpu_backend)
     LOG.info("llama-server binary: %s", cpp_server_path)
 
     # Open WebUI (best-effort)
     if not args.no_webui:
+        step_i += 1
+        emit_step(step_i, len(step_plan), "Set up Open WebUI container")
         LOG.info("Pulling Open WebUI image (best-effort)")
         try:
             run(["docker", "pull", OPEN_WEBUI_IMAGE])
@@ -667,17 +718,17 @@ def main() -> None:
     # summary
     summary = dedent(f"""
     -----------------------------------------------------------------------------
-    Installation complete 🎉
+    Installation complete
     -----------------------------------------------------------------------------
     Repo root        : {repo_root}
     Python Venv      : {venv_dir}
     Activate (PS)    : & "{venv_activate}"
     Vendor           : {vendor_dir}
-      • llama-swap   : {swap_path}
-      • llama.cpp    : {cpp_server_path}
+      - llama-swap   : {swap_path}
+      - llama.cpp    : {cpp_server_path}
     Models           : {models_dir}
     Configs          : {configs_dir}
-      • generated    : {configs_gen_dir}
+      - generated    : {configs_gen_dir}
     Runs             : {runs_dir}
     WebUI data       : {webui_data_dir}
     WebUI URL        : http://localhost:{args.webui_port}  (container: {args.webui_name})

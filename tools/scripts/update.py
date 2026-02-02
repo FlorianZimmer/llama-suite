@@ -53,8 +53,14 @@ RUNTIMES_ORDER = ("docker", "podman", "nerdctl")
 
 def setup_logging(verbose: bool) -> None:
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO,
-                        format="%(levelname)s: %(message)s")
+                        format="%(levelname)s: %(message)s",
+                        stream=sys.stdout)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+def emit_step(i: int, n: int, message: str) -> None:
+    # ASCII-only, stable format (parsed by Web UI for progress).
+    print(f"STEP {i}/{n}: {message}", flush=True)
 
 
 def run(cmd: Sequence[str] | str, cwd: Optional[Path] = None, check: bool = True) -> None:
@@ -158,11 +164,37 @@ def ensure_venv(repo: Path, venv: Optional[Path]) -> Tuple[Path, Path, Path]:
 
 def upgrade_python_deps(repo: Path, venv_python: Path, dev_extras: bool) -> None:
     LOG.info("Upgrading pip/setuptools/wheel/build")
-    run([str(venv_python), "-m", "pip", "install", "-U", "pip", "setuptools", "wheel", "build"])
+    run([
+        str(venv_python),
+        "-m",
+        "pip",
+        "--disable-pip-version-check",
+        "--no-input",
+        "-q",
+        "install",
+        "-U",
+        "pip",
+        "setuptools",
+        "wheel",
+        "build",
+    ])
 
     target = ".[dev]" if dev_extras else "."
     LOG.info("Upgrading project deps from pyproject.toml with eager strategy: %s", target)
-    run([str(venv_python), "-m", "pip", "install", "-U", "--upgrade-strategy", "eager", "-e", target], cwd=repo)
+    run([
+        str(venv_python),
+        "-m",
+        "pip",
+        "--disable-pip-version-check",
+        "--no-input",
+        "-q",
+        "install",
+        "-U",
+        "--upgrade-strategy",
+        "eager",
+        "-e",
+        target,
+    ], cwd=repo)
 
 
 # ───────────────────────── GitHub API / downloads ────────────────────────────
@@ -692,15 +724,31 @@ def main() -> None:
     if "none" in skip:
         skip.clear()
 
+    step_plan: list[str] = []
+    if "venv" not in skip:
+        step_plan.append("Update Python dependencies")
+    if "swap" not in skip:
+        step_plan.append("Update llama-swap")
+    if "cpp" not in skip:
+        step_plan.append("Update llama.cpp")
+    if "webui" not in skip:
+        step_plan.append("Refresh Open WebUI container")
+
+    step_i = 0
+
     # venv & project deps
     venv_dir, venv_python, venv_pip = ensure_venv(repo, args.venv)
     if "venv" not in skip:
+        step_i += 1
+        emit_step(step_i, len(step_plan), "Update Python dependencies")
         upgrade_python_deps(repo, venv_python, args.dev_extras)
     else:
         LOG.info("Skipping venv deps update")
 
     # llama-swap
     if "swap" not in skip:
+        step_i += 1
+        emit_step(step_i, len(step_plan), "Update llama-swap")
         swap_path = update_llama_swap(vendor_dir, args.swap_method)
         LOG.info("llama-swap updated: %s", swap_path)
     else:
@@ -708,6 +756,8 @@ def main() -> None:
 
     # llama.cpp
     if "cpp" not in skip:
+        step_i += 1
+        emit_step(step_i, len(step_plan), "Update llama.cpp")
         cpp_server = update_llama_cpp(vendor_dir, args.cpp_method, args.gpu_backend)
         LOG.info("llama.cpp server updated: %s", cpp_server)
     else:
@@ -715,12 +765,14 @@ def main() -> None:
 
     # Open WebUI
     if "webui" not in skip:
+        step_i += 1
+        emit_step(step_i, len(step_plan), "Refresh Open WebUI container")
         refresh_openwebui(repo, venv_python, args.webui_name, args.webui_port, args.webui_image, args.runtime)
         LOG.info("Open WebUI refreshed: %s (port %d)", args.webui_name, args.webui_port)
     else:
         LOG.info("Skipping Open WebUI refresh")
 
-    LOG.info("All done ✅")
+    LOG.info("All done")
 
 
 if __name__ == "__main__":
