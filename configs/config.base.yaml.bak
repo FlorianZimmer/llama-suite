@@ -717,7 +717,7 @@ models:
       ctx-size: 16384
       n-predict: 16384
       gpu-layers: 99
-      threads: auto
+      threads: 28
   tinyllama-1.1b-llama-suite:
     hf_tokenizer_for_model: tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
     cmd:
@@ -796,3 +796,22 @@ models:
       gpu-layers: auto
       threads: auto
       reasoning-format: deepseek
+  GLM-4.7-Flash:
+    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    sampling:
+      temp: 0.6
+      top-p: 1.0
+      top-k: 0
+    cmd:
+      cache-type-k: q8_0
+      cache-type-v: q8_0
+      jinja: true
+      parallel: 1
+      cont-batching: true
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: F:\LLMs\GGUF\GLM-4.7-Flash-UD-Q6_K_XL.gguf
+      ctx-size: 16384
+      n-predict: 16384
+      gpu-layers: auto
+      threads: auto

@@ -796,3 +796,22 @@ models:
       gpu-layers: auto
       threads: auto
       reasoning-format: deepseek
+  GLM-4.7-Flash:
+    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    sampling:
+      temp: 1
+      top-p: 0.95
+      top-k: 0
+    cmd:
+      cache-type-k: q8_0
+      cache-type-v: q8_0
+      jinja: true
+      parallel: 1
+      cont-batching: true
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: F:\LLMs\GGUF\GLM-4.7-Flash-UD-Q6_K_XL.gguf
+      ctx-size: 131072
+      n-predict: 131072
+      gpu-layers: auto
+      threads: auto
