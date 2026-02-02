@@ -183,6 +183,7 @@ class TaskManager {
         else if (type === 'memory') icon = 'fa-memory';
         else if (type === 'eval') icon = 'fa-robot';
         else if (type === 'watcher') icon = 'fa-eye';
+        else if (type === 'system') icon = 'fa-wrench';
 
         item.innerHTML = `
             <div class="task-icon"><i class="fas ${icon}"></i></div>
@@ -459,25 +460,17 @@ const App = {
 
         // Initialize WS handlers
         this.ws.on('log', (data) => {
-            // Logs are now generally handled by the task manager or ignored if no output container
-            // For now, we can log to console or keep specific output containers if they exist?
-            // The original code had specific output containers. Let's try to keep them if they exist.
-            const outputId = this.findOutputContainer(data.task_id);
-            if (outputId) {
-                const container = document.getElementById(outputId);
-                if (container) {
-                    const lineEl = document.createElement('div');
-                    lineEl.className = `log-line ${data.level || 'info'}`;
-                    lineEl.textContent = data.message;
-                    container.appendChild(lineEl);
-                    container.scrollTop = container.scrollHeight;
-                }
+            const line = data.message ?? data.line ?? '';
+            if (line) {
+                this.appendOutput(data.task_id, line, data.level || 'info');
             }
         });
 
         this.ws.on('progress', (data) => {
             // Update persistent task
-            this.taskManager.updateTask(data.task_id, data.percentage, data.message);
+            const progress = data.percentage ?? data.progress ?? 0;
+            const message = data.message ?? '';
+            this.taskManager.updateTask(data.task_id, progress, message);
         });
 
         this.ws.on('complete', (data) => {
@@ -543,6 +536,14 @@ const App = {
     appendOutput(taskId, line, level = 'info') {
         // Try to find output container by task ID mapping first
         let container = this.taskContainers?.get(taskId);
+
+        // Fall back to well-known task output containers (even if section isn't active)
+        if (!container) {
+            const outputId = this.findOutputContainer(taskId);
+            if (outputId) {
+                container = document.getElementById(outputId);
+            }
+        }
 
         // Fall back to active output container
         if (!container) {
@@ -1788,7 +1789,7 @@ const App = {
 
     async runUpdate() {
         const output = document.getElementById('system-output');
-        output.innerHTML = '';
+        if (output) output.innerHTML = '';
 
         try {
             const data = await API.post('/api/system/update', {
@@ -1797,7 +1798,13 @@ const App = {
                 update_llama_cpp: document.getElementById('update-cpp').checked,
                 gpu_backend: document.getElementById('update-gpu').value
             });
+
+            // Show task immediately and route logs to the System output panel
+            this.taskManager.addTask(data.task_id, 'system', 'Update Components');
+            this.registerTaskContainer(data.task_id, 'system-output');
+
             Toast.info(`Update started: ${data.task_id}`);
+            this.refreshDashboard();
         } catch (e) {
             Toast.error(`Failed to start: ${e.message}`);
         }
@@ -1805,7 +1812,7 @@ const App = {
 
     async downloadModels() {
         const output = document.getElementById('system-output');
-        output.innerHTML = '';
+        if (output) output.innerHTML = '';
 
         try {
             const data = await API.post('/api/system/download', {
@@ -1814,7 +1821,13 @@ const App = {
                 include_tokenizers: document.getElementById('download-tokenizers').checked,
                 force: document.getElementById('download-force').checked
             });
+
+            // Show task immediately and route logs to the System output panel
+            this.taskManager.addTask(data.task_id, 'system', 'Download Models');
+            this.registerTaskContainer(data.task_id, 'system-output');
+
             Toast.info(`Download started: ${data.task_id}`);
+            this.refreshDashboard();
         } catch (e) {
             Toast.error(`Failed to start: ${e.message}`);
         }
@@ -1824,6 +1837,7 @@ const App = {
         try {
             await API.post(`/api/system/cancel/${taskId}`);
             Toast.success('Task cancelled');
+            this.taskManager.cancelTaskUI(taskId);
             await this.refreshDashboard();
         } catch (e) {
             Toast.error('Failed to cancel task');
@@ -2035,52 +2049,45 @@ const App = {
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 
-    // Config save button
-    document.getElementById('btn-save-config').addEventListener('click', () => App.saveConfig());
+    const bind = (id, event, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+    };
 
-    // Benchmark form
-    document.getElementById('bench-form').addEventListener('submit', (e) => {
+    bind('btn-save-config', 'click', () => App.saveConfig());
+
+    bind('bench-form', 'submit', (e) => {
         e.preventDefault();
         App.runBenchmark();
     });
-    document.getElementById('btn-bench-stop').addEventListener('click', () => App.stopBenchmark());
 
-    // Memory scan form
-    document.getElementById('memory-form').addEventListener('submit', (e) => {
+    bind('memory-form', 'submit', (e) => {
         e.preventDefault();
         App.runMemoryScan();
     });
-    document.getElementById('btn-memory-stop').addEventListener('click', () => App.stopMemoryScan());
 
-    // Eval-harness form
-    document.getElementById('eval-harness-form').addEventListener('submit', (e) => {
+    bind('eval-harness-form', 'submit', (e) => {
         e.preventDefault();
         App.runEvalHarness();
     });
-    document.getElementById('btn-eval-harness-stop').addEventListener('click', () => App.stopEvalHarness());
 
-    // Custom eval form
-    document.getElementById('eval-custom-form').addEventListener('submit', (e) => {
+    bind('eval-custom-form', 'submit', (e) => {
         e.preventDefault();
         App.runCustomEval();
     });
-    document.getElementById('btn-eval-custom-stop').addEventListener('click', () => App.stopCustomEval());
 
-    // Watcher buttons
-    document.getElementById('watcher-form').addEventListener('submit', (e) => {
+    bind('watcher-form', 'submit', (e) => {
         e.preventDefault();
         App.startWatcher();
     });
-    document.getElementById('btn-watcher-stop').addEventListener('click', () => App.stopWatcher());
+    bind('btn-watcher-stop', 'click', () => App.stopWatcher());
 
-    // Update form
-    document.getElementById('update-form').addEventListener('submit', (e) => {
+    bind('update-form', 'submit', (e) => {
         e.preventDefault();
         App.runUpdate();
     });
 
-    // Download form
-    document.getElementById('download-form').addEventListener('submit', (e) => {
+    bind('download-form', 'submit', (e) => {
         e.preventDefault();
         App.downloadModels();
     });
