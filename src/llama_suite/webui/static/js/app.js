@@ -1796,6 +1796,7 @@ const App = {
                 update_python: document.getElementById('update-python').checked,
                 update_llama_swap: document.getElementById('update-swap').checked,
                 update_llama_cpp: document.getElementById('update-cpp').checked,
+                update_open_webui: document.getElementById('update-webui').checked,
                 gpu_backend: document.getElementById('update-gpu').value
             });
 

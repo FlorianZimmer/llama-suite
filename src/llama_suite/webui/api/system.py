@@ -51,6 +51,7 @@ class UpdateRequest(BaseModel):
     update_python: bool = True
     update_llama_swap: bool = True
     update_llama_cpp: bool = True
+    update_open_webui: bool = True
     gpu_backend: str = "auto"
 
 
@@ -69,11 +70,13 @@ async def run_update(request: UpdateRequest):
         cmd = [str(venv_python), str(root / "tools" / "scripts" / "update.py")]
         
         if not kwargs.get("update_python"):
-            cmd.append("--skip-python")
+            cmd.extend(["--skip", "venv"])
         if not kwargs.get("update_llama_swap"):
-            cmd.append("--skip-swap")
+            cmd.extend(["--skip", "swap"])
         if not kwargs.get("update_llama_cpp"):
-            cmd.append("--skip-cpp")
+            cmd.extend(["--skip", "cpp"])
+        if not kwargs.get("update_open_webui"):
+            cmd.extend(["--skip", "webui"])
         if kwargs.get("gpu_backend") and kwargs["gpu_backend"] != "auto":
             cmd.extend(["--gpu-backend", kwargs["gpu_backend"]])
         

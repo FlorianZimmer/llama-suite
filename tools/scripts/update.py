@@ -670,8 +670,13 @@ def main() -> None:
     p.add_argument("--webui-name", default="open-webui", help="Open WebUI container name.")
     p.add_argument("--webui-port", type=int, default=3000, help="Open WebUI host port.")
     p.add_argument("--webui-image", default=OPEN_WEBUI_IMAGE_DEFAULT, help=f"Open WebUI image (default: {OPEN_WEBUI_IMAGE_DEFAULT})")
-    p.add_argument("--skip", choices=["none", "venv", "swap", "cpp", "webui"], default="none",
-                   help="Skip updating a specific component.")
+    p.add_argument(
+        "--skip",
+        action="append",
+        choices=["none", "venv", "swap", "cpp", "webui"],
+        default=[],
+        help="Skip updating component(s). Can be passed multiple times (e.g. --skip venv --skip webui).",
+    )
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose logging.")
     args = p.parse_args()
     setup_logging(args.verbose)
@@ -683,29 +688,33 @@ def main() -> None:
     LOG.info("Repo root : %s", repo)
     LOG.info("Vendor    : %s", vendor_dir)
 
+    skip = set(args.skip)
+    if "none" in skip:
+        skip.clear()
+
     # venv & project deps
     venv_dir, venv_python, venv_pip = ensure_venv(repo, args.venv)
-    if args.skip != "venv":
+    if "venv" not in skip:
         upgrade_python_deps(repo, venv_python, args.dev_extras)
     else:
         LOG.info("Skipping venv deps update")
 
     # llama-swap
-    if args.skip != "swap":
+    if "swap" not in skip:
         swap_path = update_llama_swap(vendor_dir, args.swap_method)
         LOG.info("llama-swap updated: %s", swap_path)
     else:
         LOG.info("Skipping llama-swap update")
 
     # llama.cpp
-    if args.skip != "cpp":
+    if "cpp" not in skip:
         cpp_server = update_llama_cpp(vendor_dir, args.cpp_method, args.gpu_backend)
         LOG.info("llama.cpp server updated: %s", cpp_server)
     else:
         LOG.info("Skipping llama.cpp update")
 
     # Open WebUI
-    if args.skip != "webui":
+    if "webui" not in skip:
         refresh_openwebui(repo, venv_python, args.webui_name, args.webui_port, args.webui_image, args.runtime)
         LOG.info("Open WebUI refreshed: %s (port %d)", args.webui_name, args.webui_port)
     else:
