@@ -27,4 +27,6 @@ src/llama_suite/webui/api/system.py
 src/llama_suite/webui/api/watcher.py
 src/llama_suite/webui/utils/__init__.py
 src/llama_suite/webui/utils/process_manager.py
+src/llama_suite/webui/utils/task_output.py
 src/llama_suite/webui/utils/ws_manager.py
+tests/test_openwebui.py

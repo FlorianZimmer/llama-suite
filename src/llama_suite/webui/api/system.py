@@ -334,6 +334,95 @@ async def start_openwebui(request: OpenWebUIStartRequest):
     return {"task_id": task_id, "status": "started"}
 
 
+class OpenWebUIStopRequest(BaseModel):
+    """Request to stop the Open WebUI container."""
+
+    name: str = "open-webui"
+    runtime: Optional[str] = None  # docker|podman|nerdctl (optional)
+
+
+@router.post("/openwebui/stop")
+async def stop_openwebui(request: OpenWebUIStopRequest):
+    """Stop the Open WebUI container (no-op if missing)."""
+
+    async def run_openwebui_stop_task(task_id: str, **kwargs):
+        root = get_project_root()
+        venv_python = root / ".venv" / ("Scripts" if sys.platform == "win32" else "bin") / "python"
+
+        if not venv_python.exists():
+            venv_python = Path(sys.executable)
+
+        cmd = [
+            str(venv_python),
+            "-u",
+            "-m",
+            "llama_suite.utils.openwebui",
+            "--name",
+            str(kwargs.get("name") or "open-webui"),
+            "--stop",
+        ]
+
+        rt = kwargs.get("runtime")
+        if rt:
+            cmd.extend(["--runtime", str(rt)])
+
+        async def on_output(line: str):
+            await handle_task_output(ws_manager, task_id, line, is_stderr=False, progress_style="indeterminate")
+
+        async def on_error(line: str):
+            await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="indeterminate")
+
+        await ws_manager.send_progress(task_id, 0, "Stopping Open WebUI container...")
+
+        returncode = await process_manager.run_subprocess(
+            task_id, cmd, cwd=root,
+            on_stdout=on_output, on_stderr=on_error
+        )
+
+        success = returncode == 0
+        await ws_manager.send_complete(task_id, success, {"returncode": returncode})
+        return {"returncode": returncode, "success": success}
+
+    task_id = await process_manager.start_task(
+        task_type="system",
+        description="Open WebUI container (stop)",
+        coro=run_openwebui_stop_task,
+        **request.model_dump()
+    )
+
+    return {"task_id": task_id, "status": "started"}
+
+
+@router.get("/openwebui/status")
+async def get_openwebui_status(name: str = "open-webui", runtime: Optional[str] = None):
+    """Get Open WebUI container status (best-effort)."""
+    try:
+        from llama_suite.utils.openwebui import detect_runtime, container_exists, container_running
+    except Exception as e:
+        return {"runtime_found": False, "error": f"Could not import Open WebUI helper: {e}"}
+
+    try:
+        rt_name, rt_path = detect_runtime(runtime)
+    except SystemExit as e:
+        return {"runtime_found": False, "error": str(e)}
+    except Exception as e:
+        return {"runtime_found": False, "error": str(e)}
+
+    try:
+        exists = bool(container_exists(rt_path, name))
+        running_val = container_running(rt_path, name) if exists else False
+        running = bool(running_val) if running_val is not None else None
+        return {
+            "runtime_found": True,
+            "runtime": rt_name,
+            "name": name,
+            "exists": exists,
+            "running": running,
+        }
+    except Exception as e:
+        return {"runtime_found": True, "runtime": rt_name, "name": name, "exists": None, "running": None, "error": str(e)}
+
+
 @router.post("/cancel/{task_id}")
 async def cancel_task(task_id: str):
     """Cancel a running task."""

@@ -150,10 +150,12 @@
                             <div class="quickstart-item">
                                 <div class="quickstart-title">Open WebUI (container)</div>
                                 <div class="quickstart-meta">
+                                    <span id="dashboard-openwebui-status" class="status-badge status-stopped">Stopped</span>
                                     <span class="muted">UI: http://localhost:3000</span>
                                 </div>
                                 <div class="quickstart-actions">
                                     <button type="button" id="btn-quickstart-openwebui-start" class="btn btn-primary">▶ Start Open WebUI</button>
+                                    <button type="button" id="btn-quickstart-openwebui-stop" class="btn btn-danger" disabled>⏹ Stop Open WebUI</button>
                                     <a class="btn btn-secondary" href="http://localhost:3000" target="_blank" rel="noopener">Open Open WebUI</a>
                                 </div>
                             </div>
@@ -594,6 +596,7 @@
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="btn btn-primary">▶ Start Open WebUI</button>
+                                <button type="button" id="btn-openwebui-stop" class="btn btn-danger" disabled>⏹ Stop Open WebUI</button>
                                 <a class="btn btn-secondary" href="http://localhost:3000" target="_blank" rel="noopener">Open</a>
                             </div>
                         </form>

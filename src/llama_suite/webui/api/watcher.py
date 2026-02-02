@@ -1,4 +1,4 @@
-"""Watcher API routes for managing the llama-swap watcher."""
+"""API routes for managing the llama-swap endpoint (watcher process)."""
 
 from pathlib import Path
 from typing import Optional
@@ -22,7 +22,7 @@ def get_project_root() -> Path:
 
 
 class WatcherStartRequest(BaseModel):
-    """Request to start the llama-swap watcher."""
+    """Request to start the llama-swap endpoint process."""
     override: Optional[str] = None
     verbose: bool = False
     dry_run: bool = False
@@ -30,7 +30,7 @@ class WatcherStartRequest(BaseModel):
 
 @router.get("/status")
 async def get_watcher_status():
-    """Get status of the llama-swap watcher."""
+    """Get status of the llama-swap endpoint process."""
     tasks = process_manager.get_running_tasks()
     watcher_tasks = {k: v for k, v in tasks.items() if v.task_type == "watcher"}
     
@@ -51,15 +51,15 @@ async def get_watcher_status():
 
 @router.post("/start")
 async def start_watcher(request: WatcherStartRequest):
-    """Start the llama-swap watcher."""
+    """Start the llama-swap endpoint process."""
     # Check if already running
     tasks = process_manager.get_running_tasks()
     watcher_tasks = {k: v for k, v in tasks.items() if v.task_type == "watcher"}
     if watcher_tasks:
-        raise HTTPException(status_code=409, detail="Watcher is already running")
+        raise HTTPException(status_code=409, detail="Endpoint is already running")
     
     async def run_watcher_task(task_id: str, **kwargs):
-        """Execute watcher as a background task."""
+        """Execute endpoint launcher as a background task."""
         root = get_project_root()
         venv_python = root / ".venv" / ("Scripts" if sys.platform == "win32" else "bin") / "python"
         
@@ -93,10 +93,10 @@ async def start_watcher(request: WatcherStartRequest):
         async def on_error(line: str):
             await handle_task_output(ws_manager, task_id, line, is_stderr=True, progress_style="indeterminate")
         
-        await ws_manager.send_progress(task_id, 0, "Starting llama-swap watcher...")
+        await ws_manager.send_progress(task_id, 0, "Starting LLM endpoint (llama-swap)...")
 
         async def on_start(_proc):
-            await ws_manager.send_progress(task_id, -1, "Watcher running")
+            await ws_manager.send_progress(task_id, -1, "Endpoint running")
         
         # The watcher runs indefinitely, so returncode will only come when stopped
         returncode = await process_manager.run_subprocess(
@@ -111,7 +111,7 @@ async def start_watcher(request: WatcherStartRequest):
     
     task_id = await process_manager.start_task(
         task_type="watcher",
-        description="llama-swap watcher",
+        description="LLM endpoint (llama-swap)",
         coro=run_watcher_task,
         **request.model_dump()
     )
@@ -121,12 +121,12 @@ async def start_watcher(request: WatcherStartRequest):
 
 @router.post("/stop")
 async def stop_watcher():
-    """Stop the llama-swap watcher."""
+    """Stop the llama-swap endpoint process."""
     tasks = process_manager.get_running_tasks()
     watcher_tasks = {k: v for k, v in tasks.items() if v.task_type == "watcher"}
     
     if not watcher_tasks:
-        raise HTTPException(status_code=404, detail="No watcher is running")
+        raise HTTPException(status_code=404, detail="Endpoint is not running")
     
     stopped = []
     for task_id in watcher_tasks:

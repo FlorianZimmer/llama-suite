@@ -167,6 +167,13 @@ def start_container(rt_path: str, name: str) -> None:
         raise SystemExit(1)
     info(f"Started container '{name}'.")
 
+def stop_container(rt_path: str, name: str) -> None:
+    cp = run(rt_path, ["stop", name])
+    if cp.returncode != 0:
+        err(f"Failed to stop container '{name}':\n{cp.stderr.strip()}")
+        raise SystemExit(1)
+    info(f"Stopped container '{name}'.")
+
 
 # ------------------------------ main orchestration ------------------------------
 
@@ -174,7 +181,10 @@ def main(argv: Optional[List[str]] = None) -> None:
     p = argparse.ArgumentParser(description="Ensure an Open WebUI container exists and is running.")
     p.add_argument("--name", default="open-webui", help="Container name (default: open-webui)")
     p.add_argument("--port", type=int, default=3000, help="Host port to expose (default: 3000)")
-    data_group = p.add_mutually_exclusive_group(required=True)
+    p.add_argument("--stop", action="store_true", help="Stop the container (no-op if missing) and exit")
+    p.add_argument("--status", action="store_true", help="Print container status and exit")
+
+    data_group = p.add_mutually_exclusive_group(required=False)
     data_group.add_argument("--data-dir", type=Path, help="Host directory to persist /app/backend/data (bind mount)")
     data_group.add_argument("--data-volume", type=str, help="Named volume to mount at /app/backend/data")
     p.add_argument("--image", default="ghcr.io/open-webui/open-webui:main", help="Container image")
@@ -186,6 +196,22 @@ def main(argv: Optional[List[str]] = None) -> None:
     info(f"Using container runtime: {rt_name} ({rt_path})")
 
     exists = container_exists(rt_path, args.name)
+    if args.status:
+        running = container_running(rt_path, args.name) if exists else False
+        info(f"Container exists: {exists}")
+        info(f"Container running: {running}")
+        return
+
+    if args.stop:
+        if not exists:
+            warn(f"Container '{args.name}' does not exist. Nothing to stop.")
+            return
+        stop_container(rt_path, args.name)
+        return
+
+    if (args.data_dir is None) == (args.data_volume is None):
+        raise SystemExit("Exactly one of --data-dir or --data-volume must be provided.")
+
     if not exists:
         create_container(
             rt=rt_name,

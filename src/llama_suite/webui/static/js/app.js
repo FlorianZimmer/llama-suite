@@ -527,6 +527,27 @@ const App = {
         }
     },
 
+    updateOpenWebUIStatusUI(isRunning, statusTextOverride = null) {
+        const statusText = statusTextOverride || (isRunning ? 'Running' : 'Stopped');
+        const cls = statusTextOverride === 'Error'
+            ? 'status-badge status-error'
+            : `status-badge ${isRunning ? 'status-running' : 'status-stopped'}`;
+
+        const statusEl = document.getElementById('dashboard-openwebui-status');
+        if (statusEl) {
+            statusEl.textContent = statusText;
+            statusEl.className = cls;
+        }
+
+        const startBtn = document.getElementById('btn-quickstart-openwebui-start');
+        const stopBtn = document.getElementById('btn-quickstart-openwebui-stop');
+        if (startBtn) startBtn.disabled = isRunning;
+        if (stopBtn) stopBtn.disabled = !isRunning;
+
+        const stopBtnSystem = document.getElementById('btn-openwebui-stop');
+        if (stopBtnSystem) stopBtnSystem.disabled = !isRunning;
+    },
+
     findOutputContainer(taskId) {
         if (taskId === this.currentBenchTaskId) return 'bench-output';
         if (taskId === this.currentMemoryTaskId) return 'memory-output';
@@ -706,6 +727,9 @@ const App = {
             case 'results':
                 await this.loadResults();
                 break;
+            case 'system':
+                await this.loadOpenWebUIStatus();
+                break;
         }
 
         // Load model list for dropdowns
@@ -761,6 +785,8 @@ const App = {
             } catch (e2) {
                 this.updateEndpointStatusUI(false, 'Error');
             }
+
+            await this.loadOpenWebUIStatus();
         } catch (e) {
             console.error('Failed to refresh dashboard:', e);
         }
@@ -1189,6 +1215,20 @@ const App = {
         } catch (e) {
             console.error('Failed to get watcher status:', e);
             this.updateEndpointStatusUI(false, 'Error');
+        }
+    },
+
+    async loadOpenWebUIStatus() {
+        try {
+            const data = await API.get('/api/system/openwebui/status');
+            if (!data.runtime_found) {
+                this.updateOpenWebUIStatusUI(false, 'Unavailable');
+                return;
+            }
+            this.updateOpenWebUIStatusUI(!!data.running);
+        } catch (e) {
+            console.error('Failed to get Open WebUI status:', e);
+            this.updateOpenWebUIStatusUI(false, 'Error');
         }
     },
 
@@ -1813,6 +1853,23 @@ const App = {
         }
     },
 
+    async stopOpenWebUI() {
+        const output = document.getElementById('system-output');
+        if (output) output.innerHTML = '';
+
+        try {
+            const data = await API.post('/api/system/openwebui/stop', {});
+
+            this.taskManager.addTask(data.task_id, 'system', 'Open WebUI container (stop)');
+            this.registerTaskContainer(data.task_id, 'system-output');
+
+            Toast.info(`Open WebUI stop requested: ${data.task_id}`);
+            this.refreshDashboard();
+        } catch (e) {
+            Toast.error(`Failed to stop Open WebUI: ${e.message}`);
+        }
+    },
+
     async runUpdate() {
         const output = document.getElementById('system-output');
         if (output) output.innerHTML = '';
@@ -2114,13 +2171,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dashboard Quick Start
     bind('btn-quickstart-endpoint-start', 'click', () => App.startWatcher());
     bind('btn-quickstart-endpoint-stop', 'click', () => App.stopWatcher());
-    bind('btn-quickstart-openwebui-start', 'click', () => App.startOpenWebUI(3000));
+    bind('btn-quickstart-openwebui-start', 'click', () => App.startOpenWebUI());
+    bind('btn-quickstart-openwebui-stop', 'click', () => App.stopOpenWebUI());
 
     // System: Open WebUI
     bind('openwebui-form', 'submit', (e) => {
         e.preventDefault();
         App.startOpenWebUI();
     });
+    bind('btn-openwebui-stop', 'click', () => App.stopOpenWebUI());
 
     bind('update-form', 'submit', (e) => {
         e.preventDefault();
