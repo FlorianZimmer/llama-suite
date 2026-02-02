@@ -253,6 +253,11 @@ models:
       gpu-layers: 99
       threads: 28
 
+  GLM-4.7-Flash:
+    cmd:
+      gpu-layers: 99
+      threads: 28
+
 # The top-level keys like healthCheckTimeout, logLevel, and profiles from your
 # llama-swap native config are NOT currently handled by llama_swap_watch.py.
 # llama_swap_watch.py focuses on generating the model command strings for a
