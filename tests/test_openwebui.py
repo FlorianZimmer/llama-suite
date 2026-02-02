@@ -70,3 +70,74 @@ def test_create_container_rejects_both_dir_and_volume(tmp_path: Path) -> None:
             image="ghcr.io/open-webui/open-webui:main",
         )
 
+
+def test_needs_recreate_when_switching_bind_to_volume() -> None:
+    info = {
+        "Mounts": [
+            {"Destination": "/app/backend/data", "Type": "bind", "Source": "/some/path"},
+        ],
+        "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "3000"}]}},
+    }
+
+    needs, reason = openwebui._needs_recreate_for_settings(  # noqa: SLF001
+        info,
+        desired_host_port=3000,
+        desired_data_volume="open-webui",
+        container_port=8080,
+    )
+    assert needs is True
+    assert "data mount kind" in reason
+
+
+def test_needs_recreate_when_volume_name_differs() -> None:
+    info = {
+        "Mounts": [
+            {"Destination": "/app/backend/data", "Type": "volume", "Name": "old-volume", "Source": "/var/lib/docker/volumes/old-volume/_data"},
+        ],
+        "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "3000"}]}},
+    }
+
+    needs, reason = openwebui._needs_recreate_for_settings(  # noqa: SLF001
+        info,
+        desired_host_port=3000,
+        desired_data_volume="open-webui",
+        container_port=8080,
+    )
+    assert needs is True
+    assert "data volume" in reason
+
+
+def test_needs_recreate_when_port_differs() -> None:
+    info = {
+        "Mounts": [
+            {"Destination": "/app/backend/data", "Type": "volume", "Name": "open-webui"},
+        ],
+        "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "3999"}]}},
+    }
+
+    needs, reason = openwebui._needs_recreate_for_settings(  # noqa: SLF001
+        info,
+        desired_host_port=3000,
+        desired_data_volume="open-webui",
+        container_port=8080,
+    )
+    assert needs is True
+    assert "host port" in reason
+
+
+def test_no_recreate_when_volume_and_port_match() -> None:
+    info = {
+        "Mounts": [
+            {"Destination": "/app/backend/data", "Type": "volume", "Name": "open-webui"},
+        ],
+        "NetworkSettings": {"Ports": {"8080/tcp": [{"HostPort": "3000"}]}},
+    }
+
+    needs, reason = openwebui._needs_recreate_for_settings(  # noqa: SLF001
+        info,
+        desired_host_port=3000,
+        desired_data_volume="open-webui",
+        container_port=8080,
+    )
+    assert needs is False
+    assert reason == ""
