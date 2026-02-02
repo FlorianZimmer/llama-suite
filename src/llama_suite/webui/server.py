@@ -32,6 +32,7 @@ from llama_suite.webui.api.config import router as config_router
 from llama_suite.webui.api.models import router as models_router
 from llama_suite.webui.api.results import router as results_router
 from llama_suite.webui.api.bench import router as bench_router
+from llama_suite.webui.api.memory import router as memory_router
 from llama_suite.webui.api.eval import router as eval_router
 from llama_suite.webui.api.watcher import router as watcher_router
 from llama_suite.webui.api.system import router as system_router
@@ -63,9 +64,20 @@ app.include_router(config_router)
 app.include_router(models_router)
 app.include_router(results_router)
 app.include_router(bench_router)
+app.include_router(memory_router)
 app.include_router(eval_router)
 app.include_router(watcher_router)
 app.include_router(system_router)
+
+@app.middleware("http")
+async def _no_cache_static_assets(request, call_next):
+    """
+    Avoid UI confusion during local development by disabling caching for /static assets.
+    """
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 # WebSocket endpoint for real-time updates

@@ -1697,7 +1697,7 @@ const App = {
         output.innerHTML = '';
 
         try {
-            const data = await API.post('/api/bench/run', {
+            const data = await API.post('/api/memory/run', {
                 override: this.currentOverride || undefined,
                 model: document.getElementById('memory-model').value || undefined,
                 health_timeout: parseInt(document.getElementById('memory-timeout').value)
