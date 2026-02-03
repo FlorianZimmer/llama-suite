@@ -78,11 +78,13 @@
             <header class="content-header">
                 <h1 class="page-title" id="page-title">Dashboard</h1>
                 <div class="header-actions">
-                    <div class="override-selector">
+                    <div class="override-selector" id="override-selector">
                         <label for="current-override">Override:</label>
                         <select id="current-override">
                             <option value="">None (base only)</option>
                         </select>
+                        <span id="override-indicator" class="override-indicator" aria-live="polite"
+                            title="The selected override is used when starting the endpoint and running tasks (bench/eval/memory/download).">No override</span>
                     </div>
                     <div class="override-actions">
                         <button type="button" id="btn-override-edit" class="btn btn-secondary btn-sm"

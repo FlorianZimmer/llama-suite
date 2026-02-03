@@ -1037,7 +1037,132 @@ const App = {
 	        const dupBtn = document.getElementById('btn-override-duplicate');
 	        if (editBtn) editBtn.disabled = !canWrite || !hasOverride;
 	        if (dupBtn) dupBtn.disabled = !canWrite || !hasOverride;
+
+            const selector = document.getElementById('override-selector');
+            if (selector) {
+                selector.classList.toggle('override-missing', !hasOverride);
+                selector.classList.toggle('override-set', hasOverride);
+            }
+
+            const indicator = document.getElementById('override-indicator');
+            if (indicator) {
+                indicator.classList.toggle('is-none', !hasOverride);
+                indicator.classList.toggle('is-set', hasOverride);
+                indicator.textContent = hasOverride ? this.currentOverride : 'No override';
+            }
 	    },
+
+        async maybeWarnNoOverride(actionLabel) {
+            if (this.currentOverride) return true;
+
+            const dismissedKey = 'llama-suite.noOverrideWarning.dismissed';
+            const seenKey = 'llama-suite.noOverrideWarning.seen';
+
+            try {
+                if (localStorage.getItem(dismissedKey) === '1') return true;
+            } catch {
+                // ignore
+            }
+
+            try {
+                if (sessionStorage.getItem(seenKey) === '1') return true;
+            } catch {
+                // ignore
+            }
+
+            if (this._noOverrideWarningInFlight) return await this._noOverrideWarningInFlight;
+
+            const promise = new Promise((resolve) => {
+                let done = false;
+
+                const resolveOnce = (value) => {
+                    if (done) return;
+                    done = true;
+                    this._noOverrideWarningInFlight = null;
+                    cleanup();
+                    resolve(value);
+                };
+
+                const markSeen = () => {
+                    try {
+                        sessionStorage.setItem(seenKey, '1');
+                    } catch {
+                        // ignore
+                    }
+                };
+
+                const onOk = () => {
+                    markSeen();
+                    Modal.hide();
+                    resolveOnce(true);
+                };
+
+                const onDontRemind = () => {
+                    markSeen();
+                    try {
+                        localStorage.setItem(dismissedKey, '1');
+                    } catch {
+                        // ignore
+                    }
+                    Modal.hide();
+                    resolveOnce(true);
+                };
+
+                const onClose = () => {
+                    // Treat closing as acknowledgement so we don't block running.
+                    markSeen();
+                    resolveOnce(true);
+                };
+
+                const onKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        Modal.hide();
+                        onClose();
+                    }
+                };
+
+                const overlayEl = document.getElementById('modal-overlay');
+                const closeEl = document.getElementById('modal-close');
+
+                const onOverlayClick = (e) => {
+                    if (e.target === overlayEl) onClose();
+                };
+
+                const cleanup = () => {
+                    document.removeEventListener('keydown', onKeyDown);
+                    overlayEl?.removeEventListener('click', onOverlayClick);
+                    closeEl?.removeEventListener('click', onClose);
+                    document.getElementById('btn-no-override-ok')?.removeEventListener('click', onOk);
+                    document.getElementById('btn-no-override-dont')?.removeEventListener('click', onDontRemind);
+                };
+
+                Modal.show(
+                    'No override selected',
+                    `
+                        <div class="notice notice-warning">
+                            <strong>${actionLabel || 'This action'}</strong> will run using <strong>base config only</strong>.
+                            <div class="muted" style="margin-top: 6px;">
+                                Overrides are recommended for machine-specific settings (GPU/VRAM, backend, model paths).
+                                You can pick one in the header (top-right).
+                            </div>
+                        </div>
+                    `,
+                    `
+                        <button class="btn btn-secondary" id="btn-no-override-dont">Don't remind again</button>
+                        <button class="btn btn-primary" id="btn-no-override-ok">Okay</button>
+                    `
+                );
+
+                document.getElementById('btn-no-override-ok')?.addEventListener('click', onOk);
+                document.getElementById('btn-no-override-dont')?.addEventListener('click', onDontRemind);
+                overlayEl?.addEventListener('click', onOverlayClick);
+                closeEl?.addEventListener('click', onClose);
+                document.addEventListener('keydown', onKeyDown);
+            });
+
+            this._noOverrideWarningInFlight = promise;
+            return await promise;
+        },
 
     async loadSystemInfo() {
         try {
@@ -2246,6 +2371,7 @@ const App = {
         output.innerHTML = '';
 
         try {
+            await this.maybeWarnNoOverride('Running benchmark');
             const selectedModel = document.getElementById('bench-model').value || '';
             if (!selectedModel) {
                 const question = document.getElementById('bench-question').value;
@@ -2285,6 +2411,7 @@ const App = {
         output.innerHTML = '';
 
         try {
+            await this.maybeWarnNoOverride('Running memory scan');
             const selectedModel = document.getElementById('memory-model').value || '';
             if (!selectedModel) {
                 if (!confirm('Run memory scan for ALL models? This can take a while.')) return;
@@ -2326,6 +2453,7 @@ const App = {
         output.innerHTML = '';
 
         try {
+            await this.maybeWarnNoOverride('Running eval harness');
             const tasks = document.getElementById('eval-tasks').value;
             const selectedModel = document.getElementById('eval-model').value || '';
             if (!selectedModel) {
@@ -2371,6 +2499,7 @@ const App = {
         output.innerHTML = '';
 
         try {
+            await this.maybeWarnNoOverride('Running custom eval');
             const dataset = document.getElementById('custom-dataset').value;
             const selectedModel = document.getElementById('custom-model').value || '';
             if (!selectedModel) {
@@ -2415,6 +2544,7 @@ const App = {
         output.innerHTML = '';
 
         try {
+            await this.maybeWarnNoOverride('Starting endpoint');
             const data = await API.post('/api/watcher/start', {
                 override: this.currentOverride || undefined,
                 verbose: document.getElementById('watcher-verbose').checked,
@@ -2531,6 +2661,7 @@ const App = {
                 return;
             }
 
+            await this.maybeWarnNoOverride('Downloading models');
             const data = await API.post('/api/system/download', {
                 override: this.currentOverride || undefined,
                 models: selected.length > 0 ? selected : undefined,
