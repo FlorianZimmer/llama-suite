@@ -31,6 +31,11 @@ logger: Optional['Logger'] = None
 TEMP_DIR_MANAGER_PATH: Optional[Path] = None
 
 
+def emit_step(i: int, n: int, message: str) -> None:
+    # ASCII-only, stable format (parsed by Web UI for progress).
+    print(f"STEP {i}/{n}: {message}", flush=True)
+
+
 def run_memory_scan(
     processed_models_config: Dict[str, Any],
     output_csv_path: Path,
@@ -51,6 +56,7 @@ def run_memory_scan(
     rows: List[List[str]] = []
 
     for idx, (alias, model_cfg) in enumerate(models_to_iterate.items(), 1):
+        emit_step(idx, len(models_to_iterate), f"Memory scan: {alias}")
         logger_instance.subheader(f"Scanning Model ({idx}/{len(models_to_iterate)}): {alias}")
         ts = logger_instance._get_timestamp()
 
@@ -141,7 +147,8 @@ def main():
     p.add_argument("-c", "--config", type=Path, default=util.CONFIGS_DIR / "config.base.yaml")
     p.add_argument("--override", type=Path, default=util.default_override_for_hostname())
     p.add_argument("--poll-interval", type=float, default=DEFAULT_HEALTH_POLL_INTERVAL_S)
-    p.add_argument("--health-timeout", type=int, default=DEFAULT_HEALTH_TIMEOUT_S_SCAN)
+    # If provided explicitly, always overrides config's healthCheckTimeout.
+    p.add_argument("--health-timeout", type=int, default=None)
     p.add_argument("-m", "--model", type=str)
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args()
@@ -183,7 +190,7 @@ def main():
 
     health_timeout_final = (
         args.health_timeout
-        if args.health_timeout != DEFAULT_HEALTH_TIMEOUT_S_SCAN
+        if args.health_timeout is not None
         else effective_conf.get("healthCheckTimeout", DEFAULT_HEALTH_TIMEOUT_S_SCAN)
     )
     if not isinstance(health_timeout_final, int) or health_timeout_final <= 0:

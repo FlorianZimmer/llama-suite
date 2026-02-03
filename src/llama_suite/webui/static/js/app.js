@@ -632,12 +632,13 @@ const App = {
             }
         });
 
-        this.ws.on('progress', (data) => {
-            // Update persistent task
-            const progress = data.percentage ?? data.progress ?? 0;
-            const message = data.message ?? '';
-            this.taskManager.updateTask(data.task_id, progress, message);
-        });
+	        this.ws.on('progress', (data) => {
+	            // Update persistent task
+	            const progress = data.percentage ?? data.progress ?? 0;
+	            const message = data.message ?? '';
+	            this.taskManager.updateTask(data.task_id, progress, message);
+	            this.updateSectionProgressFromEvent(data.task_id, progress, message);
+	        });
 
         this.ws.on('complete', (data) => {
             Toast.success('Task completed');
@@ -647,15 +648,41 @@ const App = {
             this.checkAndResetTaskState(data.task_id);
         });
 
-        this.ws.on('cancelled', (data) => {
-            Toast.info('Task cancelled');
-            this.refreshDashboard();
+	        this.ws.on('cancelled', (data) => {
+	            Toast.info('Task cancelled');
+	            this.refreshDashboard();
 
-            this.taskManager.cancelTaskUI(data.task_id);
+	            this.taskManager.cancelTaskUI(data.task_id);
 
-            this.checkAndResetTaskState(data.task_id);
-        });
-    },
+	            this.checkAndResetTaskState(data.task_id);
+	        });
+	    },
+
+	    updateSectionProgressUI(sectionKey, pct, message) {
+	        const fill = document.getElementById(`${sectionKey}-progress-fill`);
+	        const text = document.getElementById(`${sectionKey}-progress-text`);
+
+	        if (text) text.textContent = message || '';
+
+	        if (fill) {
+	            if (pct === -1) {
+	                fill.style.width = '15%';
+	            } else {
+	                const clamped = Math.max(0, Math.min(100, pct));
+	                fill.style.width = `${clamped}%`;
+	            }
+	        }
+	    },
+
+	    updateSectionProgressFromEvent(taskId, pct, message) {
+	        if (taskId === this.currentMemoryTaskId) {
+	            this.updateSectionProgressUI('memory', pct, message || 'Running...');
+	        } else if (taskId === this.currentEvalHarnessTaskId) {
+	            this.updateSectionProgressUI('eval-harness', pct, message || 'Running...');
+	        } else if (taskId === this.currentEvalCustomTaskId) {
+	            this.updateSectionProgressUI('eval-custom', pct, message || 'Running...');
+	        }
+	    },
 
 	    updateEndpointStatusUI(isRunning, statusTextOverride = null) {
 	        const statusText = statusTextOverride || (isRunning ? 'Running' : 'Stopped');
@@ -727,12 +754,19 @@ const App = {
 
     checkAndResetTaskState(taskId) {
         if (taskId === this.currentBenchTaskId) {
+            this.setTaskRunningState('bench', false);
             this.currentBenchTaskId = null;
         } else if (taskId === this.currentMemoryTaskId) {
+            this.setTaskRunningState('memory', false);
+            this.updateSectionProgressUI('memory', 0, 'Idle');
             this.currentMemoryTaskId = null;
         } else if (taskId === this.currentEvalHarnessTaskId) {
+            this.setTaskRunningState('eval-harness', false);
+            this.updateSectionProgressUI('eval-harness', 0, 'Idle');
             this.currentEvalHarnessTaskId = null;
         } else if (taskId === this.currentEvalCustomTaskId) {
+            this.setTaskRunningState('eval-custom', false);
+            this.updateSectionProgressUI('eval-custom', 0, 'Idle');
             this.currentEvalCustomTaskId = null;
         } else if (taskId === this.currentWatcherTaskId) {
             this.currentWatcherTaskId = null;
@@ -746,6 +780,8 @@ const App = {
         if (startBtn && stopBtn) {
             startBtn.style.display = isRunning ? 'none' : 'inline-block';
             stopBtn.style.display = isRunning ? 'inline-block' : 'none';
+            stopBtn.disabled = false;
+            startBtn.disabled = false;
         }
     },
 
@@ -2173,9 +2209,14 @@ const App = {
         output.innerHTML = '';
 
         try {
+            const selectedModel = document.getElementById('bench-model').value || '';
+            if (!selectedModel) {
+                const question = document.getElementById('bench-question').value;
+                if (!confirm(`Run benchmark for ALL models?\n\nQuestion: ${question}`)) return;
+            }
             const data = await API.post('/api/bench/run', {
                 override: this.currentOverride || undefined,
-                model: document.getElementById('bench-model').value || undefined,
+                model: selectedModel || undefined,
                 question: document.getElementById('bench-question').value,
                 health_timeout: parseInt(document.getElementById('bench-timeout').value)
             });
@@ -2184,7 +2225,7 @@ const App = {
             this.setTaskRunningState('bench', true);
 
             // Add to Task Manager
-            this.taskManager.addTask(data.task_id, 'bench', 'Benchmark: ' + (document.getElementById('bench-model').value || 'Default Model'));
+            this.taskManager.addTask(data.task_id, 'bench', 'Benchmark: ' + (selectedModel || 'All models'));
 
         } catch (e) {
             Toast.error(`Failed to start: ${e.message}`);
@@ -2192,13 +2233,14 @@ const App = {
     },
 
     async stopBenchmark() {
-        if (this.currentBenchTaskId) {
-            await this.cancelTask(this.currentBenchTaskId);
-            // State reset handled by ws complete/cancel event or here optimistically?
-            // Let's do it here optimistically to feel responsive
-            this.setTaskRunningState('bench', false);
-            this.currentBenchTaskId = null;
-        }
+        const taskId = this.currentBenchTaskId;
+        if (!taskId) return;
+
+        const stopBtn = document.getElementById('btn-bench-stop');
+        if (stopBtn) stopBtn.disabled = true;
+
+        const ok = await this.cancelTask(taskId);
+        if (!ok && stopBtn) stopBtn.disabled = false;
     },
 
     async runMemoryScan() {
@@ -2206,9 +2248,15 @@ const App = {
         output.innerHTML = '';
 
         try {
+            const selectedModel = document.getElementById('memory-model').value || '';
+            if (!selectedModel) {
+                if (!confirm('Run memory scan for ALL models? This can take a while.')) return;
+            }
+
+            this.updateSectionProgressUI('memory', -1, 'Starting...');
             const data = await API.post('/api/memory/run', {
                 override: this.currentOverride || undefined,
-                model: document.getElementById('memory-model').value || undefined,
+                model: selectedModel || undefined,
                 health_timeout: parseInt(document.getElementById('memory-timeout').value)
             });
             Toast.info(`Memory scan started: ${data.task_id}`);
@@ -2216,19 +2264,24 @@ const App = {
             this.setTaskRunningState('memory', true);
 
             // Add to Task Manager
-            this.taskManager.addTask(data.task_id, 'memory', 'Memory Scan: ' + (document.getElementById('memory-model').value || 'Default Model'));
+            this.taskManager.addTask(data.task_id, 'memory', 'Memory Scan: ' + (selectedModel || 'All models'));
 
         } catch (e) {
+            this.updateSectionProgressUI('memory', 0, 'Idle');
             Toast.error(`Failed to start: ${e.message}`);
         }
     },
 
     async stopMemoryScan() {
-        if (this.currentMemoryTaskId) {
-            await this.cancelTask(this.currentMemoryTaskId);
-            this.setTaskRunningState('memory', false);
-            this.currentMemoryTaskId = null;
-        }
+        const taskId = this.currentMemoryTaskId;
+        if (!taskId) return;
+
+        const stopBtn = document.getElementById('btn-memory-stop');
+        if (stopBtn) stopBtn.disabled = true;
+
+        this.updateSectionProgressUI('memory', -1, 'Cancelling...');
+        const ok = await this.cancelTask(taskId);
+        if (!ok && stopBtn) stopBtn.disabled = false;
     },
 
     async runEvalHarness() {
@@ -2237,9 +2290,15 @@ const App = {
 
         try {
             const tasks = document.getElementById('eval-tasks').value;
+            const selectedModel = document.getElementById('eval-model').value || '';
+            if (!selectedModel) {
+                if (!confirm(`Run evaluation harness for ALL models?\n\nTasks: ${tasks}`)) return;
+            }
+
+            this.updateSectionProgressUI('eval-harness', -1, 'Starting...');
             const data = await API.post('/api/eval/harness/run', {
                 override: this.currentOverride || undefined,
-                model: document.getElementById('eval-model').value || undefined,
+                model: selectedModel || undefined,
                 tasks: tasks,
                 limit: document.getElementById('eval-limit').value ? parseFloat(document.getElementById('eval-limit').value) : undefined,
                 num_fewshot: document.getElementById('eval-fewshot').value ? parseInt(document.getElementById('eval-fewshot').value) : undefined,
@@ -2250,19 +2309,24 @@ const App = {
             this.setTaskRunningState('eval-harness', true);
 
             // Add to Task Manager
-            this.taskManager.addTask(data.task_id, 'eval', `Eval Harness: ${tasks}`);
+            this.taskManager.addTask(data.task_id, 'eval', `Eval Harness (${selectedModel || 'All models'}): ${tasks}`);
 
         } catch (e) {
+            this.updateSectionProgressUI('eval-harness', 0, 'Idle');
             Toast.error(`Failed to start: ${e.message}`);
         }
     },
 
     async stopEvalHarness() {
-        if (this.currentEvalHarnessTaskId) {
-            await this.cancelTask(this.currentEvalHarnessTaskId);
-            this.setTaskRunningState('eval-harness', false);
-            this.currentEvalHarnessTaskId = null;
-        }
+        const taskId = this.currentEvalHarnessTaskId;
+        if (!taskId) return;
+
+        const stopBtn = document.getElementById('btn-eval-harness-stop');
+        if (stopBtn) stopBtn.disabled = true;
+
+        this.updateSectionProgressUI('eval-harness', -1, 'Cancelling...');
+        const ok = await this.cancelTask(taskId);
+        if (!ok && stopBtn) stopBtn.disabled = false;
     },
 
     async runCustomEval() {
@@ -2271,9 +2335,15 @@ const App = {
 
         try {
             const dataset = document.getElementById('custom-dataset').value;
+            const selectedModel = document.getElementById('custom-model').value || '';
+            if (!selectedModel) {
+                if (!confirm(`Run custom eval for ALL models?\n\nDataset: ${dataset}`)) return;
+            }
+
+            this.updateSectionProgressUI('eval-custom', -1, 'Starting...');
             const data = await API.post('/api/eval/custom/run', {
                 override: this.currentOverride || undefined,
-                model: document.getElementById('custom-model').value || undefined,
+                model: selectedModel || undefined,
                 dataset: dataset,
                 max_tasks: document.getElementById('custom-max-tasks').value ? parseInt(document.getElementById('custom-max-tasks').value) : undefined,
                 temperature: document.getElementById('custom-temp').value ? parseFloat(document.getElementById('custom-temp').value) : undefined
@@ -2283,19 +2353,24 @@ const App = {
             this.setTaskRunningState('eval-custom', true);
 
             // Add to Task Manager
-            this.taskManager.addTask(data.task_id, 'eval', `Custom Eval: ${dataset}`);
+            this.taskManager.addTask(data.task_id, 'eval', `Custom Eval (${selectedModel || 'All models'}): ${dataset}`);
 
         } catch (e) {
+            this.updateSectionProgressUI('eval-custom', 0, 'Idle');
             Toast.error(`Failed to start: ${e.message}`);
         }
     },
 
     async stopCustomEval() {
-        if (this.currentEvalCustomTaskId) {
-            await this.cancelTask(this.currentEvalCustomTaskId);
-            this.setTaskRunningState('eval-custom', false);
-            this.currentEvalCustomTaskId = null;
-        }
+        const taskId = this.currentEvalCustomTaskId;
+        if (!taskId) return;
+
+        const stopBtn = document.getElementById('btn-eval-custom-stop');
+        if (stopBtn) stopBtn.disabled = true;
+
+        this.updateSectionProgressUI('eval-custom', -1, 'Cancelling...');
+        const ok = await this.cancelTask(taskId);
+        if (!ok && stopBtn) stopBtn.disabled = false;
     },
 
     async startWatcher() {
@@ -2445,8 +2520,10 @@ const App = {
             Toast.success('Task cancelled');
             this.taskManager.cancelTaskUI(taskId);
             await this.refreshDashboard();
+            return true;
         } catch (e) {
             Toast.error('Failed to cancel task');
+            return false;
         }
     },
 

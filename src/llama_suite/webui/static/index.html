@@ -270,13 +270,16 @@
                                 <label for="bench-timeout">Health Timeout (s)</label>
                                 <input type="number" id="bench-timeout" value="120" min="30">
                             </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn primary-btn" onclick="runBenchmark()">
-                                    <i class="fas fa-play"></i> Run Benchmark
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+	                            <div class="form-actions">
+	                                <button type="button" class="btn primary-btn" id="btn-bench-start" onclick="runBenchmark()">
+	                                    <i class="fas fa-play"></i> Run Benchmark
+	                                </button>
+	                                <button type="button" class="btn btn-danger" id="btn-bench-stop" onclick="stopBenchmark()" style="display: none;">
+	                                    <i class="fas fa-stop"></i> Stop
+	                                </button>
+	                            </div>
+	                        </form>
+	                    </div>
 
                     <div class="card">
                         <h2 class="card-title">Output</h2>
@@ -299,13 +302,22 @@
                                 <label for="memory-timeout">Health Timeout (s)</label>
                                 <input type="number" id="memory-timeout" value="120" min="30">
                             </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn primary-btn" onclick="runMemoryScan()">
-                                    <i class="fas fa-search"></i> Run Memory Scan
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+	                            <div class="form-actions">
+	                                <button type="button" class="btn primary-btn" id="btn-memory-start" onclick="runMemoryScan()">
+	                                    <i class="fas fa-search"></i> Run Memory Scan
+	                                </button>
+	                                <button type="button" class="btn btn-danger" id="btn-memory-stop" onclick="stopMemoryScan()" style="display: none;">
+	                                    <i class="fas fa-stop"></i> Stop
+	                                </button>
+	                            </div>
+	                            <div class="form-group" style="grid-column: 1 / -1;">
+	                                <div class="muted" id="memory-progress-text">Idle</div>
+	                                <div class="task-progress-track" style="margin-top: 0.5rem;">
+	                                    <div class="task-progress-fill" id="memory-progress-fill" style="width: 0%"></div>
+	                                </div>
+	                            </div>
+	                        </form>
+	                    </div>
 
                     <div class="card">
                         <h2 class="card-title">Output</h2>
@@ -347,14 +359,23 @@
                                     <label for="eval-batch">Batch Size</label>
                                     <input type="text" id="eval-batch" value="1">
                                 </div>
-                                <div class="form-actions">
-                                    <button type="button" class="btn primary-btn" onclick="runEvalHarness()">
-                                        <i class="fas fa-play"></i> Run Evaluation
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+	                                <div class="form-actions">
+	                                    <button type="button" class="btn primary-btn" id="btn-eval-harness-start" onclick="runEvalHarness()">
+	                                        <i class="fas fa-play"></i> Run Evaluation
+	                                    </button>
+	                                    <button type="button" class="btn btn-danger" id="btn-eval-harness-stop" onclick="stopEvalHarness()" style="display: none;">
+	                                        <i class="fas fa-stop"></i> Stop
+	                                    </button>
+	                                </div>
+	                                <div class="form-group" style="grid-column: 1 / -1;">
+	                                    <div class="muted" id="eval-harness-progress-text">Idle</div>
+	                                    <div class="task-progress-track" style="margin-top: 0.5rem;">
+	                                        <div class="task-progress-fill" id="eval-harness-progress-fill" style="width: 0%"></div>
+	                                    </div>
+	                                </div>
+	                            </form>
+	                        </div>
+	                    </div>
 
                     <div id="eval-custom" class="tab-content">
                         <div class="card">
@@ -378,13 +399,22 @@
                                     <label for="custom-temp">Temperature</label>
                                     <input type="number" id="custom-temp" step="0.1" placeholder="Default">
                                 </div>
-                                <div class="form-actions">
-                                    <button type="button" class="btn primary-btn" onclick="runCustomEval()">
-                                        <i class="fas fa-play"></i> Run Evaluation
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+	                            <div class="form-actions">
+	                                <button type="button" class="btn primary-btn" id="btn-eval-custom-start" onclick="runCustomEval()">
+	                                    <i class="fas fa-play"></i> Run Evaluation
+	                                </button>
+	                                <button type="button" class="btn btn-danger" id="btn-eval-custom-stop" onclick="stopCustomEval()" style="display: none;">
+	                                    <i class="fas fa-stop"></i> Stop
+	                                </button>
+	                            </div>
+	                            <div class="form-group" style="grid-column: 1 / -1;">
+	                                <div class="muted" id="eval-custom-progress-text">Idle</div>
+	                                <div class="task-progress-track" style="margin-top: 0.5rem;">
+	                                    <div class="task-progress-fill" id="eval-custom-progress-fill" style="width: 0%"></div>
+	                                </div>
+	                            </div>
+	                        </form>
+	                    </div>
                     </div>
 
                     <div class="card">

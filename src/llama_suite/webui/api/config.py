@@ -8,9 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import (
-    find_project_root,
     generate_processed_config,
 )
+from llama_suite.webui.utils.paths import get_base_config_path as _get_base_config_path
+from llama_suite.webui.utils.paths import get_project_root as _get_project_root
 from llama_suite.webui.utils.mode import require_not_read_only
 
 
@@ -19,7 +20,7 @@ router = APIRouter(prefix="/api/config", tags=["configuration"])
 
 def get_project_root() -> Path:
     """Get the project root directory."""
-    return find_project_root()
+    return _get_project_root()
 
 
 def get_configs_dir() -> Path:
@@ -29,7 +30,8 @@ def get_configs_dir() -> Path:
 
 def get_base_config_path() -> Path:
     """Get path to config.base.yaml."""
-    return get_configs_dir() / "config.base.yaml"
+    # May be overridden via LLAMA_SUITE_BASE_CONFIG_PATH.
+    return _get_base_config_path()
 
 
 def get_overrides_dir() -> Path:

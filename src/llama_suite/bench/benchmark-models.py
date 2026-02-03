@@ -260,7 +260,8 @@ def main():
     p.add_argument("--override", type=Path, default=util.default_override_for_hostname())
     p.add_argument("-q", "--question", type=str, default=DEFAULT_QUESTION)
     p.add_argument("--poll-interval", type=float, default=DEFAULT_HEALTH_POLL_INTERVAL_S)
-    p.add_argument("--health-timeout", type=int, default=DEFAULT_HEALTH_TIMEOUT_S_BENCH)
+    # If provided explicitly, always overrides config's healthCheckTimeout.
+    p.add_argument("--health-timeout", type=int, default=None)
     p.add_argument("-m", "--model", type=str)
     p.add_argument("-v", "--verbose", action="store_true")
     plain_default = _truthy_env(os.getenv("LLAMA_SUITE_PLAIN", ""))
@@ -304,7 +305,8 @@ def main():
         raise SystemExit(1)
 
     health_timeout_final = (
-        args.health_timeout if args.health_timeout != DEFAULT_HEALTH_TIMEOUT_S_BENCH
+        args.health_timeout
+        if args.health_timeout is not None
         else effective.get("healthCheckTimeout", DEFAULT_HEALTH_TIMEOUT_S_BENCH)
     )
     if not isinstance(health_timeout_final, int) or health_timeout_final <= 0:

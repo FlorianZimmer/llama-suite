@@ -103,8 +103,8 @@ class ProcessManager:
         env.setdefault("PYTHONIOENCODING", "utf-8")
         # Prefer predictable, non-ANSI output for Web UI logs.
         env.setdefault("LLAMA_SUITE_PLAIN", "1")
-        # Avoid noisy tqdm carriage-return updates in captured logs.
-        env.setdefault("TQDM_DISABLE", "1")
+        # NOTE: do not force-disable tqdm; some tasks rely on it for progress, and this manager
+        # already splits output on both \n and \r.
 
         process = await asyncio.create_subprocess_exec(
             *cmd,

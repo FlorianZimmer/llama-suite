@@ -8,10 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root, generate_processed_config
+from llama_suite.webui.utils.paths import get_base_config_path
 from llama_suite.webui.utils.mode import require_not_read_only
 
 
 router = APIRouter(prefix="/api/models", tags=["models"])
+
+
+MANDATORY_CMD_KEYS = {"bin", "port", "model", "ctx-size"}
 
 
 def get_project_root() -> Path:
@@ -27,6 +31,49 @@ def get_configs_dir() -> Path:
 def get_models_dir() -> Path:
     """Get the models directory."""
     return get_project_root() / "models"
+
+
+def _coerce_gpu_layers(value) -> object:
+    """
+    The UI historically sends -1 for "auto". Keep the stored config compatible with command building.
+    """
+    if value is None:
+        return "auto"
+    try:
+        if isinstance(value, str) and value.strip().lower() == "auto":
+            return "auto"
+        if int(value) <= 0:
+            return "auto"
+    except Exception:
+        pass
+    return value
+
+
+def _default_cmd_template(config: dict) -> dict:
+    """
+    Pick sane defaults for new model entries.
+
+    Prefer an existing model's cmd keys for `bin` and `port` to match the user's setup;
+    otherwise fall back to the repo defaults used in `configs/config.base.yaml`.
+    """
+    models = config.get("models", {})
+    if isinstance(models, dict):
+        for _, model_cfg in models.items():
+            if not isinstance(model_cfg, dict):
+                continue
+            cmd = model_cfg.get("cmd", {})
+            if not isinstance(cmd, dict):
+                continue
+            if cmd.get("bin") and cmd.get("port"):
+                return {"bin": cmd.get("bin"), "port": cmd.get("port")}
+
+    return {"bin": "llama.cpp/build/bin/llama-server", "port": "${PORT}"}
+
+
+def _validate_cmd_has_required_keys(model_name: str, cmd: dict) -> None:
+    missing = sorted(k for k in MANDATORY_CMD_KEYS if not cmd.get(k))
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Model '{model_name}': cmd is missing required keys: {', '.join(missing)}")
 
 
 def reanchor_from_configs(p: Path, project_root: Path) -> Path:
@@ -57,7 +104,7 @@ def reanchor_from_configs(p: Path, project_root: Path) -> Path:
 @router.get("")
 async def list_models(override: Optional[str] = None):
     """List all configured models with their properties."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     override_path = None
     
     if override:
@@ -165,7 +212,7 @@ async def list_models(override: Optional[str] = None):
 @router.get("/{name}")
 async def get_model(name: str, override: Optional[str] = None):
     """Get detailed configuration for a specific model."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     override_path = None
     
     if override:
@@ -310,7 +357,7 @@ class ModelDisableRequest(BaseModel):
 @router.post("/{name}/toggle")
 async def toggle_model(name: str, request: ModelDisableRequest, _=Depends(require_not_read_only)):
     """Enable or disable a model by updating the base config."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     
     if not base_path.exists():
         raise HTTPException(status_code=404, detail="Base config not found")
@@ -351,7 +398,7 @@ class ModelUpdateRequest(BaseModel):
 @router.put("/{name}")
 async def update_model(name: str, request: ModelUpdateRequest, _=Depends(require_not_read_only)):
     """Update a model's configuration in the base config."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     
     if not base_path.exists():
         raise HTTPException(status_code=404, detail="Base config not found")
@@ -371,9 +418,16 @@ async def update_model(name: str, request: ModelUpdateRequest, _=Depends(require
             model_cfg["cmd"] = {}
         for key, value in request.cmd.items():
             if value is None:
+                if key in MANDATORY_CMD_KEYS:
+                    raise HTTPException(status_code=400, detail=f"Model '{name}': cannot remove required cmd key '{key}'")
                 model_cfg["cmd"].pop(key, None)
             else:
-                model_cfg["cmd"][key] = value
+                if key == "gpu-layers":
+                    model_cfg["cmd"][key] = _coerce_gpu_layers(value)
+                else:
+                    model_cfg["cmd"][key] = value
+
+        _validate_cmd_has_required_keys(name, model_cfg["cmd"])
     
     # Update sampling parameters
     if request.sampling is not None:
@@ -422,7 +476,7 @@ class ModelCopyRequest(BaseModel):
 @router.post("/{name}/copy-to")
 async def copy_model_params(name: str, request: ModelCopyRequest, _=Depends(require_not_read_only)):
     """Copy parameters from one model to others."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     
     if not base_path.exists():
         raise HTTPException(status_code=404, detail="Base config not found")
@@ -496,7 +550,7 @@ class ModelCreateRequest(BaseModel):
 @router.post("")
 async def create_model(name: str, request: ModelCreateRequest, _=Depends(require_not_read_only)):
     """Create a new model entry in the base config."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     
     if not base_path.exists():
         raise HTTPException(status_code=404, detail="Base config not found")
@@ -518,16 +572,20 @@ async def create_model(name: str, request: ModelCreateRequest, _=Depends(require
             new_cfg["cmd"] = {}
         new_cfg["cmd"]["model"] = request.model_path
     else:
+        template = _default_cmd_template(config)
         # Create from scratch
         new_cfg = {
             "cmd": {
+                **template,
                 "model": request.model_path,
                 "ctx-size": request.ctx_size,
-                "gpu-layers": request.gpu_layers,
+                "gpu-layers": _coerce_gpu_layers(request.gpu_layers),
             }
         }
         if request.threads:
             new_cfg["cmd"]["threads"] = request.threads
+
+    _validate_cmd_has_required_keys(name, new_cfg.get("cmd", {}))
     
     if request.hf_tokenizer:
         new_cfg["hf_tokenizer_for_model"] = request.hf_tokenizer
@@ -546,7 +604,7 @@ async def create_model(name: str, request: ModelCreateRequest, _=Depends(require
 
 def get_models_using_gguf(gguf_path: str) -> List[str]:
     """Find all model configs that reference a specific GGUF file."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     if not base_path.exists():
         return []
     
@@ -628,7 +686,7 @@ async def get_file_dependencies(filename: str):
 @router.delete("/{name}")
 async def delete_model(name: str, delete_file: bool = False, _=Depends(require_not_read_only)):
     """Delete a model entry from the base config, optionally deleting the GGUF file."""
-    base_path = get_configs_dir() / "config.base.yaml"
+    base_path = get_base_config_path()
     
     if not base_path.exists():
         raise HTTPException(status_code=404, detail="Base config not found")
@@ -719,7 +777,7 @@ async def delete_gguf_file(filename: str, delete_configs: bool = False, _=Depend
     
     # Optionally delete dependent configs
     if delete_configs and dependent_models:
-        base_path = get_configs_dir() / "config.base.yaml"
+        base_path = get_base_config_path()
         if base_path.exists():
             content = base_path.read_text(encoding="utf-8")
             config = yaml.safe_load(content)
