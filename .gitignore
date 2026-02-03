@@ -18,5 +18,8 @@ models
 Thumbs.db
 .DS_Store
 
+# Local backups
+*.yaml.bak
+
 __pycache__
 opencode.json

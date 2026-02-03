@@ -114,7 +114,7 @@ async def serve_root():
     """Serve the main application."""
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers={"Cache-Control": "no-store"})
     return {"message": "llama-suite Web UI", "note": "Static files not found. Please check installation."}
 
 
@@ -124,12 +124,12 @@ async def serve_spa(path: str):
     # First try to serve static file
     static_path = STATIC_DIR / path
     if static_path.exists() and static_path.is_file():
-        return FileResponse(static_path)
+        return FileResponse(static_path, headers={"Cache-Control": "no-store"})
     
     # Fallback to index.html for SPA routing
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers={"Cache-Control": "no-store"})
     
     return {"error": "Not found", "path": path}
 

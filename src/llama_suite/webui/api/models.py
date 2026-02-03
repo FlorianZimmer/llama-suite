@@ -228,10 +228,13 @@ async def list_available_model_files():
                 rel_path = path.relative_to(resolved_models_dir)
             except ValueError:
                 rel_path = path.name
-            
+
+            rel_path_str = str(rel_path)
+            rel_path_posix = rel_path_str.replace("\\", "/")
             files.append({
                 "name": path.name,
-                "relative_path": str(rel_path),
+                "relative_path": rel_path_str,
+                "config_path": f"./models/{rel_path_posix}",
                 "path": str(path),
                 "size_bytes": resolved.stat().st_size
             })
@@ -288,10 +291,13 @@ async def upload_model_file(
             target_path.unlink()
         raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
     
+    relative_path = str(target_path.relative_to(resolved_models_dir)).replace("\\", "/")
     return {
         "status": "ok",
         "filename": file.filename,
         "path": str(target_path),
+        "relative_path": relative_path,
+        "config_path": f"./models/{relative_path}",
         "size_bytes": target_path.stat().st_size
     }
 

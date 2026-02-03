@@ -388,6 +388,8 @@ const App = {
     currentSection: 'dashboard',
     currentOverride: '',
     ws: null,
+    baseConfigOriginal: null,
+    missingModelsForDownload: [],
     outputContainers: {},
     currentBenchTaskId: null,
     currentMemoryTaskId: null,
@@ -407,12 +409,34 @@ const App = {
 
         this.setupNavigation();
         this.setupTabs();
+        this.setupDirtyTracking();
         this.setupWebSocketHandlers();
         await this.loadInitialData();
 
         // Handle initial route
         this.handleRoute();
         window.addEventListener('hashchange', () => this.handleRoute());
+    },
+
+    setupDirtyTracking() {
+        const editor = document.getElementById('config-editor');
+        if (!editor) return;
+        if (this._dirtyTrackingBound) return;
+        this._dirtyTrackingBound = true;
+
+        editor.addEventListener('input', () => this.updateBaseConfigSaveButton());
+        this.updateBaseConfigSaveButton();
+    },
+
+    updateBaseConfigSaveButton() {
+        const btn = document.getElementById('btn-save-config');
+        const editor = document.getElementById('config-editor');
+        if (!btn || !editor) return;
+
+        const original = this.baseConfigOriginal ?? '';
+        const dirty = editor.value !== original;
+        btn.disabled = !dirty;
+        btn.textContent = dirty ? 'Save Changes' : 'Saved';
     },
 
     setupNavigation() {
@@ -427,6 +451,13 @@ const App = {
         // Override selector
         document.getElementById('current-override').addEventListener('change', async (e) => {
             this.currentOverride = e.target.value;
+            try {
+                localStorage.setItem('llama-suite.override', this.currentOverride || '');
+            } catch {
+                // Ignore storage errors (private mode / restricted contexts)
+            }
+            this.updateOverrideActionsUI();
+            await this.loadDownloadModelsUI();
             await this.refreshCurrentSection();
         });
     },
@@ -690,9 +721,31 @@ const App = {
                 option.textContent = o.name;
                 select.appendChild(option);
             });
+
+            // Restore last selection (best-effort)
+            let desired = this.currentOverride || '';
+            if (!desired) {
+                try {
+                    desired = localStorage.getItem('llama-suite.override') || '';
+                } catch {
+                    desired = '';
+                }
+            }
+            const hasDesired = desired && Array.from(select.options).some(opt => opt.value === desired);
+            select.value = hasDesired ? desired : '';
+            this.currentOverride = select.value;
+            this.updateOverrideActionsUI();
         } catch (e) {
             console.error('Failed to load overrides:', e);
         }
+    },
+
+    updateOverrideActionsUI() {
+        const hasOverride = !!this.currentOverride;
+        const editBtn = document.getElementById('btn-override-edit');
+        const dupBtn = document.getElementById('btn-override-duplicate');
+        if (editBtn) editBtn.disabled = !hasOverride;
+        if (dupBtn) dupBtn.disabled = !hasOverride;
     },
 
     async loadSystemInfo() {
@@ -728,7 +781,7 @@ const App = {
                 await this.loadResults();
                 break;
             case 'system':
-                await this.loadOpenWebUIStatus();
+                await this.loadSystemSection();
                 break;
         }
 
@@ -740,6 +793,87 @@ const App = {
 
     async refreshCurrentSection() {
         await this.loadSectionData(this.currentSection);
+    },
+
+    async loadSystemSection() {
+        await this.loadOpenWebUIStatus();
+        await this.loadDownloadModelsUI();
+    },
+
+    goToDownloadModels() {
+        Modal.hide();
+        window.location.hash = 'system';
+        setTimeout(() => {
+            const form = document.getElementById('download-form');
+            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    },
+
+    async loadDownloadModelsUI() {
+        const listEl = document.getElementById('download-models-list');
+        const helpEl = document.getElementById('download-models-help');
+        const btn = document.getElementById('btn-download-models');
+        if (!listEl || !helpEl || !btn) return;
+
+        listEl.innerHTML = '';
+        helpEl.textContent = 'Loading missing models…';
+        btn.disabled = true;
+
+        try {
+            const url = this.currentOverride
+                ? `/api/models?override=${encodeURIComponent(this.currentOverride)}`
+                : '/api/models';
+            const data = await API.get(url);
+            const models = data.models || [];
+
+            this.missingModelsForDownload = models
+                .filter(m => !m.disabled && !m.model_exists)
+                .map(m => m.name);
+
+            if (this.missingModelsForDownload.length === 0) {
+                const msg = document.createElement('div');
+                msg.className = 'empty-message';
+                msg.style.padding = '0.75rem';
+                msg.textContent = 'No missing models for this override.';
+                listEl.appendChild(msg);
+                helpEl.textContent = 'Tip: use “Force re-download” to fetch again even if files already exist.';
+                btn.textContent = '⬇ Download models';
+                btn.disabled = !document.getElementById('download-force')?.checked;
+                return;
+            }
+
+            for (const name of this.missingModelsForDownload) {
+                const label = document.createElement('label');
+                label.className = 'checklist-item';
+
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.className = 'download-model-checkbox';
+                cb.value = name;
+                cb.checked = true;
+
+                const text = document.createElement('span');
+                text.textContent = name;
+
+                label.appendChild(cb);
+                label.appendChild(text);
+                listEl.appendChild(label);
+            }
+
+            const updateHelp = () => {
+                const selected = Array.from(document.querySelectorAll('.download-model-checkbox:checked')).map(el => el.value);
+                helpEl.textContent = `${selected.length}/${this.missingModelsForDownload.length} selected`;
+                btn.disabled = selected.length === 0;
+                btn.textContent = selected.length === 0 ? '⬇ Download missing models' : `⬇ Download ${selected.length} missing model(s)`;
+            };
+
+            listEl.onchange = updateHelp;
+            updateHelp();
+        } catch (e) {
+            helpEl.textContent = `Failed to load missing models: ${e.message}`;
+            btn.textContent = '⬇ Download models';
+            btn.disabled = false;
+        }
     },
 
     async refreshDashboard() {
@@ -796,6 +930,8 @@ const App = {
         try {
             const data = await API.get('/api/config');
             document.getElementById('config-editor').value = data.content;
+            this.baseConfigOriginal = data.content;
+            this.updateBaseConfigSaveButton();
 
             // Load overrides list
             const overrides = await API.get('/api/config/overrides');
@@ -824,7 +960,7 @@ const App = {
             const override = this.currentOverride || undefined;
             const url = override ? `/api/config/effective?override=${override}` : '/api/config/effective';
             const data = await API.get(url);
-            document.getElementById('effective-config').textContent = JSON.stringify(data.config, null, 2);
+            document.getElementById('effective-config').textContent = data.yaml || JSON.stringify(data.config, null, 2);
         } catch (e) {
             console.error('Failed to load effective config:', e);
         }
@@ -1611,11 +1747,139 @@ const App = {
     async saveConfig() {
         try {
             const content = document.getElementById('config-editor').value;
+            if ((this.baseConfigOriginal ?? '') === content) {
+                Toast.info('No changes to save');
+                return;
+            }
             await API.put('/api/config', { content });
             Toast.success('Configuration saved');
+            this.baseConfigOriginal = content;
+            this.updateBaseConfigSaveButton();
             await this.loadEffectiveConfig();
         } catch (e) {
             Toast.error(`Failed to save: ${e.message}`);
+        }
+    },
+
+    async copyEffectiveConfig() {
+        const text = document.getElementById('effective-config')?.textContent || '';
+        if (!text.trim()) {
+            Toast.warning('Nothing to copy');
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(text);
+            Toast.success('Copied effective config');
+        } catch {
+            // Fallback for older browsers / blocked clipboard APIs
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                Toast.success('Copied effective config');
+            } catch {
+                Toast.error('Copy failed');
+            } finally {
+                ta.remove();
+            }
+        }
+    },
+
+    editCurrentOverride() {
+        if (!this.currentOverride) {
+            Toast.info('Select an override first');
+            return;
+        }
+        this.editOverride(this.currentOverride);
+    },
+
+    async duplicateCurrentOverride() {
+        if (!this.currentOverride) {
+            Toast.info('Select an override first');
+            return;
+        }
+
+        try {
+            const data = await API.get(`/api/config/overrides/${this.currentOverride}`);
+            const suggested = `${this.currentOverride}-copy`;
+            this.showNewOverrideDialog({ name: suggested, content: data.content });
+        } catch (e) {
+            Toast.error(`Failed to duplicate: ${e.message}`);
+        }
+    },
+
+    showNewOverrideDialog(preset = {}) {
+        Modal.show('New Override', `
+            <div class="form-grid" style="grid-template-columns: 1fr;">
+                <div class="form-group">
+                    <label for="new-override-name">Name</label>
+                    <input type="text" id="new-override-name" placeholder="e.g., win-5090" value="">
+                    <div class="muted" style="margin-top: 0.25rem;">Creates <code>configs/overrides/&lt;name&gt;.yaml</code></div>
+                </div>
+                <div class="form-group">
+                    <label for="new-override-content">YAML</label>
+                    <textarea id="new-override-content" class="code-editor" style="min-height: 260px;"></textarea>
+                </div>
+            </div>
+        `, `
+            <button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button>
+            <button class="btn btn-primary" onclick="App.createOverrideFromDialog()">Create</button>
+        `);
+
+        const defaultName = preset.name || '';
+        const defaultContent = preset.content || this.buildOverrideTemplate();
+        const nameEl = document.getElementById('new-override-name');
+        const contentEl = document.getElementById('new-override-content');
+        if (nameEl) nameEl.value = defaultName;
+        if (contentEl) contentEl.value = defaultContent;
+    },
+
+    buildOverrideTemplate() {
+        return [
+            '# Machine override',
+            '# Keep this file small: only put machine-specific changes here.',
+            '# Example:',
+            '#   models:',
+            '#     SomeModelName:',
+            '#       cmd:',
+            '#         gpu-layers: 99',
+            '',
+        ].join('\\n');
+    },
+
+    async createOverrideFromDialog() {
+        const name = (document.getElementById('new-override-name')?.value || '').trim();
+        const content = document.getElementById('new-override-content')?.value || '';
+
+        if (!name) {
+            Toast.warning('Override name is required');
+            return;
+        }
+
+        try {
+            const created = await API.post('/api/config/overrides', { name, content });
+            Toast.success(`Created override: ${created.name}`);
+            Modal.hide();
+            await this.loadOverrides();
+            await this.loadConfig();
+
+            // Select the newly created override and persist it
+            this.currentOverride = created.name;
+            const select = document.getElementById('current-override');
+            if (select) select.value = created.name;
+            try {
+                localStorage.setItem('llama-suite.override', created.name);
+            } catch {
+                // ignore
+            }
+            await this.refreshCurrentSection();
+        } catch (e) {
+            Toast.error(`Failed to create override: ${e.message}`);
         }
     },
 
@@ -1654,6 +1918,7 @@ const App = {
             Toast.success('Override deleted');
             await this.loadConfig();
             await this.loadOverrides();
+            await this.refreshCurrentSection();
         } catch (e) {
             Toast.error('Failed to delete override');
         }
@@ -1901,15 +2166,26 @@ const App = {
         if (output) output.innerHTML = '';
 
         try {
+            const force = document.getElementById('download-force').checked;
+            const selected = Array.from(document.querySelectorAll('.download-model-checkbox:checked')).map(el => el.value);
+            const hasMissingList = this.missingModelsForDownload && this.missingModelsForDownload.length > 0;
+
+            if (hasMissingList && selected.length === 0) {
+                Toast.warning('Select at least one missing model to download');
+                return;
+            }
+
             const data = await API.post('/api/system/download', {
                 override: this.currentOverride || undefined,
+                models: selected.length > 0 ? selected : undefined,
                 include_drafts: document.getElementById('download-drafts').checked,
                 include_tokenizers: document.getElementById('download-tokenizers').checked,
-                force: document.getElementById('download-force').checked
+                force
             });
 
             // Show task immediately and route logs to the System output panel
-            this.taskManager.addTask(data.task_id, 'system', 'Download Models');
+            const label = selected.length > 0 ? `Download ${selected.length} model(s)` : 'Download Models';
+            this.taskManager.addTask(data.task_id, 'system', label);
             this.registerTaskContainer(data.task_id, 'system-output');
 
             Toast.info(`Download started: ${data.task_id}`);
@@ -1956,7 +2232,7 @@ const App = {
         }
     },
 
-    async showAddModelDialog() {
+    async showAddModelDialog(preset = null) {
         try {
             // Load available GGUF files
             const filesData = await API.get('/api/models/files/available');
@@ -1968,6 +2244,14 @@ const App = {
 
             Modal.show('Add New Model', `
                 <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="muted" style="margin-bottom: 0.5rem;">
+                        This creates a config entry. It does not download or upload files.
+                        Use <strong>Upload local GGUF</strong> if you already have a file, or <strong>Get missing models</strong> to download from Hugging Face.
+                        <div style="display:flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="App.showUploadDialog()">Upload local GGUF…</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="App.goToDownloadModels()">Get missing models…</button>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label>Model Name (alias)</label>
                         <input type="text" id="new-model-name" placeholder="e.g., qwen3-8b-q4" required>
@@ -1976,12 +2260,12 @@ const App = {
                         <label>Model File</label>
                         <select id="new-model-file">
                             <option value="">-- Select a GGUF file --</option>
-                            ${files.map(f => `<option value="${f.path}">${f.relative_path || f.name} (${(f.size_bytes / 1e9).toFixed(2)} GB)</option>`).join('')}
+                            ${files.map(f => `<option value="${f.config_path}">${f.relative_path || f.name} (${(f.size_bytes / 1e9).toFixed(2)} GB)</option>`).join('')}
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Or enter model path manually</label>
-                        <input type="text" id="new-model-path" placeholder="models/your-model.gguf">
+                        <input type="text" id="new-model-path" placeholder="./models/your-model.gguf">
                     </div>
                     <div class="form-group">
                         <label>Context Size</label>
@@ -2007,6 +2291,21 @@ const App = {
                 <button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button>
                 <button class="btn btn-primary" onclick="App.createModel()">Create Model</button>
             `);
+
+            if (preset && typeof preset === 'object') {
+                const nameEl = document.getElementById('new-model-name');
+                const pathEl = document.getElementById('new-model-path');
+                const fileEl = document.getElementById('new-model-file');
+                if (preset.name && nameEl) nameEl.value = String(preset.name);
+                if (preset.model_path) {
+                    const p = String(preset.model_path);
+                    if (fileEl && Array.from(fileEl.options).some(o => o.value === p)) {
+                        fileEl.value = p;
+                    } else if (pathEl) {
+                        pathEl.value = p;
+                    }
+                }
+            }
         } catch (e) {
             Toast.error(`Failed to load data: ${e.message}`);
         }
@@ -2052,8 +2351,11 @@ const App = {
     },
 
     async showUploadDialog() {
-        Modal.show('Upload GGUF File', `
+        Modal.show('Upload local GGUF (from your computer)', `
             <div class="form-grid" style="grid-template-columns: 1fr;">
+                <div class="muted" style="margin-bottom: 0.5rem;">
+                    This copies a GGUF file into your <code>models/</code> folder. It does <strong>not</strong> download from the internet.
+                </div>
                 <div class="form-group">
                     <label>Select GGUF file</label>
                     <input type="file" id="upload-file" accept=".gguf" style="padding: 1rem; border: 2px dashed var(--border-light); border-radius: var(--radius-md); width: 100%;">
@@ -2061,6 +2363,12 @@ const App = {
                 <div class="form-group">
                     <label>Subfolder (optional)</label>
                     <input type="text" id="upload-subfolder" placeholder="e.g., qwen or leave empty for root">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="upload-open-add-model" checked>
+                        After upload, create a model entry
+                    </label>
                 </div>
                 <div id="upload-progress" style="display: none;">
                     <div class="task-item">
@@ -2096,6 +2404,7 @@ const App = {
         const progressDiv = document.getElementById('upload-progress');
         const statusDiv = document.getElementById('upload-status');
         const uploadBtn = document.getElementById('btn-upload');
+        const openAddModel = document.getElementById('upload-open-add-model')?.checked ?? true;
 
         progressDiv.style.display = 'block';
         uploadBtn.disabled = true;
@@ -2120,6 +2429,15 @@ const App = {
             Modal.hide();
             await this.loadModels();
             await this.refreshDashboard();
+
+            if (openAddModel) {
+                const suggestedName = (result.filename || '').replace(/\.gguf$/i, '');
+                const configPath = result.config_path || '';
+                await this.showAddModelDialog({
+                    name: suggestedName || undefined,
+                    model_path: configPath || undefined
+                });
+            }
         } catch (e) {
             Toast.error(`Upload failed: ${e.message}`);
             progressDiv.style.display = 'none';
@@ -2140,7 +2458,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.addEventListener(event, handler);
     };
 
+    // Header: overrides
+    bind('btn-override-new', 'click', () => App.showNewOverrideDialog());
+    bind('btn-override-edit', 'click', () => App.editCurrentOverride());
+    bind('btn-override-duplicate', 'click', () => App.duplicateCurrentOverride());
+
     bind('btn-save-config', 'click', () => App.saveConfig());
+    bind('btn-new-override', 'click', () => App.showNewOverrideDialog());
+    bind('btn-copy-effective-config', 'click', () => App.copyEffectiveConfig());
 
     bind('bench-form', 'submit', (e) => {
         e.preventDefault();
@@ -2190,6 +2515,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         App.downloadModels();
     });
+    bind('download-force', 'change', () => App.loadDownloadModelsUI());
 });
 
 // Make App globally available for inline handlers

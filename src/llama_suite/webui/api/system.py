@@ -208,6 +208,11 @@ async def download_models(request: DownloadRequest):
         if kwargs.get("force"):
             cmd.append("--force")
 
+        models = kwargs.get("models")
+        if models:
+            # hf_fetch expects a comma-separated list.
+            cmd.extend(["--models", ",".join(models)])
+
         # Prefer plain output in the Web UI (no rich progress bars/markup).
         cmd.append("--plain")
 

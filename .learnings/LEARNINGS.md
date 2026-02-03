@@ -10,3 +10,9 @@
 
 - Symptom: Running `cd /d f:\LLMs\llama-suite && ~/.codex/.../activator.sh` from PowerShell fails (`cd /d` is not valid in PowerShell, and `~/.codex` refers to WSL home).
 - Fix: Invoke the scripts with `bash -lc` (WSL) and use `/mnt/c/...` paths, e.g. `bash -lc "/mnt/c/Users/Florian/.codex/skills/self-improving-agent-1.0.1/scripts/activator.sh"`.
+
+## 2026-02-02 â€” Web UI can look â€œstuckâ€ due to cached `index.html` even when JS/CSS are updated
+
+- Symptom: UI shows an older navigation label/content even though `src/llama_suite/webui/static/index.html` was changed; a hard refresh fixes it.
+- Root cause: The dev server disables caching for `/static/*` but not for `GET /` / SPA fallback responses serving `index.html`.
+- Fix: Serve `index.html` with `Cache-Control: no-store` (and optionally other non-API file responses) in `src/llama_suite/webui/server.py`.

@@ -196,8 +196,15 @@ async def get_effective_config(override: Optional[str] = None):
             override_config_path_arg=override_path,
             verbose_logging=False
         )
+        config_yaml = yaml.safe_dump(
+            config,
+            sort_keys=False,
+            allow_unicode=True,
+            default_flow_style=False,
+        )
         return {
             "config": config,
+            "yaml": config_yaml,
             "models": config.get("models", {})
         }
     except Exception as e:

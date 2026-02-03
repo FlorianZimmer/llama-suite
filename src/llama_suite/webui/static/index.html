@@ -84,6 +84,14 @@
                             <option value="">None (base only)</option>
                         </select>
                     </div>
+                    <div class="override-actions">
+                        <button type="button" id="btn-override-edit" class="btn btn-secondary btn-sm"
+                            title="Edit the selected override">Edit</button>
+                        <button type="button" id="btn-override-duplicate" class="btn btn-secondary btn-sm"
+                            title="Duplicate the selected override">Duplicate</button>
+                        <button type="button" id="btn-override-new" class="btn btn-secondary btn-sm"
+                            title="Create a new override">+ New</button>
+                    </div>
                 </div>
             </header>
 
@@ -215,6 +223,9 @@
                         <div class="card">
                             <div class="card-header">
                                 <h2 class="card-title">Effective Configuration</h2>
+                                <div class="card-actions">
+                                    <button type="button" id="btn-copy-effective-config" class="btn btn-secondary">Copy</button>
+                                </div>
                             </div>
                             <div class="editor-container">
                                 <pre id="effective-config" class="code-display"></pre>
@@ -231,10 +242,9 @@
                             <div class="card-actions">
                                 <input type="text" id="model-search" class="search-input"
                                     placeholder="Search models...">
-                                <button class="btn btn-secondary" onclick="App.showAddModelDialog()">+ Add
-                                    Model</button>
-                                <button class="btn btn-secondary" onclick="App.showUploadDialog()">⬆ Upload
-                                    GGUF</button>
+                                <button class="btn btn-secondary" onclick="App.showAddModelDialog()">+ Add model entry</button>
+                                <button class="btn btn-secondary" onclick="App.showUploadDialog()">Upload local GGUF</button>
+                                <button class="btn btn-secondary" onclick="App.goToDownloadModels()">Get missing models</button>
                             </div>
                         </div>
                         <div id="models-grid" class="models-grid"></div>
@@ -646,8 +656,19 @@
                     </div>
 
                     <div class="card">
-                        <h2 class="card-title">Download Models</h2>
+                        <h2 class="card-title">Get missing models (download from Hugging Face)</h2>
+                        <p class="card-subtitle">
+                            Downloads GGUFs referenced by your config into <code>models/</code>. Use this when a configured model shows as
+                            <strong>Missing</strong> in the Models list.
+                            <br>
+                            If you already have a GGUF file on your computer, use <strong>Models → Upload local GGUF</strong> instead.
+                        </p>
                         <form id="download-form" class="form-grid">
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Missing models for this override</label>
+                                <div id="download-models-list" class="checklist"></div>
+                                <div class="muted" id="download-models-help" style="margin-top: 0.5rem;"></div>
+                            </div>
                             <div class="form-group">
                                 <label class="checkbox-label">
                                     <input type="checkbox" id="download-drafts">
@@ -667,7 +688,7 @@
                                 </label>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">⬇ Download Models</button>
+                                <button type="submit" id="btn-download-models" class="btn btn-primary">⬇ Download missing models</button>
                             </div>
                         </form>
                     </div>

@@ -248,6 +248,11 @@ def main():
     parser.add_argument("--base", required=True, help="Path to base YAML, e.g. configs/config.base.yaml")
     parser.add_argument("--override", required=False, help="Path to override YAML")
     parser.add_argument("--target", required=True, help="Directory to store downloaded GGUF files")
+    parser.add_argument(
+        "--models",
+        default=None,
+        help="Comma-separated model names to download (default: all models).",
+    )
     parser.add_argument("--include-drafts", action="store_true", help="Also download cmd.model-draft files")
     parser.add_argument("--also-tokenizers", action="store_true", help="Also snapshot tokenizer repos from hf_tokenizer_for_model")
     parser.add_argument("--tokenizers-dir", default=None, help="Optional separate directory for tokenizers (default: <target>/tokenizers)")
@@ -286,6 +291,11 @@ def main():
     override_cfg = load_yaml(args.override) if args.override else {}
 
     models = merged_models(base_cfg, override_cfg)
+    selected_models: Optional[Set[str]] = None
+    if args.models:
+        selected_models = {m.strip() for m in str(args.models).split(",") if m.strip()}
+        if not selected_models:
+            selected_models = None
     target_dir = pathlib.Path(args.target).resolve()
     tokenizers_dir = pathlib.Path(args.tokenizers_dir).resolve() if args.tokenizers_dir else (target_dir / "tokenizers")
     orgs = [o.strip() for o in args.orgs.split(",")] if args.orgs else None
@@ -295,6 +305,8 @@ def main():
     tokenizer_repos: List[Tuple[str, str]] = []
 
     for name, cfg in models.items():
+        if selected_models is not None and name not in selected_models:
+            continue
         if is_disabled(cfg):
             console.print(f"Skipping disabled {name}", style="dim")
             continue

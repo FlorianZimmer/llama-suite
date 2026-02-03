@@ -260,6 +260,7 @@ body {
     display: flex;
     align-items: center;
     gap: var(--space-md);
+    flex-wrap: wrap;
 }
 
 .override-selector {
@@ -280,6 +281,12 @@ body {
     padding: var(--space-xs) var(--space-sm);
     color: var(--text-primary);
     font-size: 0.875rem;
+}
+
+.override-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
 }
 
 .content-area {
@@ -611,6 +618,45 @@ body {
     font-size: 0.9rem;
     cursor: pointer;
     transition: all var(--transition-fast);
+}
+
+.btn-sm {
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+/* ============================================
+   Checklist (System → Download Models)
+   ============================================ */
+.checklist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-sm);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    max-height: 220px;
+    overflow: auto;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs);
+    border-radius: var(--radius-sm);
+}
+
+.checklist-item:hover {
+    background: var(--bg-elevated);
+}
+
+.checklist-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-primary);
 }
 
 .btn-primary {
