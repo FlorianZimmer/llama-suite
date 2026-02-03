@@ -1,0 +1,43 @@
+services:
+  llama-suite-webui:
+    build:
+      context: ../..
+      dockerfile: deploy/containers/webui/Dockerfile
+    environment:
+      # Container-local data root (mounts below)
+      LLAMA_SUITE_ROOT: /data
+      # Optional: set to "gitops" once enforced; today mainly signals intent.
+      LLAMA_SUITE_MODE: local
+
+      # External endpoints (your llama-swap / Open WebUI can run anywhere)
+      LLAMA_SUITE_SWAP_API_URL: ${LLAMA_SUITE_SWAP_API_URL:-http://localhost:8080/v1}
+      LLAMA_SUITE_SWAP_UI_URL: ${LLAMA_SUITE_SWAP_UI_URL:-http://localhost:8080/ui}
+      LLAMA_SUITE_OPEN_WEBUI_URL: ${LLAMA_SUITE_OPEN_WEBUI_URL:-http://localhost:3000}
+
+      PORT: ${LLAMA_SUITE_WEBUI_PORT:-8088}
+    ports:
+      - "${LLAMA_SUITE_WEBUI_PORT:-8088}:8088"
+    volumes:
+      # Read-only config mount (GitOps-friendly); edit on host, restart container.
+      - ../../configs:/data/configs:ro
+      # Persist results locally.
+      - ../../runs:/data/runs
+      - ../../var:/data/var
+    restart: unless-stopped
+
+  # Optional: run Open WebUI locally as a container.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    profiles: ["openwebui"]
+    environment:
+      # Point Open WebUI at your llama-swap API (edit via env/.env)
+      OPENAI_API_BASE_URL: ${LLAMA_SUITE_SWAP_API_URL:-http://host.docker.internal:8080/v1}
+    ports:
+      - "${OPEN_WEBUI_PORT:-3000}:8080"
+    volumes:
+      - open-webui-data:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  open-webui-data:
+

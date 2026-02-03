@@ -10,6 +10,7 @@ Or:
     uvicorn llama_suite.webui.server:app --reload --port 8088
 """
 
+import os
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -144,8 +145,8 @@ def main():
     
     uvicorn.run(
         "llama_suite.webui.server:app",
-        host="0.0.0.0",
-        port=8088,
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8088")),
         reload=False,
         log_level="info"
     )

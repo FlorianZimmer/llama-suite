@@ -53,6 +53,15 @@ def find_project_root(start: Optional[Path] = None) -> Path:
     - '.git' or 'pyproject.toml'
     Fallback: the provided 'start' or cwd.
     """
+    # Explicit override (for containers/Kubernetes): point to a data root that contains configs/runs/var/models.
+    # Example: LLAMA_SUITE_ROOT=/data
+    env_root = (os.getenv("LLAMA_SUITE_ROOT") or os.getenv("LLS_ROOT") or "").strip()
+    if env_root:
+        try:
+            return Path(env_root).expanduser().resolve()
+        except Exception:
+            return Path(env_root).expanduser()
+
     here = (start or Path.cwd()).resolve()
     candidates = [here] + list(here.parents)
     for p in candidates:
