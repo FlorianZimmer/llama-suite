@@ -533,7 +533,9 @@ const App = {
     missingModelsForDownload: [],
     outputContainers: {},
     currentBenchTaskId: null,
+    currentBenchSweepTaskId: null,
     currentMemoryTaskId: null,
+    currentMemorySweepTaskId: null,
     currentEvalHarnessTaskId: null,
     currentEvalCustomTaskId: null,
     currentWatcherTaskId: null,
@@ -555,6 +557,7 @@ const App = {
 	
 	        this.setupNavigation();
 	        this.setupTabs();
+	        this.setupSweepsUI();
 	        this.setupDirtyTracking();
 	        this.setupWebSocketHandlers();
 	        await this.loadInitialData();
@@ -652,10 +655,19 @@ const App = {
 	        });
 
         this.ws.on('complete', (data) => {
-            Toast.success('Task completed');
+            const ok = !!data.success;
+            (ok ? Toast.success : Toast.error)(ok ? 'Task completed' : 'Task failed');
             this.refreshDashboard();
 
             this.taskManager.completeTask(data.task_id, data.success, data.success ? 'Completed' : 'Failed');
+
+            // Sweep results (best-effort)
+            if (data.task_id === this.currentBenchSweepTaskId) {
+                this.loadSweepResults(data.task_id, 'bench-sweep-results-table').catch(() => {});
+            } else if (data.task_id === this.currentMemorySweepTaskId) {
+                this.loadSweepResults(data.task_id, 'memory-sweep-results-table').catch(() => {});
+            }
+
             this.checkAndResetTaskState(data.task_id);
         });
 
@@ -688,6 +700,8 @@ const App = {
 	    updateSectionProgressFromEvent(taskId, pct, message) {
 	        if (taskId === this.currentMemoryTaskId) {
 	            this.updateSectionProgressUI('memory', pct, message || 'Running...');
+	        } else if (taskId === this.currentMemorySweepTaskId) {
+	            this.updateSectionProgressUI('memory-sweep', pct, message || 'Running...');
 	        } else if (taskId === this.currentEvalHarnessTaskId) {
 	            this.updateSectionProgressUI('eval-harness', pct, message || 'Running...');
 	        } else if (taskId === this.currentEvalCustomTaskId) {
@@ -756,7 +770,9 @@ const App = {
 
     findOutputContainer(taskId) {
         if (taskId === this.currentBenchTaskId) return 'bench-output';
+        if (taskId === this.currentBenchSweepTaskId) return 'bench-sweep-output';
         if (taskId === this.currentMemoryTaskId) return 'memory-output';
+        if (taskId === this.currentMemorySweepTaskId) return 'memory-sweep-output';
         if (taskId === this.currentEvalHarnessTaskId) return 'eval-output';
         if (taskId === this.currentEvalCustomTaskId) return 'eval-output';
         if (taskId === this.currentWatcherTaskId) return 'watcher-output';
@@ -767,10 +783,17 @@ const App = {
         if (taskId === this.currentBenchTaskId) {
             this.setTaskRunningState('bench', false);
             this.currentBenchTaskId = null;
+        } else if (taskId === this.currentBenchSweepTaskId) {
+            this.setTaskRunningState('bench-sweep', false);
+            this.currentBenchSweepTaskId = null;
         } else if (taskId === this.currentMemoryTaskId) {
             this.setTaskRunningState('memory', false);
             this.updateSectionProgressUI('memory', 0, 'Idle');
             this.currentMemoryTaskId = null;
+        } else if (taskId === this.currentMemorySweepTaskId) {
+            this.setTaskRunningState('memory-sweep', false);
+            this.updateSectionProgressUI('memory-sweep', 0, 'Idle');
+            this.currentMemorySweepTaskId = null;
         } else if (taskId === this.currentEvalHarnessTaskId) {
             this.setTaskRunningState('eval-harness', false);
             this.updateSectionProgressUI('eval-harness', 0, 'Idle');
@@ -946,6 +969,12 @@ const App = {
 	        if (editor) editor.readOnly = !canWriteConfigs;
 	        const saveBtn = document.getElementById('btn-save-config');
 	        if (saveBtn) saveBtn.disabled = !canWriteConfigs || saveBtn.disabled;
+	        const studioSaveBtn = document.getElementById('btn-config-save');
+	        if (studioSaveBtn) studioSaveBtn.disabled = !canWriteConfigs || studioSaveBtn.disabled;
+	        const studioTargetOverrideBtn = document.getElementById('cfg-target-override');
+	        const studioTargetBaseBtn = document.getElementById('cfg-target-base');
+	        if (studioTargetOverrideBtn) studioTargetOverrideBtn.disabled = !canWriteConfigs;
+	        if (studioTargetBaseBtn) studioTargetBaseBtn.disabled = !canWriteConfigs;
 
 	        const overrideNewBtn = document.getElementById('btn-new-override');
 	        if (overrideNewBtn) overrideNewBtn.disabled = !canWriteConfigs;
@@ -988,7 +1017,9 @@ const App = {
 	            });
 	        };
 	        disableForm('bench-form');
+	        disableForm('bench-sweep-form');
 	        disableForm('memory-form');
+	        disableForm('memory-sweep-form');
 	        disableForm('eval-harness-form');
 	        disableForm('eval-custom-form');
 	        disableForm('openwebui-form');
@@ -1342,34 +1373,17 @@ const App = {
         }
     },
 
-    async loadConfig() {
-        try {
-            const data = await API.get('/api/config');
-            document.getElementById('config-editor').value = data.content;
-            this.baseConfigOriginal = data.content;
-            this.updateBaseConfigSaveButton();
-
-            // Load overrides list
-            const overrides = await API.get('/api/config/overrides');
-            const list = document.getElementById('overrides-list');
-            if (overrides.overrides.length === 0) {
-                list.innerHTML = '<p class="empty-message">No override files found</p>';
-            } else {
-                list.innerHTML = overrides.overrides.map(o => `
-                    <div class="list-item" onclick="App.editOverride('${o.name}')">
-                        <span>${o.filename}</span>
-                        <button class="btn btn-secondary" onclick="event.stopPropagation(); App.deleteOverride('${o.name}')">Delete</button>
-                    </div>
-                `).join('');
-            }
-
-            // Load effective config
-            await this.loadEffectiveConfig();
-        } catch (e) {
-            console.error('Failed to load config:', e);
-            Toast.error('Failed to load configuration');
-        }
-    },
+     async loadConfig() {
+         try {
+             if (!window.ConfigStudio || typeof window.ConfigStudio.load !== 'function') {
+                 throw new Error('ConfigStudio not available');
+             }
+             await window.ConfigStudio.load(this.currentOverride || '');
+         } catch (e) {
+             console.error('Failed to load Config Studio:', e);
+             Toast.error(`Failed to load Config Studio: ${e.message}`);
+         }
+     },
 
     async loadEffectiveConfig() {
         try {
@@ -2232,12 +2246,28 @@ const App = {
         }
     },
 
-    editCurrentOverride() {
+    async editCurrentOverride() {
         if (!this.currentOverride) {
             Toast.info('Select an override first');
             return;
         }
-        this.editOverride(this.currentOverride);
+
+        // Prefer Config Studio (GUI) over raw YAML editing.
+        if (this.currentSection !== 'config') {
+            window.location.hash = 'config';
+            return;
+        }
+
+        await this.loadConfig();
+        try {
+            if (window.ConfigStudio) {
+                window.ConfigStudio.state.view = 'models';
+                window.ConfigStudio.renderNav?.();
+                window.ConfigStudio.render?.();
+            }
+        } catch {
+            // ignore
+        }
     },
 
     async duplicateCurrentOverride() {
@@ -2245,17 +2275,33 @@ const App = {
             Toast.info('Select an override first');
             return;
         }
-
-        try {
-            const data = await API.get(`/api/config/overrides/${this.currentOverride}`);
-            const suggested = `${this.currentOverride}-copy`;
-            this.showNewOverrideDialog({ name: suggested, content: data.content });
-        } catch (e) {
-            Toast.error(`Failed to duplicate: ${e.message}`);
-        }
+        const suggested = `${this.currentOverride}-copy`;
+        this.showNewOverrideDialog({ name: suggested, copy_current: true });
     },
 
     showNewOverrideDialog(preset = {}) {
+        const defaultName = preset.name || '';
+        const canCopy = !!this.currentOverride;
+        const defaultCopy = !!preset.copy_current;
+
+        const copyRow = canCopy
+            ? `
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="new-override-copy-current" ${defaultCopy ? 'checked' : ''}>
+                        Copy settings from current override (<code>${this.currentOverride}</code>)
+                    </label>
+                    <div class="muted" style="margin-top: 0.25rem;">
+                        Creates a new override file starting from the current override YAML. Edit with Config Studio after creation.
+                    </div>
+                </div>
+            `
+            : `
+                <div class="muted" style="margin-top: 0.25rem;">
+                    No override selected; the new override will start empty (GUI-editable).
+                </div>
+            `;
+
         Modal.show('New Override', `
             <div class="form-grid" style="grid-template-columns: 1fr;">
                 <div class="form-group">
@@ -2263,22 +2309,15 @@ const App = {
                     <input type="text" id="new-override-name" placeholder="e.g., win-5090" value="">
                     <div class="muted" style="margin-top: 0.25rem;">Creates <code>configs/overrides/&lt;name&gt;.yaml</code></div>
                 </div>
-                <div class="form-group">
-                    <label for="new-override-content">YAML</label>
-                    <textarea id="new-override-content" class="code-editor" style="min-height: 260px;"></textarea>
-                </div>
+                ${copyRow}
             </div>
         `, `
             <button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button>
             <button class="btn btn-primary" onclick="App.createOverrideFromDialog()">Create</button>
         `);
 
-        const defaultName = preset.name || '';
-        const defaultContent = preset.content || this.buildOverrideTemplate();
         const nameEl = document.getElementById('new-override-name');
-        const contentEl = document.getElementById('new-override-content');
         if (nameEl) nameEl.value = defaultName;
-        if (contentEl) contentEl.value = defaultContent;
     },
 
     buildOverrideTemplate() {
@@ -2296,11 +2335,21 @@ const App = {
 
     async createOverrideFromDialog() {
         const name = (document.getElementById('new-override-name')?.value || '').trim();
-        const content = document.getElementById('new-override-content')?.value || '';
+        const copyCurrent = !!document.getElementById('new-override-copy-current')?.checked;
 
         if (!name) {
             Toast.warning('Override name is required');
             return;
+        }
+
+        let content = this.buildOverrideTemplate();
+        if (copyCurrent) {
+            if (!this.currentOverride) {
+                Toast.error('Select a current override to copy from');
+                return;
+            }
+            const data = await API.get(`/api/config/overrides/${encodeURIComponent(this.currentOverride)}`);
+            content = data.content || this.buildOverrideTemplate();
         }
 
         try {
@@ -2308,7 +2357,6 @@ const App = {
             Toast.success(`Created override: ${created.name}`);
             Modal.hide();
             await this.loadOverrides();
-            await this.loadConfig();
 
             // Select the newly created override and persist it
             this.currentOverride = created.name;
@@ -2319,6 +2367,8 @@ const App = {
             } catch {
                 // ignore
             }
+
+            // Refresh the current section (and reload Config Studio if visible).
             await this.refreshCurrentSection();
         } catch (e) {
             Toast.error(`Failed to create override: ${e.message}`);
@@ -2326,31 +2376,26 @@ const App = {
     },
 
     async editOverride(name) {
-        try {
-            const data = await API.get(`/api/config/overrides/${name}`);
-            Modal.show(`Edit Override: ${name}`, `
-                <div class="form-group">
-                    <textarea id="override-editor" class="code-editor" style="min-height: 300px;">${data.content}</textarea>
-                </div>
-            `, `
-                <button class="btn btn-secondary" onclick="Modal.hide()">Cancel</button>
-                <button class="btn btn-primary" onclick="App.saveOverride('${name}')">Save</button>
-            `);
-        } catch (e) {
-            Toast.error('Failed to load override');
-        }
-    },
+        if (!name) return;
 
-    async saveOverride(name) {
-        try {
-            const content = document.getElementById('override-editor').value;
-            await API.put(`/api/config/overrides/${name}`, { content });
-            Toast.success('Override saved');
-            Modal.hide();
-            await this.loadConfig();
-        } catch (e) {
-            Toast.error(`Failed to save: ${e.message}`);
+        // Prefer Config Studio (GUI) over raw YAML editing.
+        if (name !== this.currentOverride) {
+            this.currentOverride = name;
+            const select = document.getElementById('current-override');
+            if (select) select.value = name;
+            try {
+                localStorage.setItem('llama-suite.override', name);
+            } catch {
+                // ignore
+            }
+            this.updateOverrideActionsUI();
         }
+
+        if (this.currentSection !== 'config') {
+            window.location.hash = 'config';
+            return;
+        }
+        await this.loadConfig();
     },
 
     async deleteOverride(name) {
@@ -2406,6 +2451,266 @@ const App = {
         if (!ok && stopBtn) stopBtn.disabled = false;
     },
 
+    getSweepParamOptions() {
+        try {
+            const fields = window.ConfigStudio?.getSweepableFields?.() || [];
+            if (Array.isArray(fields) && fields.length > 0) {
+                return fields.map(f => ({
+                    value: `${f.section}.${f.key}`,
+                    label: `${f.section}.${f.key} (${f.label || f.key})`,
+                    valueType: (f.type === 'int' ? 'int' : (f.type === 'float' ? 'float' : (f.type === 'bool' ? 'bool' : 'str'))),
+                }));
+            }
+        } catch {
+            // ignore
+        }
+
+        // Fallback if Config Studio isn't loaded yet.
+        return [
+            { value: 'cmd.ctx-size', label: 'cmd.ctx-size (Context size)', valueType: 'int' },
+            { value: 'cmd.cache-type-k', label: 'cmd.cache-type-k', valueType: 'str' },
+            { value: 'cmd.cache-type-v', label: 'cmd.cache-type-v', valueType: 'str' },
+            { value: 'cmd.parallel', label: 'cmd.parallel', valueType: 'int' },
+            { value: 'cmd.jinja', label: 'cmd.jinja', valueType: 'bool' },
+            { value: 'sampling.temp', label: 'sampling.temp', valueType: 'float' },
+            { value: 'sampling.top-p', label: 'sampling.top-p', valueType: 'float' },
+        ];
+    },
+
+    setupSweepsUI() {
+        if (this._sweepsUiBound) return;
+        this._sweepsUiBound = true;
+
+        const bind = (id, event, handler) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, handler);
+        };
+
+        bind('btn-bench-sweep-add-dim', 'click', () => this.addSweepDimRow('bench'));
+        bind('btn-memory-sweep-add-dim', 'click', () => this.addSweepDimRow('memory'));
+
+        bind('bench-sweep-scope', 'change', () => this.updateSweepRunCount('bench'));
+        bind('bench-sweep-filter', 'input', () => this.updateSweepRunCount('bench'));
+        bind('memory-sweep-scope', 'change', () => this.updateSweepRunCount('memory'));
+        bind('memory-sweep-filter', 'input', () => this.updateSweepRunCount('memory'));
+
+        // Seed one dimension row by default.
+        if (document.getElementById('bench-sweep-dims')?.children.length === 0) this.addSweepDimRow('bench');
+        if (document.getElementById('memory-sweep-dims')?.children.length === 0) this.addSweepDimRow('memory');
+    },
+
+    addSweepDimRow(kind) {
+        const containerId = kind === 'bench' ? 'bench-sweep-dims' : 'memory-sweep-dims';
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const row = document.createElement('div');
+        row.className = 'sweep-dim-row';
+
+        const select = document.createElement('select');
+        select.className = 'sweep-param';
+        for (const opt of this.getSweepParamOptions()) {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.label;
+            o.dataset.valueType = opt.valueType;
+            select.appendChild(o);
+        }
+
+        const values = document.createElement('input');
+        values.type = 'text';
+        values.className = 'sweep-values';
+        values.placeholder = 'e.g. 8192,16384 or 8192..32768..8192';
+
+        const count = document.createElement('div');
+        count.className = 'muted sweep-count';
+        count.textContent = '0';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-secondary btn-sm';
+        removeBtn.textContent = 'Remove';
+
+        row.appendChild(select);
+        row.appendChild(values);
+        row.appendChild(count);
+        row.appendChild(removeBtn);
+
+        const update = () => {
+            const parsed = this.parseSweepValues(select.selectedOptions?.[0]?.dataset?.valueType || 'str', values.value);
+            count.textContent = parsed.ok ? String(parsed.count) : '!';
+            this.updateSweepRunCount(kind);
+        };
+        select.addEventListener('change', update);
+        values.addEventListener('input', update);
+        removeBtn.addEventListener('click', () => {
+            row.remove();
+            this.updateSweepRunCount(kind);
+        });
+
+        container.appendChild(row);
+        update();
+    },
+
+    parseSweepValues(valueType, raw) {
+        const text = String(raw || '').trim();
+        if (!text) return { ok: false, count: 0, values: [], range: null, error: 'empty' };
+
+        // range syntax: start..end..step (inclusive)
+        if (text.includes('..')) {
+            const parts = text.split('..').map(s => s.trim()).filter(Boolean);
+            if (parts.length < 3) return { ok: false, count: 0, values: [], range: null, error: 'range expects start..end..step' };
+            const start = Number(parts[0]);
+            const end = Number(parts[1]);
+            const step = Number(parts[2]);
+            if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(step) || step <= 0) {
+                return { ok: false, count: 0, values: [], range: null, error: 'invalid range numbers' };
+            }
+            return { ok: true, count: Math.max(0, Math.floor((end - start) / step) + 1), values: [], range: { start, end, step } };
+        }
+
+        const parts = text.split(',').map(s => s.trim()).filter(Boolean);
+        const vals = [];
+        for (const p of parts) {
+            if (valueType === 'int') {
+                const n = parseInt(p, 10);
+                if (Number.isNaN(n)) return { ok: false, count: 0, values: [], range: null, error: 'invalid int' };
+                vals.push(n);
+            } else if (valueType === 'float') {
+                const n = parseFloat(p);
+                if (Number.isNaN(n)) return { ok: false, count: 0, values: [], range: null, error: 'invalid float' };
+                vals.push(n);
+            } else if (valueType === 'bool') {
+                const v = p.toLowerCase();
+                if (v === 'true' || v === '1' || v === 'yes' || v === 'y') vals.push(true);
+                else if (v === 'false' || v === '0' || v === 'no' || v === 'n') vals.push(false);
+                else return { ok: false, count: 0, values: [], range: null, error: 'invalid bool' };
+            } else {
+                vals.push(p);
+            }
+        }
+        return { ok: true, count: vals.length, values: vals, range: null };
+    },
+
+    updateSweepRunCount(kind) {
+        const scopeId = kind === 'bench' ? 'bench-sweep-scope' : 'memory-sweep-scope';
+        const filterId = kind === 'bench' ? 'bench-sweep-filter' : 'memory-sweep-filter';
+        const dimsId = kind === 'bench' ? 'bench-sweep-dims' : 'memory-sweep-dims';
+        const labelId = kind === 'bench' ? 'bench-sweep-run-count' : 'memory-sweep-run-count';
+
+        const label = document.getElementById(labelId);
+        const dims = document.getElementById(dimsId);
+        if (!label || !dims) return;
+
+        const scope = document.getElementById(scopeId)?.value || 'ALL';
+        const filter = String(document.getElementById(filterId)?.value || '').trim();
+
+        let modelCount = 0;
+        if (scope === 'SELECTED') {
+            modelCount = window.ConfigStudio?.getSelectedModels?.()?.length || 0;
+        } else {
+            const all = window.ConfigStudio?.state?.meta?.models;
+            modelCount = Array.isArray(all) ? all.length : 0;
+        }
+
+        let combos = 1;
+        dims.querySelectorAll('.sweep-dim-row').forEach(row => {
+            const sel = row.querySelector('.sweep-param');
+            const inp = row.querySelector('.sweep-values');
+            const valueType = sel?.selectedOptions?.[0]?.dataset?.valueType || 'str';
+            const parsed = this.parseSweepValues(valueType, inp?.value || '');
+            combos *= Math.max(0, parsed.count || 0);
+        });
+
+        const runs = modelCount && combos ? (modelCount * combos) : 0;
+        const filterNote = filter ? ` (filter: ${filter})` : '';
+        label.textContent = `${runs} runs${filterNote}`;
+    },
+
+    collectSweepDimensions(kind) {
+        const dimsId = kind === 'bench' ? 'bench-sweep-dims' : 'memory-sweep-dims';
+        const dims = document.getElementById(dimsId);
+        if (!dims) return [];
+
+        const out = [];
+        dims.querySelectorAll('.sweep-dim-row').forEach(row => {
+            const sel = row.querySelector('.sweep-param');
+            const inp = row.querySelector('.sweep-values');
+            const pathStr = sel?.value || '';
+            const valueType = sel?.selectedOptions?.[0]?.dataset?.valueType || 'str';
+            const parsed = this.parseSweepValues(valueType, inp?.value || '');
+            if (!pathStr || !parsed.ok) return;
+            const path = pathStr.split('.').filter(Boolean);
+            const dim = { path, value_type: valueType, values: null, range: null };
+            if (parsed.range) dim.range = parsed.range;
+            else dim.values = parsed.values;
+            out.push(dim);
+        });
+        return out;
+    },
+
+    async runBenchSweep() {
+        const output = document.getElementById('bench-sweep-output');
+        if (output) output.innerHTML = '';
+
+        const table = document.getElementById('bench-sweep-results-table');
+        if (table) {
+            table.querySelector('thead').innerHTML = '';
+            table.querySelector('tbody').innerHTML = '';
+        }
+
+        try {
+            await this.maybeWarnNoOverride('Running benchmark sweep');
+
+            const scope = document.getElementById('bench-sweep-scope')?.value || 'ALL';
+            const filter = String(document.getElementById('bench-sweep-filter')?.value || '').trim();
+            const dims = this.collectSweepDimensions('bench');
+            if (dims.length === 0) {
+                Toast.error('Add at least one sweep dimension');
+                return;
+            }
+
+            const models = (scope === 'SELECTED')
+                ? (window.ConfigStudio?.getSelectedModels?.() || [])
+                : 'ALL';
+
+            if (scope === 'SELECTED' && (!Array.isArray(models) || models.length === 0)) {
+                Toast.error('No selected models (select in Config Studio - Models)');
+                return;
+            }
+
+            const question = document.getElementById('bench-sweep-question')?.value || 'What is the capital of France?';
+            const healthTimeout = parseInt(document.getElementById('bench-sweep-timeout')?.value || '120', 10);
+
+            const data = await API.post('/api/sweeps/run', {
+                task_type: 'bench',
+                baseline_override: this.currentOverride || undefined,
+                models,
+                filter_string: filter || undefined,
+                dimensions: dims,
+                health_timeout: healthTimeout,
+                question,
+            });
+
+            Toast.info(`Sweep started: ${data.task_id}`);
+            this.currentBenchSweepTaskId = data.task_id;
+            this.setTaskRunningState('bench-sweep', true);
+            this.registerTaskContainer(data.task_id, 'bench-sweep-output');
+            this.taskManager.addTask(data.task_id, 'bench', 'Benchmark Sweep');
+        } catch (e) {
+            Toast.error(`Failed to start sweep: ${e.message}`);
+        }
+    },
+
+    async stopBenchSweep() {
+        const taskId = this.currentBenchSweepTaskId;
+        if (!taskId) return;
+        const stopBtn = document.getElementById('btn-bench-sweep-stop');
+        if (stopBtn) stopBtn.disabled = true;
+        const ok = await this.cancelTask(taskId);
+        if (!ok && stopBtn) stopBtn.disabled = false;
+    },
+
     async runMemoryScan() {
         const output = document.getElementById('memory-output');
         output.innerHTML = '';
@@ -2446,6 +2751,131 @@ const App = {
         this.updateSectionProgressUI('memory', -1, 'Cancelling...');
         const ok = await this.cancelTask(taskId);
         if (!ok && stopBtn) stopBtn.disabled = false;
+    },
+
+    async runMemorySweep() {
+        const output = document.getElementById('memory-sweep-output');
+        if (output) output.innerHTML = '';
+
+        const table = document.getElementById('memory-sweep-results-table');
+        if (table) {
+            table.querySelector('thead').innerHTML = '';
+            table.querySelector('tbody').innerHTML = '';
+        }
+
+        try {
+            await this.maybeWarnNoOverride('Running memory sweep');
+
+            const scope = document.getElementById('memory-sweep-scope')?.value || 'ALL';
+            const filter = String(document.getElementById('memory-sweep-filter')?.value || '').trim();
+            const dims = this.collectSweepDimensions('memory');
+            if (dims.length === 0) {
+                Toast.error('Add at least one sweep dimension');
+                return;
+            }
+
+            const models = (scope === 'SELECTED')
+                ? (window.ConfigStudio?.getSelectedModels?.() || [])
+                : 'ALL';
+
+            if (scope === 'SELECTED' && (!Array.isArray(models) || models.length === 0)) {
+                Toast.error('No selected models (select in Config Studio - Models)');
+                return;
+            }
+
+            const healthTimeout = parseInt(document.getElementById('memory-sweep-timeout')?.value || '120', 10);
+            this.updateSectionProgressUI('memory-sweep', -1, 'Starting...');
+
+            const data = await API.post('/api/sweeps/run', {
+                task_type: 'memory',
+                baseline_override: this.currentOverride || undefined,
+                models,
+                filter_string: filter || undefined,
+                dimensions: dims,
+                health_timeout: healthTimeout,
+            });
+
+            Toast.info(`Sweep started: ${data.task_id}`);
+            this.currentMemorySweepTaskId = data.task_id;
+            this.setTaskRunningState('memory-sweep', true);
+            this.registerTaskContainer(data.task_id, 'memory-sweep-output');
+            this.taskManager.addTask(data.task_id, 'memory', 'Memory Sweep');
+        } catch (e) {
+            this.updateSectionProgressUI('memory-sweep', 0, 'Idle');
+            Toast.error(`Failed to start sweep: ${e.message}`);
+        }
+    },
+
+    async stopMemorySweep() {
+        const taskId = this.currentMemorySweepTaskId;
+        if (!taskId) return;
+        const stopBtn = document.getElementById('btn-memory-sweep-stop');
+        if (stopBtn) stopBtn.disabled = true;
+        this.updateSectionProgressUI('memory-sweep', -1, 'Cancelling...');
+        const ok = await this.cancelTask(taskId);
+        if (!ok && stopBtn) stopBtn.disabled = false;
+    },
+
+    async loadSweepResults(taskId, tableId) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        try {
+            const data = await API.get(`/api/sweeps/task/${encodeURIComponent(taskId)}/results?offset=0&limit=200`);
+            const rows = data.rows || [];
+            const thead = table.querySelector('thead');
+            const tbody = table.querySelector('tbody');
+            if (!thead || !tbody) return;
+
+            if (rows.length === 0) {
+                thead.innerHTML = '';
+                tbody.innerHTML = '<tr><td class="muted">No results</td></tr>';
+                return;
+            }
+
+            const paramKeys = new Set();
+            const metricKeys = new Set();
+            rows.forEach(r => {
+                Object.keys(r).forEach(k => {
+                    if (k.startsWith('param.')) paramKeys.add(k);
+                    if (k.startsWith('metric.')) metricKeys.add(k);
+                });
+            });
+
+            const preferredMetrics = [
+                'metric.TokensPerSecond',
+                'metric.BenchStatus',
+                'metric.DurationSeconds',
+                'metric.ScanStatus',
+                'metric.GpuMemoryGB',
+                'metric.CpuMemoryGB',
+            ];
+            const metricCols = preferredMetrics.filter(k => metricKeys.has(k));
+            const otherMetricCols = Array.from(metricKeys).filter(k => !metricCols.includes(k)).sort().slice(0, 4);
+            const cols = [
+                'model',
+                'variant_label',
+                'returncode',
+                ...Array.from(paramKeys).sort(),
+                ...metricCols,
+                ...otherMetricCols,
+            ];
+
+            const headerLabel = (k) => {
+                if (k === 'model') return 'Model';
+                if (k === 'variant_label') return 'Variant';
+                if (k === 'returncode') return 'RC';
+                if (k.startsWith('param.')) return k.slice('param.'.length);
+                if (k.startsWith('metric.')) return k.slice('metric.'.length);
+                return k;
+            };
+
+            thead.innerHTML = `<tr>${cols.map(c => `<th>${headerLabel(c)}</th>`).join('')}</tr>`;
+            tbody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td>${(r[c] ?? '').toString()}</td>`).join('')}</tr>`).join('');
+        } catch (e) {
+            console.error('Failed to load sweep results:', e);
+            Toast.error(`Failed to load sweep results: ${e.message}`);
+        }
     },
 
     async runEvalHarness() {
@@ -3016,5 +3446,9 @@ window.runCustomEval = () => App.runCustomEval();
 window.cancelTask = (id) => App.cancelTask(id);
 window.stopBenchmark = () => App.stopBenchmark();
 window.stopMemoryScan = () => App.stopMemoryScan();
+window.runBenchSweep = () => App.runBenchSweep();
+window.stopBenchSweep = () => App.stopBenchSweep();
+window.runMemorySweep = () => App.runMemorySweep();
+window.stopMemorySweep = () => App.stopMemorySweep();
 window.stopEvalHarness = () => App.stopEvalHarness();
 window.stopCustomEval = () => App.stopCustomEval();

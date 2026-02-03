@@ -1,0 +1,251 @@
+version: 1
+
+groups:
+  - id: overview
+    title: Overview
+    kind: overview
+
+  - id: general
+    title: General
+    scope: top
+    fields:
+      - id: startPort
+        label: Start Port
+        path: [startPort]
+        type: int
+        ui: number
+        min: 1
+        max: 65535
+        help: First port used for model servers.
+
+      - id: healthCheckTimeout
+        label: Health Check Timeout (s)
+        path: [healthCheckTimeout]
+        type: int
+        ui: number
+        min: 1
+        help: Timeout used by health checks unless overridden per task.
+
+      - id: logLevel
+        label: Log Level
+        path: [logLevel]
+        type: enum
+        ui: select
+        enum_values: [debug, info, warning, error]
+
+  - id: defaults
+    title: Defaults (COMMON_FLAGS)
+    scope: top
+    fields:
+      - id: common_jinja
+        label: Jinja templates
+        path: [COMMON_FLAGS, jinja]
+        type: bool
+        ui: toggle
+        restart_required: true
+        help: Enable Jinja chat templates (llama.cpp).
+
+      - id: common_parallel
+        label: Parallel
+        path: [COMMON_FLAGS, parallel]
+        type: int
+        ui: number
+        min: 1
+        max: 64
+        restart_required: true
+
+      - id: common_cont_batching
+        label: Continuous batching
+        path: [COMMON_FLAGS, cont-batching]
+        type: bool
+        ui: toggle
+        restart_required: true
+
+      - id: common_cache_k
+        label: Cache type K
+        path: [COMMON_FLAGS, cache-type-k]
+        type: enum
+        ui: select
+        enum_values: [q8_0, f16, f32]
+        restart_required: true
+
+      - id: common_cache_v
+        label: Cache type V
+        path: [COMMON_FLAGS, cache-type-v]
+        type: enum
+        ui: select
+        enum_values: [q8_0, f16, f32]
+        restart_required: true
+
+  - id: presets
+    title: Sampling Presets
+    kind: presets
+
+  - id: models
+    title: Models
+    kind: models
+
+  - id: model_meta
+    title: Model Meta
+    scope: model
+    section: meta
+    fields:
+      - id: hf_tokenizer
+        label: HF Tokenizer
+        path: [hf_tokenizer_for_model]
+        type: str
+        ui: text
+        placeholder: e.g. Qwen/Qwen3-8B
+
+      - id: aliases
+        label: Aliases
+        path: [aliases]
+        type: list[str]
+        ui: tags
+        placeholder: Comma-separated
+
+      - id: supports_no_think_toggle
+        label: Supports No-Think toggle
+        path: [supports_no_think_toggle]
+        type: bool
+        ui: toggle
+        advanced: true
+
+  - id: model_cmd
+    title: Model Cmd
+    scope: model
+    section: cmd
+    fields:
+      - id: ctx_size
+        label: Context size (ctx-size)
+        path: [cmd, ctx-size]
+        type: int
+        ui: number
+        min: 256
+        max: 1048576
+
+      - id: gpu_layers
+        label: GPU layers (gpu-layers)
+        path: [cmd, gpu-layers]
+        type: int_or_auto
+        ui: text
+        placeholder: auto
+        help: Use "auto" or a number.
+
+      - id: threads
+        label: Threads
+        path: [cmd, threads]
+        type: int_or_auto
+        ui: text
+        placeholder: auto
+
+      - id: cache_k
+        label: Cache type K
+        path: [cmd, cache-type-k]
+        type: enum
+        ui: select
+        enum_values: [q8_0, f16, f32]
+
+      - id: cache_v
+        label: Cache type V
+        path: [cmd, cache-type-v]
+        type: enum
+        ui: select
+        enum_values: [q8_0, f16, f32]
+
+      - id: jinja
+        label: Jinja templates
+        path: [cmd, jinja]
+        type: bool
+        ui: toggle
+
+      - id: parallel
+        label: Parallel
+        path: [cmd, parallel]
+        type: int
+        ui: number
+        min: 1
+        max: 64
+
+      - id: cont_batching
+        label: Continuous batching
+        path: [cmd, cont-batching]
+        type: bool
+        ui: toggle
+
+      - id: n_cpu_moe
+        label: n-cpu-moe
+        path: [cmd, n-cpu-moe]
+        type: int
+        ui: number
+        min: 0
+        advanced: true
+
+  - id: model_sampling
+    title: Sampling
+    scope: model
+    section: sampling
+    fields:
+      - id: temp
+        label: Temperature (temp)
+        path: [sampling, temp]
+        type: float
+        ui: number
+        step: 0.01
+        min: 0
+        max: 3
+
+      - id: top_p
+        label: Top-p (top-p)
+        path: [sampling, top-p]
+        type: float
+        ui: number
+        step: 0.01
+        min: 0
+        max: 1
+
+      - id: top_k
+        label: Top-k (top-k)
+        path: [sampling, top-k]
+        type: int
+        ui: number
+        min: 0
+
+      - id: min_p
+        label: Min-p (min-p)
+        path: [sampling, min-p]
+        type: float
+        ui: number
+        step: 0.01
+        min: 0
+        max: 1
+
+      - id: repeat_penalty
+        label: Repeat penalty (repeat-penalty)
+        path: [sampling, repeat-penalty]
+        type: float
+        ui: number
+        step: 0.01
+        min: 0.5
+        max: 2.0
+
+      - id: samplers
+        label: Samplers
+        path: [sampling, samplers]
+        type: str
+        ui: text
+        advanced: true
+
+      - id: dry_multiplier
+        label: Dry multiplier
+        path: [sampling, dry-multiplier]
+        type: float
+        ui: number
+        step: 0.01
+        min: 0
+        max: 2
+        advanced: true
+
+  - id: bulk_apply
+    title: Bulk Apply
+    kind: bulk_apply

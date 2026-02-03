@@ -189,48 +189,31 @@
 
                 <!-- Configuration Section -->
                 <section id="section-config" class="section">
-                    <div class="section-tabs">
-                        <button class="tab-btn active" data-tab="config-base">Base Config</button>
-                        <button class="tab-btn" data-tab="config-overrides">Overrides</button>
-                        <button class="tab-btn" data-tab="config-effective">Effective Config</button>
-                    </div>
-
-                    <div id="config-base" class="tab-content active">
-                        <div class="card">
-                            <div class="card-header">
-                                <h2 class="card-title">config.base.yaml</h2>
-                                <div class="card-actions">
-                                    <button class="btn btn-primary" id="btn-save-config">Save Changes</button>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Config Studio</h2>
+                            <div class="card-actions">
+                                <div class="segmented-control" id="cfg-target-segment">
+                                    <button type="button" class="segmented-btn" id="cfg-target-override">Override</button>
+                                    <button type="button" class="segmented-btn" id="cfg-target-base">Base</button>
                                 </div>
-                            </div>
-                            <div class="editor-container">
-                                <textarea id="config-editor" class="code-editor" spellcheck="false"></textarea>
+                                <button type="button" class="btn btn-secondary" id="btn-config-validate">Validate</button>
+                                <button type="button" class="btn btn-secondary" id="btn-config-yaml">YAML</button>
+                                <button type="button" class="btn btn-primary" id="btn-config-save">Save</button>
                             </div>
                         </div>
-                    </div>
 
-                    <div id="config-overrides" class="tab-content">
-                        <div class="card">
-                            <div class="card-header">
-                                <h2 class="card-title">Override Files</h2>
-                                <div class="card-actions">
-                                    <button class="btn btn-secondary" id="btn-new-override">+ New Override</button>
-                                </div>
-                            </div>
-                            <div id="overrides-list" class="list-container"></div>
+                        <div class="studio-statusbar">
+                            <span class="status-dot disconnected" id="cfg-status-dot"></span>
+                            <span class="status-text" id="cfg-status-text">Loading…</span>
+                            <span class="status-spacer"></span>
+                            <span class="muted" id="cfg-dirty-indicator"></span>
                         </div>
-                    </div>
 
-                    <div id="config-effective" class="tab-content">
-                        <div class="card">
-                            <div class="card-header">
-                                <h2 class="card-title">Effective Configuration</h2>
-                                <div class="card-actions">
-                                    <button type="button" id="btn-copy-effective-config" class="btn btn-secondary">Copy</button>
-                                </div>
-                            </div>
-                            <div class="editor-container">
-                                <pre id="effective-config" class="code-display"></pre>
+                        <div class="config-studio-shell">
+                            <aside class="studio-nav" id="config-studio-nav"></aside>
+                            <div class="studio-main" id="config-studio-main">
+                                <p class="empty-message">Loading…</p>
                             </div>
                         </div>
                     </div>
@@ -255,75 +238,209 @@
 
                 <!-- Benchmark Section -->
                 <section id="section-bench" class="section">
-                    <div class="card">
-                        <h2 class="card-title">Run Benchmark</h2>
-                        <form id="bench-form" class="form-grid">
-                            <div class="form-group">
-                                <label for="bench-model">Model (optional)</label>
-                                <select id="bench-model">
-                                    <option value="">All models</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="bench-question">Question</label>
-                                <input type="text" id="bench-question" value="What is the capital of France?">
-                            </div>
-                            <div class="form-group">
-                                <label for="bench-timeout">Health Timeout (s)</label>
-                                <input type="number" id="bench-timeout" value="120" min="30">
-                            </div>
-	                            <div class="form-actions">
-	                                <button type="button" class="btn primary-btn" id="btn-bench-start" onclick="runBenchmark()">
-	                                    <i class="fas fa-play"></i> Run Benchmark
-	                                </button>
-	                                <button type="button" class="btn btn-danger" id="btn-bench-stop" onclick="stopBenchmark()" style="display: none;">
-	                                    <i class="fas fa-stop"></i> Stop
-	                                </button>
-	                            </div>
-	                        </form>
-	                    </div>
+                    <div class="section-tabs">
+                        <button class="tab-btn active" data-tab="bench-single">Single Run</button>
+                        <button class="tab-btn" data-tab="bench-sweep">Sweep</button>
+                    </div>
 
-                    <div class="card">
-                        <h2 class="card-title">Output</h2>
-                        <div id="bench-output" class="output-container"></div>
+                    <div id="bench-single" class="tab-content active">
+                        <div class="card">
+                            <h2 class="card-title">Run Benchmark</h2>
+                            <form id="bench-form" class="form-grid">
+                                <div class="form-group">
+                                    <label for="bench-model">Model (optional)</label>
+                                    <select id="bench-model">
+                                        <option value="">All models</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bench-question">Question</label>
+                                    <input type="text" id="bench-question" value="What is the capital of France?">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bench-timeout">Health Timeout (s)</label>
+                                    <input type="number" id="bench-timeout" value="120" min="30">
+                                </div>
+    	                            <div class="form-actions">
+    	                                <button type="button" class="btn primary-btn" id="btn-bench-start" onclick="runBenchmark()">
+    	                                    <i class="fas fa-play"></i> Run Benchmark
+    	                                </button>
+    	                                <button type="button" class="btn btn-danger" id="btn-bench-stop" onclick="stopBenchmark()" style="display: none;">
+    	                                    <i class="fas fa-stop"></i> Stop
+    	                                </button>
+    	                            </div>
+    	                        </form>
+    	                    </div>
+
+                        <div class="card">
+                            <h2 class="card-title">Output</h2>
+                            <div id="bench-output" class="output-container"></div>
+                        </div>
+                    </div>
+
+                    <div id="bench-sweep" class="tab-content">
+                        <div class="card">
+                            <h2 class="card-title">Benchmark Sweep</h2>
+                            <form id="bench-sweep-form" class="form-grid">
+                                <div class="form-group">
+                                    <label for="bench-sweep-question">Question</label>
+                                    <input type="text" id="bench-sweep-question" value="What is the capital of France?">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bench-sweep-timeout">Health Timeout (s)</label>
+                                    <input type="number" id="bench-sweep-timeout" value="120" min="30">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bench-sweep-scope">Models</label>
+                                    <select id="bench-sweep-scope">
+                                        <option value="ALL">All models</option>
+                                        <option value="SELECTED">Selected in Config Studio</option>
+                                    </select>
+                                    <div class="muted">Tip: select models in Config Studio → Models.</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bench-sweep-filter">Filter (optional)</label>
+                                    <input type="text" id="bench-sweep-filter" placeholder="e.g. Qwen3">
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label>Sweep dimensions</label>
+                                    <div id="bench-sweep-dims" class="sweep-dims"></div>
+                                    <div class="sweep-actions">
+                                        <button type="button" class="btn btn-secondary" id="btn-bench-sweep-add-dim">+ Add dimension</button>
+                                    </div>
+                                    <div class="muted" id="bench-sweep-run-count">0 runs</div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn primary-btn" id="btn-bench-sweep-start" onclick="runBenchSweep()">
+                                        <i class="fas fa-play"></i> Run Sweep
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="btn-bench-sweep-stop" onclick="stopBenchSweep()" style="display: none;">
+                                        <i class="fas fa-stop"></i> Stop
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <h2 class="card-title">Output</h2>
+                            <div id="bench-sweep-output" class="output-container"></div>
+                        </div>
+
+                        <div class="card">
+                            <h2 class="card-title">Results</h2>
+                            <div class="table-container">
+                                <table class="results-table" id="bench-sweep-results-table">
+                                    <thead></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
                 <!-- Memory Scan Section -->
                 <section id="section-memory" class="section">
-                    <div class="card">
-                        <h2 class="card-title">Memory Scan</h2>
-                        <form id="memory-form" class="form-grid">
-                            <div class="form-group">
-                                <label for="memory-model">Model (optional)</label>
-                                <select id="memory-model">
-                                    <option value="">All models</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="memory-timeout">Health Timeout (s)</label>
-                                <input type="number" id="memory-timeout" value="120" min="30">
-                            </div>
-	                            <div class="form-actions">
-	                                <button type="button" class="btn primary-btn" id="btn-memory-start" onclick="runMemoryScan()">
-	                                    <i class="fas fa-search"></i> Run Memory Scan
-	                                </button>
-	                                <button type="button" class="btn btn-danger" id="btn-memory-stop" onclick="stopMemoryScan()" style="display: none;">
-	                                    <i class="fas fa-stop"></i> Stop
-	                                </button>
-	                            </div>
-	                            <div class="form-group" style="grid-column: 1 / -1;">
-	                                <div class="muted" id="memory-progress-text">Idle</div>
-	                                <div class="task-progress-track" style="margin-top: 0.5rem;">
-	                                    <div class="task-progress-fill" id="memory-progress-fill" style="width: 0%"></div>
-	                                </div>
-	                            </div>
-	                        </form>
-	                    </div>
+                    <div class="section-tabs">
+                        <button class="tab-btn active" data-tab="memory-single">Single Run</button>
+                        <button class="tab-btn" data-tab="memory-sweep">Sweep</button>
+                    </div>
 
-                    <div class="card">
-                        <h2 class="card-title">Output</h2>
-                        <div id="memory-output" class="output-container"></div>
+                    <div id="memory-single" class="tab-content active">
+                        <div class="card">
+                            <h2 class="card-title">Memory Scan</h2>
+                            <form id="memory-form" class="form-grid">
+                                <div class="form-group">
+                                    <label for="memory-model">Model (optional)</label>
+                                    <select id="memory-model">
+                                        <option value="">All models</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="memory-timeout">Health Timeout (s)</label>
+                                    <input type="number" id="memory-timeout" value="120" min="30">
+                                </div>
+    	                            <div class="form-actions">
+    	                                <button type="button" class="btn primary-btn" id="btn-memory-start" onclick="runMemoryScan()">
+    	                                    <i class="fas fa-search"></i> Run Memory Scan
+    	                                </button>
+    	                                <button type="button" class="btn btn-danger" id="btn-memory-stop" onclick="stopMemoryScan()" style="display: none;">
+    	                                    <i class="fas fa-stop"></i> Stop
+    	                                </button>
+    	                            </div>
+    	                            <div class="form-group" style="grid-column: 1 / -1;">
+    	                                <div class="muted" id="memory-progress-text">Idle</div>
+    	                                <div class="task-progress-track" style="margin-top: 0.5rem;">
+    	                                    <div class="task-progress-fill" id="memory-progress-fill" style="width: 0%"></div>
+    	                                </div>
+    	                            </div>
+    	                        </form>
+    	                    </div>
+
+                        <div class="card">
+                            <h2 class="card-title">Output</h2>
+                            <div id="memory-output" class="output-container"></div>
+                        </div>
+                    </div>
+
+                    <div id="memory-sweep" class="tab-content">
+                        <div class="card">
+                            <h2 class="card-title">Memory Sweep</h2>
+                            <form id="memory-sweep-form" class="form-grid">
+                                <div class="form-group">
+                                    <label for="memory-sweep-timeout">Health Timeout (s)</label>
+                                    <input type="number" id="memory-sweep-timeout" value="120" min="30">
+                                </div>
+                                <div class="form-group">
+                                    <label for="memory-sweep-scope">Models</label>
+                                    <select id="memory-sweep-scope">
+                                        <option value="ALL">All models</option>
+                                        <option value="SELECTED">Selected in Config Studio</option>
+                                    </select>
+                                    <div class="muted">Tip: select models in Config Studio → Models.</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="memory-sweep-filter">Filter (optional)</label>
+                                    <input type="text" id="memory-sweep-filter" placeholder="e.g. Qwen3">
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <label>Sweep dimensions</label>
+                                    <div id="memory-sweep-dims" class="sweep-dims"></div>
+                                    <div class="sweep-actions">
+                                        <button type="button" class="btn btn-secondary" id="btn-memory-sweep-add-dim">+ Add dimension</button>
+                                    </div>
+                                    <div class="muted" id="memory-sweep-run-count">0 runs</div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn primary-btn" id="btn-memory-sweep-start" onclick="runMemorySweep()">
+                                        <i class="fas fa-play"></i> Run Sweep
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="btn-memory-sweep-stop" onclick="stopMemorySweep()" style="display: none;">
+                                        <i class="fas fa-stop"></i> Stop
+                                    </button>
+                                </div>
+                                <div class="form-group" style="grid-column: 1 / -1;">
+                                    <div class="muted" id="memory-sweep-progress-text">Idle</div>
+                                    <div class="task-progress-track" style="margin-top: 0.5rem;">
+                                        <div class="task-progress-fill" id="memory-sweep-progress-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <h2 class="card-title">Output</h2>
+                            <div id="memory-sweep-output" class="output-container"></div>
+                        </div>
+
+                        <div class="card">
+                            <h2 class="card-title">Results</h2>
+                            <div class="table-container">
+                                <table class="results-table" id="memory-sweep-results-table">
+                                    <thead></thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -782,6 +899,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="/static/js/config_studio.js?v=20260203"></script>
     <script src="/static/js/app.js?v=20260202"></script>
 </body>
 

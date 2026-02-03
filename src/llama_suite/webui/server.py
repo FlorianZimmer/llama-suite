@@ -32,11 +32,13 @@ from llama_suite.webui.utils.auth import require_api_key, websocket_authenticate
 # Import API routers
 from llama_suite.webui.api.auth import router as auth_router  # noqa: E402
 from llama_suite.webui.api.config import router as config_router  # noqa: E402
+from llama_suite.webui.api.config_studio import router as config_studio_router  # noqa: E402
 from llama_suite.webui.api.models import router as models_router  # noqa: E402
 from llama_suite.webui.api.results import router as results_router  # noqa: E402
 from llama_suite.webui.api.bench import router as bench_router  # noqa: E402
 from llama_suite.webui.api.memory import router as memory_router  # noqa: E402
 from llama_suite.webui.api.eval import router as eval_router  # noqa: E402
+from llama_suite.webui.api.sweeps import router as sweeps_router  # noqa: E402
 from llama_suite.webui.api.watcher import router as watcher_router  # noqa: E402
 from llama_suite.webui.api.system import router as system_router  # noqa: E402
 
@@ -65,11 +67,13 @@ app = FastAPI(
 # Include API routers
 app.include_router(auth_router)
 app.include_router(config_router, dependencies=[Depends(require_api_key)])
+app.include_router(config_studio_router, dependencies=[Depends(require_api_key)])
 app.include_router(models_router, dependencies=[Depends(require_api_key)])
 app.include_router(results_router, dependencies=[Depends(require_api_key)])
 app.include_router(bench_router, dependencies=[Depends(require_api_key)])
 app.include_router(memory_router, dependencies=[Depends(require_api_key)])
 app.include_router(eval_router, dependencies=[Depends(require_api_key)])
+app.include_router(sweeps_router, dependencies=[Depends(require_api_key)])
 app.include_router(watcher_router, dependencies=[Depends(require_api_key)])
 app.include_router(system_router, dependencies=[Depends(require_api_key)])
 
