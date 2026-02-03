@@ -134,15 +134,15 @@ models:
       top-p: 0.95
       top-k: 40
     cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
+      cache-type-k: f16
+      cache-type-v: f16
       jinja: true
       parallel: 1
       cont-batching: true
       bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-Coder-Next-UD-Q5_K_XL-00001-of-00002.gguf
-      ctx-size: 131072
+      ctx-size: 262144
       gpu-layers: auto
       threads: auto
       reasoning-format: deepseek
@@ -157,7 +157,7 @@ models:
       bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
       model: ./models/Qwen3-Next-80B-A3B-Instruct-UD-Q6_K_XL-00001-of-00002.gguf
-      ctx-size: 16384
+      ctx-size: 131072
       gpu-layers: auto
   Qwen3-32B-Think:
     hf_tokenizer_for_model: Qwen/Qwen3-32B

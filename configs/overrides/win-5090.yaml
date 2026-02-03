@@ -262,13 +262,13 @@ models:
     cmd:
       gpu-layers: 99
       threads: 28
-      n-cpu-moe: 22
+      n-cpu-moe: 28
 
   Qwen3-Next:
     cmd:
       gpu-layers: 99
       threads: 28
-      n-cpu-moe: 22
+      n-cpu-moe: 28
 
 # The top-level keys like healthCheckTimeout, logLevel, and profiles from your
 # llama-swap native config are NOT currently handled by llama_swap_watch.py.
