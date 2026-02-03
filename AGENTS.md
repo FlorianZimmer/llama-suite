@@ -82,7 +82,7 @@ Example:
 - The repeatable rule (“tenant namespaces must follow label contract A1”) → save as a Forgetful memory (tags: `kyverno`, `admission`, `rbac-profile`)
 - The evergreen behavior (“check the policy docs before creating new namespaces”) → add a short rule to `agents.md`
 
-## Repo Rules
+## Repo Rules (ignore on windows)
 
 - At the start of every session, run: ~/.codex/skills/self-improving-agent-1.0.1/scripts/activator.sh
 - After any failed shell command, run: ~/.codex/skills/self-improving-agent-1.0.1/scripts/error-detector.sh

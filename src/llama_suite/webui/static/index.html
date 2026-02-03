@@ -503,9 +503,19 @@
                                                     class="sort-icon"></span></th>
                                             <th class="col-quant sortable" data-sort="Quantization">Quant <span
                                                     class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_context_size">Ctx <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_gpu_layers">n-gpu <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_kv_cache">KV cache <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_n_cpu_moe">n-cpu-moe <span
+                                                    class="sort-icon"></span></th>
                                             <th class="col-metric sortable" data-sort="_tokens_per_second">Tok/s <span
                                                     class="sort-icon"></span></th>
                                             <th class="col-metric sortable" data-sort="_gpu_memory_gb">GPU Mem <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_cpu_memory_gb">CPU Mem <span
                                                     class="sort-icon"></span></th>
                                             <th class="col-metric sortable" data-sort="_duration_seconds">Duration <span
                                                     class="sort-icon"></span></th>
@@ -517,7 +527,7 @@
                                     </thead>
                                     <tbody id="bench-results-tbody">
                                         <tr>
-                                            <td colspan="9" class="empty-message">Loading...</td>
+                                            <td colspan="14" class="empty-message">Loading...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -554,6 +564,18 @@
                                                     title="Select all"></th>
                                             <th class="col-model sortable" data-sort="ModelName">Model <span
                                                     class="sort-icon"></span></th>
+                                            <th class="col-size sortable" data-sort="ParameterSize">Size <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-quant sortable" data-sort="Quantization">Quant <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_context_size">Ctx <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_gpu_layers">n-gpu <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_kv_cache">KV cache <span
+                                                    class="sort-icon"></span></th>
+                                            <th class="col-metric sortable" data-sort="_n_cpu_moe">n-cpu-moe <span
+                                                    class="sort-icon"></span></th>
                                             <th class="col-metric sortable" data-sort="_gpu_memory_gb">GPU Memory <span
                                                     class="sort-icon"></span></th>
                                             <th class="col-metric sortable" data-sort="_cpu_memory_gb">CPU Memory <span
@@ -567,7 +589,7 @@
                                     </thead>
                                     <tbody id="memory-results-tbody">
                                         <tr>
-                                            <td colspan="7" class="empty-message">Loading...</td>
+                                            <td colspan="13" class="empty-message">Loading...</td>
                                         </tr>
                                     </tbody>
                                 </table>

@@ -480,12 +480,14 @@ const Toast = {
 
 const Modal = {
     overlay: null,
+    modalEl: null,
     titleEl: null,
     bodyEl: null,
     footerEl: null,
 
     init() {
         this.overlay = document.getElementById('modal-overlay');
+        this.modalEl = document.getElementById('modal');
         this.titleEl = document.getElementById('modal-title');
         this.bodyEl = document.getElementById('modal-body');
         this.footerEl = document.getElementById('modal-footer');
@@ -496,7 +498,15 @@ const Modal = {
         });
     },
 
-    show(title, bodyHtml, footerHtml = '') {
+    setSize(size) {
+        if (!this.modalEl) return;
+
+        this.modalEl.classList.remove('modal-wide');
+        if (size === 'wide') this.modalEl.classList.add('modal-wide');
+    },
+
+    show(title, bodyHtml, footerHtml = '', options = {}) {
+        this.setSize(options?.size);
         this.titleEl.textContent = title;
         this.bodyEl.innerHTML = bodyHtml;
         this.footerEl.innerHTML = footerHtml;
@@ -505,6 +515,7 @@ const Modal = {
 
     hide() {
         this.overlay.classList.remove('active');
+        this.setSize(null);
     }
 };
 
@@ -1766,7 +1777,7 @@ const App = {
         });
 
         if (results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="empty-message">No results found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" class="empty-message">No results found</td></tr>';
             return;
         }
 
@@ -1776,8 +1787,13 @@ const App = {
                 <td title="${r.ModelName}">${r.ModelName}</td>
                 <td>${r.ParameterSize || '-'}</td>
                 <td>${r.Quantization || '-'}</td>
+                <td>${(r.ContextSize ?? r._context_size ?? '-') || '-'}</td>
+                <td>${(r.GpuLayers ?? r._gpu_layers ?? '-') || '-'}</td>
+                <td>${r._kv_cache || `${r.CacheTypeK || '-'}\/${r.CacheTypeV || '-'}`}</td>
+                <td>${(r.NCpuMoe ?? r._n_cpu_moe ?? '-') || '-'}</td>
                 <td>${r._tokens_per_second ? r._tokens_per_second.toFixed(2) : '-'}</td>
                 <td>${r._gpu_memory_gb ? r._gpu_memory_gb.toFixed(2) + ' GB' : '-'}</td>
+                <td>${r._cpu_memory_gb ? r._cpu_memory_gb.toFixed(2) + ' GB' : '-'}</td>
                 <td>${r._duration_seconds ? r._duration_seconds.toFixed(2) + 's' : '-'}</td>
                 <td><span class="status-badge ${r.BenchStatus === 'Success' ? 'status-running' : 'status-error'}">${r.BenchStatus || 'Unknown'}</span></td>
                 <td title="${r.Timestamp}">${new Date(r.Timestamp).toLocaleDateString()}</td>
@@ -1824,7 +1840,7 @@ const App = {
         });
 
         if (results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-message">No results found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" class="empty-message">No results found</td></tr>';
             return;
         }
 
@@ -1832,6 +1848,12 @@ const App = {
             <tr class="${state.selected.has(r) ? 'selected' : ''}">
                 <td class="col-checkbox"><input type="checkbox" onchange="App.handleResultsSelect('memory', ${state.data.indexOf(r)}, this.checked)" ${state.selected.has(r) ? 'checked' : ''}></td>
                 <td title="${r.ModelName}">${r.ModelName}</td>
+                <td>${r.ParameterSize || '-'}</td>
+                <td>${r.Quantization || '-'}</td>
+                <td>${(r.ContextSize ?? r._context_size ?? '-') || '-'}</td>
+                <td>${(r.GpuLayers ?? r._gpu_layers ?? '-') || '-'}</td>
+                <td>${r._kv_cache || `${r.CacheTypeK || '-'}\/${r.CacheTypeV || '-'}`}</td>
+                <td>${(r.NCpuMoe ?? r._n_cpu_moe ?? '-') || '-'}</td>
                 <td>${r._gpu_memory_gb ? r._gpu_memory_gb.toFixed(2) + ' GB' : '-'}</td>
                 <td>${r._cpu_memory_gb ? r._cpu_memory_gb.toFixed(2) + ' GB' : '-'}</td>
                 <td><span class="status-badge ${r.ScanStatus === 'Success' ? 'status-running' : 'status-error'}">${r.ScanStatus || 'Unknown'}</span></td>
@@ -1906,7 +1928,7 @@ const App = {
             state.sort.col = col;
             state.sort.asc = true; // Default to asc for new col
             // Special defaults for numeric metrics - desc usually better
-            if (['_tokens_per_second', 'gen_judge_score', 'count_total'].includes(col)) {
+            if (['_tokens_per_second', '_gpu_memory_gb', '_cpu_memory_gb', '_duration_seconds', '_context_size', '_gpu_layers', '_n_cpu_moe', 'gen_judge_score', 'count_total'].includes(col)) {
                 state.sort.asc = false;
             }
         }
@@ -1976,8 +1998,12 @@ const App = {
                         <tbody>
                             <tr><td><strong>Tokens/Sec</strong></td>${selected.map(r => `<td>${r._tokens_per_second?.toFixed(2) || '-'}</td>`).join('')}</tr>
                             <tr><td><strong>GPU Memory</strong></td>${selected.map(r => `<td>${r._gpu_memory_gb?.toFixed(2) || '-'} GB</td>`).join('')}</tr>
+                            <tr><td><strong>CPU Memory</strong></td>${selected.map(r => `<td>${r._cpu_memory_gb?.toFixed(2) || '-'} GB</td>`).join('')}</tr>
                             <tr><td><strong>Duration</strong></td>${selected.map(r => `<td>${r._duration_seconds?.toFixed(2) || '-'} s</td>`).join('')}</tr>
                             <tr><td><strong>Context</strong></td>${selected.map(r => `<td>${r.ContextSize || '-'}</td>`).join('')}</tr>
+                            <tr><td><strong>n-gpu</strong></td>${selected.map(r => `<td>${r.GpuLayers || '-'}</td>`).join('')}</tr>
+                            <tr><td><strong>KV cache</strong></td>${selected.map(r => `<td>${r._kv_cache || `${r.CacheTypeK || '-'}\/${r.CacheTypeV || '-'}`}</td>`).join('')}</tr>
+                            <tr><td><strong>n-cpu-moe</strong></td>${selected.map(r => `<td>${r.NCpuMoe || '-'}</td>`).join('')}</tr>
                             <tr><td><strong>Quantization</strong></td>${selected.map(r => `<td>${r.Quantization || '-'}</td>`).join('')}</tr>
                             <tr><td><strong>Params</strong></td>${selected.map(r => `<td>${r.ParameterSize || '-'}</td>`).join('')}</tr>
                         </tbody>
@@ -1996,6 +2022,12 @@ const App = {
                         <tbody>
                             <tr><td><strong>GPU Memory</strong></td>${selected.map(r => `<td>${r._gpu_memory_gb?.toFixed(2) || '-'} GB</td>`).join('')}</tr>
                             <tr><td><strong>CPU Memory</strong></td>${selected.map(r => `<td>${r._cpu_memory_gb?.toFixed(2) || '-'} GB</td>`).join('')}</tr>
+                            <tr><td><strong>Context</strong></td>${selected.map(r => `<td>${r.ContextSize || '-'}</td>`).join('')}</tr>
+                            <tr><td><strong>n-gpu</strong></td>${selected.map(r => `<td>${r.GpuLayers || '-'}</td>`).join('')}</tr>
+                            <tr><td><strong>KV cache</strong></td>${selected.map(r => `<td>${r._kv_cache || `${r.CacheTypeK || '-'}\/${r.CacheTypeV || '-'}`}</td>`).join('')}</tr>
+                            <tr><td><strong>n-cpu-moe</strong></td>${selected.map(r => `<td>${r.NCpuMoe || '-'}</td>`).join('')}</tr>
+                            <tr><td><strong>Quantization</strong></td>${selected.map(r => `<td>${r.Quantization || '-'}</td>`).join('')}</tr>
+                            <tr><td><strong>Params</strong></td>${selected.map(r => `<td>${r.ParameterSize || '-'}</td>`).join('')}</tr>
                             <tr><td><strong>Status</strong></td>${selected.map(r => `<td>${r.ScanStatus || '-'}</td>`).join('')}</tr>
                         </tbody>
                     </table>
@@ -2020,7 +2052,12 @@ const App = {
                 </div>`;
         }
 
-        Modal.show('Compare Results', content, '<button class="btn btn-secondary" onclick="Modal.hide()">Close</button>');
+        Modal.show(
+            'Compare Results',
+            content,
+            '<button class="btn btn-secondary" onclick="Modal.hide()">Close</button>',
+            { size: 'wide' }
+        );
     },
 
     // Action handlers

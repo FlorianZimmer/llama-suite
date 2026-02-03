@@ -45,6 +45,16 @@ def run_memory_scan(
     run_logs_dir: Path,
     logger_instance: Logger
 ):
+    def _effective_cfg_value(model_cfg: Dict[str, Any], key: str) -> str:
+        cmd = model_cfg.get("cmd")
+        if isinstance(cmd, dict) and key in cmd:
+            v = cmd.get(key)
+        else:
+            v = model_cfg.get(key)
+        if v is None or v == "" or v is False:
+            return "-"
+        return str(v)
+
     models_to_iterate = util.select_models(processed_models_config, model_to_scan_alias, logger_instance)
     if not models_to_iterate:
         return
@@ -52,7 +62,21 @@ def run_memory_scan(
     base_proxy_url = f"http://127.0.0.1:{STATIC_SERVER_PORT_SCAN}"
     health_url = f"{base_proxy_url}/health"
 
-    headers = ["ModelName", "Timestamp", "ScanStatus", "GpuMemoryGB", "CpuMemoryGB", "Error"]
+    headers = [
+        "ModelName",
+        "ParameterSize",
+        "Quantization",
+        "ContextSize",
+        "GpuLayers",
+        "CacheTypeK",
+        "CacheTypeV",
+        "NCpuMoe",
+        "Timestamp",
+        "ScanStatus",
+        "GpuMemoryGB",
+        "CpuMemoryGB",
+        "Error",
+    ]
     rows: List[List[str]] = []
 
     for idx, (alias, model_cfg) in enumerate(models_to_iterate.items(), 1):
@@ -60,19 +84,49 @@ def run_memory_scan(
         logger_instance.subheader(f"Scanning Model ({idx}/{len(models_to_iterate)}): {alias}")
         ts = logger_instance._get_timestamp()
 
+        param_size = util.parse_param_size_from_alias(alias, logger_instance)
+        quantization = "-"
+        model_file = (model_cfg.get("cmd") or {}).get("model")
+        if isinstance(model_file, str) and model_file:
+            quantization = util.parse_quant_from_string(Path(model_file).name, logger_instance)
+            if quantization == "-":
+                quantization = util.parse_quant_from_string(alias, logger_instance)
+        else:
+            quantization = util.parse_quant_from_string(alias, logger_instance)
+
+        ctx_size = "-"
+        gpu_layers = _effective_cfg_value(model_cfg, "gpu-layers")
+        cache_k = _effective_cfg_value(model_cfg, "cache-type-k")
+        cache_v = _effective_cfg_value(model_cfg, "cache-type-v")
+        n_cpu_moe = _effective_cfg_value(model_cfg, "n-cpu-moe")
+
         gpu_gb, cpu_gb, scan_status = "-", "-", "Not Scanned"
         err_msg = ""
 
         # Build server command (simple, robust; draft handled inside util)
         logger_instance.step(f"Preparing server command for '{alias}'")
         try:
-            server_exe, server_args, _ctx = util.build_server_command(
+            server_exe, server_args, ctx_size = util.build_server_command(
                 alias, model_cfg, static_port=STATIC_SERVER_PORT_SCAN, logger=logger_instance
             )
         except Exception as e:
             err_msg = f"Cmd Build Error: {e}"
             logger_instance.error(f"  {err_msg}")
-            rows.append([alias, ts, "Cmd Build Error", gpu_gb, cpu_gb, err_msg])
+            rows.append([
+                alias,
+                param_size,
+                quantization,
+                ctx_size,
+                gpu_layers,
+                cache_k,
+                cache_v,
+                n_cpu_moe,
+                ts,
+                "Cmd Build Error",
+                gpu_gb,
+                cpu_gb,
+                err_msg,
+            ])
             logger_instance.notice("-" * 30)
             continue
 
@@ -131,7 +185,21 @@ def run_memory_scan(
         if err_msg and scan_status not in ["Success", "Parse Error", "Failed (No Buffers)"]:
             logger_instance.warn(f"    Details: {err_msg}")
 
-        rows.append([alias, ts, scan_status, gpu_gb, cpu_gb, err_msg])
+        rows.append([
+            alias,
+            param_size,
+            quantization,
+            ctx_size,
+            gpu_layers,
+            cache_k,
+            cache_v,
+            n_cpu_moe,
+            ts,
+            scan_status,
+            gpu_gb,
+            cpu_gb,
+            err_msg,
+        ])
         logger_instance.notice("-" * 30)
 
     util.write_csv(headers, rows, output_csv_path, logger_instance)

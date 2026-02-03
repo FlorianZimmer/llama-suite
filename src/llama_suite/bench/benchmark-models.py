@@ -49,6 +49,16 @@ def run_benchmark(
     run_logs_dir: Path,
     logger_instance: "Logger",
 ):
+    def _effective_cfg_value(model_cfg: Dict[str, Any], key: str) -> str:
+        cmd = model_cfg.get("cmd")
+        if isinstance(cmd, dict) and key in cmd:
+            v = cmd.get(key)
+        else:
+            v = model_cfg.get(key)
+        if v is None or v == "" or v is False:
+            return "-"
+        return str(v)
+
     base_proxy_url = f"http://127.0.0.1:{STATIC_BENCHMARK_PORT}"
     health_url = f"{base_proxy_url}/health"
     api_url = f"{base_proxy_url}/v1/chat/completions"
@@ -58,7 +68,9 @@ def run_benchmark(
         return
 
     headers = [
-        "ModelName", "ParameterSize", "Quantization", "ContextSize", "Timestamp",
+        "ModelName", "ParameterSize", "Quantization", "ContextSize",
+        "GpuLayers", "CacheTypeK", "CacheTypeV", "NCpuMoe",
+        "Timestamp",
         "MemoryScanStatus", "GpuMemoryGB", "CpuMemoryGB",
         "BenchStatus", "DurationSeconds", "TokensPerSecond",
         "PromptTokens", "CompletionTokens", "TotalTokens",
@@ -74,6 +86,10 @@ def run_benchmark(
 
         # defaults
         param_size, quantization, ctx_size = "-", "-", "-"
+        gpu_layers = _effective_cfg_value(model_cfg, "gpu-layers")
+        cache_k = _effective_cfg_value(model_cfg, "cache-type-k")
+        cache_v = _effective_cfg_value(model_cfg, "cache-type-v")
+        n_cpu_moe = _effective_cfg_value(model_cfg, "n-cpu-moe")
         mem_gpu, mem_cpu, mem_status = "-", "-", "Not Scanned"
         bench_status, duration_s, tps = "Not Run", "", ""
         prompt_t, completion_t, total_t = "", "", ""
@@ -109,8 +125,28 @@ def run_benchmark(
         except Exception as e:
             err_msg = f"Cmd Prepare Error: {e}"
             logger_instance.error(f"  {err_msg}")
-            rows.append([alias, param_size, quantization, ctx_size, ts, "Config/Error", "-", "-",
-                         "Cmd Prepare Error", "", "", "", "", "", base_proxy_url, err_msg])
+            rows.append([
+                alias,
+                param_size,
+                quantization,
+                ctx_size,
+                gpu_layers,
+                cache_k,
+                cache_v,
+                n_cpu_moe,
+                ts,
+                "Config/Error",
+                "-",
+                "-",
+                "Cmd Prepare Error",
+                "",
+                "",
+                "",
+                "",
+                "",
+                base_proxy_url,
+                err_msg,
+            ])
             logger_instance.notice("-" * 30)
             continue
 
@@ -239,7 +275,15 @@ def run_benchmark(
                 stop_llama_server(server_proc, alias, logger_instance)
 
         rows.append([
-            alias, param_size, quantization, ctx_size, ts,
+            alias,
+            param_size,
+            quantization,
+            ctx_size,
+            gpu_layers,
+            cache_k,
+            cache_v,
+            n_cpu_moe,
+            ts,
             mem_status, mem_gpu, mem_cpu,
             bench_status, duration_s, tps, prompt_t, completion_t, total_t,
             base_proxy_url, (err_msg.strip("; ") if err_msg else ""),

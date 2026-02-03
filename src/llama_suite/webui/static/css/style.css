@@ -1084,6 +1084,11 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
+.modal.modal-wide {
+    width: 95vw;
+    max-width: 1400px;
+}
+
 .modal-header {
     display: flex;
     justify-content: space-between;

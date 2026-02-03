@@ -74,8 +74,8 @@ async def get_merged_bench_results():
     all_results = []
     files_processed = []
     
-    # Find all benchmark CSV files (not memory scan files)
-    for csv_file in sorted(results_dir.glob("benchmark_results*.csv"), reverse=True):
+    # Find all timestamped benchmark CSV files (exclude benchmark_results.csv "latest" copy)
+    for csv_file in sorted(results_dir.glob("benchmark_results_*.csv"), reverse=True):
         try:
             with open(csv_file, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
@@ -92,6 +92,11 @@ async def get_merged_bench_results():
                     row["_duration_seconds"] = _parse_float(row.get("DurationSeconds"))
                     row["_context_size"] = _parse_int(row.get("ContextSize"))
                     row["_completion_tokens"] = _parse_int(row.get("CompletionTokens"))
+                    row["_gpu_layers"] = _parse_int(row.get("GpuLayers"))
+                    row["_n_cpu_moe"] = _parse_int(row.get("NCpuMoe"))
+                    ct_k = row.get("CacheTypeK") or "-"
+                    ct_v = row.get("CacheTypeV") or "-"
+                    row["_kv_cache"] = f"{ct_k}/{ct_v}"
                     all_results.append(row)
             files_processed.append(csv_file.name)
         except Exception as e:
@@ -114,7 +119,8 @@ async def get_merged_memory_results():
     all_results = []
     files_processed = []
     
-    for csv_file in sorted(results_dir.glob("memory_scan_results*.csv"), reverse=True):
+    # Find all timestamped memory scan CSV files (exclude memory_scan_results.csv "latest" copy)
+    for csv_file in sorted(results_dir.glob("memory_scan_results_*.csv"), reverse=True):
         try:
             with open(csv_file, "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
@@ -124,6 +130,12 @@ async def get_merged_memory_results():
                     row["_source_file"] = csv_file.name
                     row["_gpu_memory_gb"] = _parse_float(row.get("GpuMemoryGB"))
                     row["_cpu_memory_gb"] = _parse_float(row.get("CpuMemoryGB"))
+                    row["_context_size"] = _parse_int(row.get("ContextSize"))
+                    row["_gpu_layers"] = _parse_int(row.get("GpuLayers"))
+                    row["_n_cpu_moe"] = _parse_int(row.get("NCpuMoe"))
+                    ct_k = row.get("CacheTypeK") or "-"
+                    ct_v = row.get("CacheTypeV") or "-"
+                    row["_kv_cache"] = f"{ct_k}/{ct_v}"
                     all_results.append(row)
             files_processed.append(csv_file.name)
         except Exception as e:
