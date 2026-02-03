@@ -4,13 +4,14 @@ from pathlib import Path
 from typing import Optional
 import sys
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
 from llama_suite.webui.utils.task_output import handle_task_output
+from llama_suite.webui.utils.mode import require_local_mode
 
 
 router = APIRouter(prefix="/api/watcher", tags=["watcher"])
@@ -50,7 +51,7 @@ async def get_watcher_status():
 
 
 @router.post("/start")
-async def start_watcher(request: WatcherStartRequest):
+async def start_watcher(request: WatcherStartRequest, _=Depends(require_local_mode)):
     """Start the llama-swap endpoint process."""
     # Check if already running
     tasks = process_manager.get_running_tasks()
@@ -120,7 +121,7 @@ async def start_watcher(request: WatcherStartRequest):
 
 
 @router.post("/stop")
-async def stop_watcher():
+async def stop_watcher(_=Depends(require_local_mode)):
     """Stop the llama-swap endpoint process."""
     tasks = process_manager.get_running_tasks()
     watcher_tasks = {k: v for k, v in tasks.items() if v.task_type == "watcher"}

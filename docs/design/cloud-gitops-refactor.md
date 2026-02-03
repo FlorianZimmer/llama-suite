@@ -149,7 +149,7 @@ Add a DeployKube GitOps component for `llama-suite-webui`:
 - [ ] Add frontend login prompt when auth is required.
 
 ### Phase 3 (Helm chart)
-- [ ] Create `deploy/charts/llama-suite-webui` Helm chart.
+- [x] Create `deploy/charts/llama-suite-webui` Helm chart.
 - [ ] Document values for DeployKube (URLs, mode, config mount, PVC).
 
 ### Phase 4 (DeployKube GitOps component)
@@ -190,4 +190,4 @@ Add a DeployKube GitOps component for `llama-suite-webui`:
 - Compose: `deploy/compose/docker-compose.yml`
 - OrbStack launchers: `deploy/orbstack/start.command`, `deploy/orbstack/stop.command`
 - Web UI image: `deploy/containers/webui/Dockerfile`
-
+- Marketplace prep templates: `deploy/marketplace/llama-suite-webui/`

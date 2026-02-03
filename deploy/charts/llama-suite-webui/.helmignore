@@ -1,0 +1,11 @@
+.DS_Store
+.git
+.gitignore
+.idea
+.vscode
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.swp
+**/*.tmp

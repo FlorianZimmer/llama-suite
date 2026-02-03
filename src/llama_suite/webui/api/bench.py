@@ -4,13 +4,14 @@ from pathlib import Path
 from typing import Optional
 import sys
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
 from llama_suite.webui.utils.task_output import handle_task_output
+from llama_suite.webui.utils.mode import require_local_mode
 
 
 router = APIRouter(prefix="/api/bench", tags=["benchmark"])
@@ -50,7 +51,7 @@ async def get_bench_status():
 
 
 @router.post("/run")
-async def start_benchmark(request: BenchmarkRequest):
+async def start_benchmark(request: BenchmarkRequest, _=Depends(require_local_mode)):
     """Start a new benchmark run."""
     
     async def run_benchmark_task(task_id: str, override: Optional[str], model: Optional[str], 
@@ -98,7 +99,7 @@ async def start_benchmark(request: BenchmarkRequest):
     
     task_id = await process_manager.start_task(
         task_type="benchmark",
-        description=f"Benchmark run" + (f" for {request.model}" if request.model else ""),
+        description="Benchmark run" + (f" for {request.model}" if request.model else ""),
         coro=run_benchmark_task,
         override=request.override,
         model=request.model,

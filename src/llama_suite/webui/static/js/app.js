@@ -13,6 +13,12 @@ const API = {
 
     async request(endpoint, options = {}) {
         const url = `${this.baseUrl}${endpoint}`;
+        const retryAuth = options._retryAuth !== false;
+        // Internal option, not forwarded to fetch()
+        if ("_retryAuth" in options) {
+            const { _retryAuth, ...rest } = options;
+            options = rest;
+        }
         const config = {
             headers: {
                 'Content-Type': 'application/json',
@@ -27,10 +33,22 @@ const API = {
 
         try {
             const response = await fetch(url, config);
-            const data = await response.json();
+            const ct = (response.headers.get('content-type') || '').toLowerCase();
+            const isJson = ct.includes('application/json');
+            const data = isJson ? await response.json() : await response.text();
+
+            if (response.status === 401 && retryAuth && endpoint.startsWith('/api/') && !endpoint.startsWith('/api/auth/')) {
+                try {
+                    await Auth.ensureLoggedIn();
+                    return await this.request(endpoint, { ...options, _retryAuth: false });
+                } catch (e) {
+                    // Fall through to normal error handling below
+                }
+            }
 
             if (!response.ok) {
-                throw new Error(data.detail || `HTTP ${response.status}`);
+                const detail = (data && typeof data === 'object' && data.detail) ? data.detail : null;
+                throw new Error(detail || `HTTP ${response.status}`);
             }
 
             return data;
@@ -54,6 +72,116 @@ const API = {
 
     delete(endpoint) {
         return this.request(endpoint, { method: 'DELETE' });
+    }
+};
+
+// =============================================================================
+// Auth helper (optional API key + cookie)
+// =============================================================================
+
+const Auth = {
+    _inFlight: null,
+
+    async status() {
+        try {
+            const resp = await fetch('/api/auth/status', { method: 'GET' });
+            if (!resp.ok) return { enabled: false, authenticated: true };
+            return await resp.json();
+        } catch {
+            return { enabled: false, authenticated: true };
+        }
+    },
+
+    async login(apiKey) {
+        const resp = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ api_key: apiKey })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            throw new Error(data.detail || `HTTP ${resp.status}`);
+        }
+        return true;
+    },
+
+    promptForKey() {
+        return new Promise((resolve) => {
+            Modal.show('Login required', `
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label for="auth-api-key">API key</label>
+                        <input type="password" id="auth-api-key" placeholder="Enter LLAMA_SUITE_API_KEY">
+                    </div>
+                    <div class="muted">This UI is protected by an API key. A session cookie will be set after login.</div>
+                </div>
+            `, `
+                <button class="btn btn-secondary" id="btn-auth-cancel">Cancel</button>
+                <button class="btn btn-primary" id="btn-auth-login">Login</button>
+            `);
+
+            const keyEl = document.getElementById('auth-api-key');
+            const loginBtn = document.getElementById('btn-auth-login');
+            const cancelBtn = document.getElementById('btn-auth-cancel');
+
+            const cleanup = () => {
+                loginBtn?.removeEventListener('click', onLogin);
+                cancelBtn?.removeEventListener('click', onCancel);
+                keyEl?.removeEventListener('keydown', onKeyDown);
+            };
+
+            const onLogin = () => {
+                const key = (keyEl?.value || '').trim();
+                cleanup();
+                resolve(key || null);
+            };
+
+            const onCancel = () => {
+                cleanup();
+                resolve(null);
+            };
+
+            const onKeyDown = (e) => {
+                if (e.key === 'Enter') onLogin();
+            };
+
+            loginBtn?.addEventListener('click', onLogin);
+            cancelBtn?.addEventListener('click', () => { Modal.hide(); onCancel(); });
+            keyEl?.addEventListener('keydown', onKeyDown);
+
+            setTimeout(() => keyEl?.focus(), 0);
+        });
+    },
+
+    async ensureLoggedIn() {
+        if (this._inFlight) return this._inFlight;
+
+        this._inFlight = (async () => {
+            const st = await this.status();
+            if (!st.enabled || st.authenticated) return;
+
+            while (true) {
+                const apiKey = await this.promptForKey();
+                if (!apiKey) {
+                    throw new Error('Login required');
+                }
+
+                try {
+                    await this.login(apiKey);
+                    Modal.hide();
+                    Toast.success('Logged in');
+                    return;
+                } catch (e) {
+                    Toast.error(`Login failed: ${e.message}`);
+                }
+            }
+        })();
+
+        try {
+            return await this._inFlight;
+        } finally {
+            this._inFlight = null;
+        }
     }
 };
 
@@ -387,6 +515,8 @@ const Modal = {
 const App = {
     currentSection: 'dashboard',
     currentOverride: '',
+    links: null,
+    capabilities: null,
     ws: null,
     baseConfigOriginal: null,
     missingModelsForDownload: [],
@@ -402,16 +532,21 @@ const App = {
         eval: { data: [], sort: { col: 'gen_judge_score', asc: false }, filter: { search: '' }, selected: new Set() }
     },
 
-    async init() {
-        Toast.init();
-        Modal.init();
-        this.ws = new WebSocketManager();
-
-        this.setupNavigation();
-        this.setupTabs();
-        this.setupDirtyTracking();
-        this.setupWebSocketHandlers();
-        await this.loadInitialData();
+	    async init() {
+	        Toast.init();
+	        Modal.init();
+	        try {
+	            await Auth.ensureLoggedIn();
+	        } catch (e) {
+	            console.warn('Auth not completed:', e);
+	        }
+	        this.ws = new WebSocketManager();
+	
+	        this.setupNavigation();
+	        this.setupTabs();
+	        this.setupDirtyTracking();
+	        this.setupWebSocketHandlers();
+	        await this.loadInitialData();
 
         // Handle initial route
         this.handleRoute();
@@ -522,8 +657,9 @@ const App = {
         });
     },
 
-    updateEndpointStatusUI(isRunning, statusTextOverride = null) {
-        const statusText = statusTextOverride || (isRunning ? 'Running' : 'Stopped');
+	    updateEndpointStatusUI(isRunning, statusTextOverride = null) {
+	        const statusText = statusTextOverride || (isRunning ? 'Running' : 'Stopped');
+	        const canSpawn = this.capabilities?.can_spawn_subprocesses !== false;
 
         const statusEl = document.getElementById('watcher-status');
         if (statusEl) {
@@ -534,10 +670,10 @@ const App = {
             }
         }
 
-        const startBtn = document.getElementById('btn-watcher-start');
-        const stopBtn = document.getElementById('btn-watcher-stop');
-        if (startBtn) startBtn.disabled = isRunning;
-        if (stopBtn) stopBtn.disabled = !isRunning;
+	        const startBtn = document.getElementById('btn-watcher-start');
+	        const stopBtn = document.getElementById('btn-watcher-stop');
+	        if (startBtn) startBtn.disabled = !canSpawn || isRunning;
+	        if (stopBtn) stopBtn.disabled = !canSpawn || !isRunning;
 
         const qsStatusEl = document.getElementById('dashboard-endpoint-status');
         if (qsStatusEl) {
@@ -548,21 +684,22 @@ const App = {
             }
         }
 
-        const qsStart = document.getElementById('btn-quickstart-endpoint-start');
-        const qsStop = document.getElementById('btn-quickstart-endpoint-stop');
-        if (qsStart) qsStart.disabled = isRunning;
-        if (qsStop) qsStop.disabled = !isRunning;
+	        const qsStart = document.getElementById('btn-quickstart-endpoint-start');
+	        const qsStop = document.getElementById('btn-quickstart-endpoint-stop');
+	        if (qsStart) qsStart.disabled = !canSpawn || isRunning;
+	        if (qsStop) qsStop.disabled = !canSpawn || !isRunning;
 
         if (this.taskManager) {
             this.taskManager.updateWatcherState(isRunning);
         }
     },
 
-    updateOpenWebUIStatusUI(isRunning, statusTextOverride = null) {
-        const statusText = statusTextOverride || (isRunning ? 'Running' : 'Stopped');
-        const cls = statusTextOverride === 'Error'
-            ? 'status-badge status-error'
-            : `status-badge ${isRunning ? 'status-running' : 'status-stopped'}`;
+	    updateOpenWebUIStatusUI(isRunning, statusTextOverride = null) {
+	        const statusText = statusTextOverride || (isRunning ? 'Running' : 'Stopped');
+	        const cls = statusTextOverride === 'Error'
+	            ? 'status-badge status-error'
+	            : `status-badge ${isRunning ? 'status-running' : 'status-stopped'}`;
+	        const canSpawn = this.capabilities?.can_spawn_subprocesses !== false;
 
         const statusEl = document.getElementById('dashboard-openwebui-status');
         if (statusEl) {
@@ -570,14 +707,14 @@ const App = {
             statusEl.className = cls;
         }
 
-        const startBtn = document.getElementById('btn-quickstart-openwebui-start');
-        const stopBtn = document.getElementById('btn-quickstart-openwebui-stop');
-        if (startBtn) startBtn.disabled = isRunning;
-        if (stopBtn) stopBtn.disabled = !isRunning;
+	        const startBtn = document.getElementById('btn-quickstart-openwebui-start');
+	        const stopBtn = document.getElementById('btn-quickstart-openwebui-stop');
+	        if (startBtn) startBtn.disabled = !canSpawn || isRunning;
+	        if (stopBtn) stopBtn.disabled = !canSpawn || !isRunning;
 
-        const stopBtnSystem = document.getElementById('btn-openwebui-stop');
-        if (stopBtnSystem) stopBtnSystem.disabled = !isRunning;
-    },
+	        const stopBtnSystem = document.getElementById('btn-openwebui-stop');
+	        if (stopBtnSystem) stopBtnSystem.disabled = !canSpawn || !isRunning;
+	    },
 
     findOutputContainer(taskId) {
         if (taskId === this.currentBenchTaskId) return 'bench-output';
@@ -705,10 +842,116 @@ const App = {
         this.loadSectionData(section);
     },
 
-    async loadInitialData() {
-        await this.loadOverrides();
-        await this.loadSystemInfo();
-    },
+	    async loadInitialData() {
+	        await this.loadLinksAndCapabilities();
+	        await this.loadOverrides();
+	        await this.loadSystemInfo();
+	    },
+
+	    async loadLinksAndCapabilities() {
+	        try {
+	            const links = await API.get('/api/system/links');
+	            this.links = links;
+	            this.capabilities = links;
+	            this.applyLinks(links);
+	            this.applyCapabilities(links);
+	        } catch (e) {
+	            console.error('Failed to load links:', e);
+	        }
+	    },
+
+	    applyLinks(links) {
+	        const swapApi = String(links.swap_api_url || '');
+	        const swapUi = String(links.swap_ui_url || '');
+	        const openWebUi = String(links.open_webui_url || '');
+
+	        const setText = (id, value) => {
+	            const el = document.getElementById(id);
+	            if (el) el.textContent = value || '--';
+	        };
+	        const setHref = (id, href) => {
+	            const el = document.getElementById(id);
+	            if (!el) return;
+	            if (!href) {
+	                el.setAttribute('href', '#');
+	                el.classList.add('disabled');
+	            } else {
+	                el.setAttribute('href', href);
+	                el.classList.remove('disabled');
+	            }
+	        };
+
+	        setText('dashboard-swap-api-url', swapApi);
+	        setHref('dashboard-swap-ui-link', swapUi);
+	        setText('dashboard-openwebui-url', openWebUi);
+	        setHref('dashboard-openwebui-link', openWebUi);
+	        setText('watcher-swap-api-url', swapApi);
+	        setHref('system-openwebui-link', openWebUi);
+	    },
+
+	    applyCapabilities(caps) {
+	        const canWriteConfigs = !!caps.can_write_configs;
+	        const canWriteModels = !!caps.can_write_models;
+	        const canSpawn = !!caps.can_spawn_subprocesses;
+
+	        // Config section
+	        const editor = document.getElementById('config-editor');
+	        if (editor) editor.readOnly = !canWriteConfigs;
+	        const saveBtn = document.getElementById('btn-save-config');
+	        if (saveBtn) saveBtn.disabled = !canWriteConfigs || saveBtn.disabled;
+
+	        const overrideNewBtn = document.getElementById('btn-new-override');
+	        if (overrideNewBtn) overrideNewBtn.disabled = !canWriteConfigs;
+	        const overrideHdrNewBtn = document.getElementById('btn-override-new');
+	        if (overrideHdrNewBtn) overrideHdrNewBtn.disabled = !canWriteConfigs;
+	        const overrideHdrEditBtn = document.getElementById('btn-override-edit');
+	        if (overrideHdrEditBtn) overrideHdrEditBtn.disabled = !canWriteConfigs || !this.currentOverride;
+	        const overrideHdrDupBtn = document.getElementById('btn-override-duplicate');
+	        if (overrideHdrDupBtn) overrideHdrDupBtn.disabled = !canWriteConfigs || !this.currentOverride;
+
+	        // Models section
+	        const modelAddBtn = document.getElementById('btn-model-add');
+	        if (modelAddBtn) modelAddBtn.disabled = !canWriteModels;
+	        const modelUploadBtn = document.getElementById('btn-model-upload');
+	        if (modelUploadBtn) modelUploadBtn.disabled = !canWriteModels;
+	        const modelDownloadBtn = document.getElementById('btn-model-download');
+	        if (modelDownloadBtn) modelDownloadBtn.disabled = !canSpawn;
+
+	        // Endpoint / system subprocess features
+	        const disableBtn = (id, disabled) => {
+	            const el = document.getElementById(id);
+	            if (el) el.disabled = !!disabled;
+	        };
+
+	        disableBtn('btn-quickstart-endpoint-start', !canSpawn);
+	        disableBtn('btn-quickstart-endpoint-stop', !canSpawn);
+	        disableBtn('btn-watcher-start', !canSpawn);
+	        disableBtn('btn-watcher-stop', !canSpawn);
+	        disableBtn('btn-quickstart-openwebui-start', !canSpawn);
+	        disableBtn('btn-quickstart-openwebui-stop', !canSpawn);
+	        disableBtn('btn-openwebui-stop', !canSpawn);
+
+	        // Forms that trigger subprocesses
+	        const disableForm = (formId) => {
+	            const form = document.getElementById(formId);
+	            if (!form) return;
+	            form.querySelectorAll('input, select, button, textarea').forEach((el) => {
+	                if (el.id === 'btn-copy-effective-config') return;
+	                el.disabled = !canSpawn;
+	            });
+	        };
+	        disableForm('bench-form');
+	        disableForm('memory-form');
+	        disableForm('eval-harness-form');
+	        disableForm('eval-custom-form');
+	        disableForm('openwebui-form');
+	        disableForm('update-form');
+	        disableForm('download-form');
+
+	        if (String(caps.mode || '').toLowerCase() === 'gitops') {
+	            Toast.info('GitOps mode: read-only UI (endpoint-only)');
+	        }
+	    },
 
     async loadOverrides() {
         try {
@@ -740,13 +983,14 @@ const App = {
         }
     },
 
-    updateOverrideActionsUI() {
-        const hasOverride = !!this.currentOverride;
-        const editBtn = document.getElementById('btn-override-edit');
-        const dupBtn = document.getElementById('btn-override-duplicate');
-        if (editBtn) editBtn.disabled = !hasOverride;
-        if (dupBtn) dupBtn.disabled = !hasOverride;
-    },
+	    updateOverrideActionsUI() {
+	        const hasOverride = !!this.currentOverride;
+	        const canWrite = this.capabilities?.can_write_configs !== false;
+	        const editBtn = document.getElementById('btn-override-edit');
+	        const dupBtn = document.getElementById('btn-override-duplicate');
+	        if (editBtn) editBtn.disabled = !canWrite || !hasOverride;
+	        if (dupBtn) dupBtn.disabled = !canWrite || !hasOverride;
+	    },
 
     async loadSystemInfo() {
         try {

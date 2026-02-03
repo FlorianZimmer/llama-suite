@@ -1,0 +1,74 @@
+replicaCount: 1
+
+image:
+  repository: llama-suite-webui
+  tag: latest
+  digest: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+service:
+  type: ClusterIP
+  port: 8088
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+mode: gitops
+
+env:
+  llamaSuiteRoot: /data
+  swapApiUrl: http://localhost:8080/v1
+  swapUiUrl: http://localhost:8080/ui
+  openWebuiUrl: http://localhost:3000
+
+auth:
+  enabled: false
+  apiKeySecretName: ""
+  apiKeySecretKey: api_key
+  cookieName: llama_suite_auth
+  secureCookies: true
+  ttlSeconds: 86400
+
+configs:
+  # GitOps recommended: create these ConfigMaps outside Helm and reference them here.
+  existingBaseConfigMap: ""
+  existingOverridesConfigMap: ""
+
+  # Dev-only: inline config in Helm values (not recommended for real GitOps).
+  inline:
+    enabled: false
+    baseConfigYaml: ""
+    overrides: {}
+
+persistence:
+  runs:
+    enabled: true
+    existingClaim: ""
+    storageClassName: ""
+    accessModes: ["ReadWriteOnce"]
+    size: 10Gi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+resources: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

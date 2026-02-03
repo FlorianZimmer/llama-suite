@@ -1,17 +1,18 @@
 """Evaluation API routes for running model evaluations."""
 
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
 import sys
 import re
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
 from llama_suite.webui.utils.task_output import handle_task_output
+from llama_suite.webui.utils.mode import require_local_mode
 
 
 
@@ -96,7 +97,7 @@ async def get_eval_status():
 
 
 @router.post("/harness/run")
-async def start_eval_harness(request: EvalHarnessRequest):
+async def start_eval_harness(request: EvalHarnessRequest, _=Depends(require_local_mode)):
     """Start an eval-harness evaluation run."""
     
     async def run_eval_task(task_id: str, **kwargs):
@@ -171,7 +172,7 @@ async def start_eval_harness(request: EvalHarnessRequest):
 
 
 @router.post("/custom/run")
-async def start_custom_eval(request: CustomEvalRequest):
+async def start_custom_eval(request: CustomEvalRequest, _=Depends(require_local_mode)):
     """Start a custom evaluation run."""
     
     async def run_custom_eval_task(task_id: str, **kwargs):
@@ -260,7 +261,7 @@ async def list_datasets():
         try:
             with open(path, "r", encoding="utf-8") as f:
                 line_count = sum(1 for _ in f)
-        except:
+        except Exception:
             line_count = None
         
         datasets.append({

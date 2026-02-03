@@ -1,0 +1,17 @@
+{{- if and .Values.persistence.runs.enabled (not .Values.persistence.runs.existingClaim) -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "llama-suite-webui.fullname" . }}-runs
+  labels:
+    {{- include "llama-suite-webui.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.persistence.runs.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.runs.size | quote }}
+  {{- if .Values.persistence.runs.storageClassName }}
+  storageClassName: {{ .Values.persistence.runs.storageClassName | quote }}
+  {{- end }}
+{{- end -}}

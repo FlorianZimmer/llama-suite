@@ -1,0 +1,13 @@
+{{- if and .Values.configs.inline.enabled .Values.configs.inline.overrides -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "llama-suite-webui.fullname" . }}-overrides
+  labels:
+    {{- include "llama-suite-webui.labels" . | nindent 4 }}
+data:
+{{- range $name, $content := .Values.configs.inline.overrides }}
+  {{ $name }}.yaml: |-
+{{- $content | nindent 4 }}
+{{- end }}
+{{- end -}}

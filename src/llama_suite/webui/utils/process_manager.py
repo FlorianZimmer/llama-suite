@@ -2,7 +2,6 @@
 
 from typing import Dict, Optional, Callable, Any
 import asyncio
-import subprocess
 import sys
 import os
 import signal

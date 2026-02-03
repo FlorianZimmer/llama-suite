@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
@@ -25,18 +25,20 @@ _src_dir = _this_file.parent.parent.parent
 if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
-from llama_suite.webui import STATIC_DIR
-from llama_suite.webui.utils.ws_manager import manager as ws_manager
+from llama_suite.webui import STATIC_DIR  # noqa: E402
+from llama_suite.webui.utils.ws_manager import manager as ws_manager  # noqa: E402
+from llama_suite.webui.utils.auth import require_api_key, websocket_authenticated  # noqa: E402
 
 # Import API routers
-from llama_suite.webui.api.config import router as config_router
-from llama_suite.webui.api.models import router as models_router
-from llama_suite.webui.api.results import router as results_router
-from llama_suite.webui.api.bench import router as bench_router
-from llama_suite.webui.api.memory import router as memory_router
-from llama_suite.webui.api.eval import router as eval_router
-from llama_suite.webui.api.watcher import router as watcher_router
-from llama_suite.webui.api.system import router as system_router
+from llama_suite.webui.api.auth import router as auth_router  # noqa: E402
+from llama_suite.webui.api.config import router as config_router  # noqa: E402
+from llama_suite.webui.api.models import router as models_router  # noqa: E402
+from llama_suite.webui.api.results import router as results_router  # noqa: E402
+from llama_suite.webui.api.bench import router as bench_router  # noqa: E402
+from llama_suite.webui.api.memory import router as memory_router  # noqa: E402
+from llama_suite.webui.api.eval import router as eval_router  # noqa: E402
+from llama_suite.webui.api.watcher import router as watcher_router  # noqa: E402
+from llama_suite.webui.api.system import router as system_router  # noqa: E402
 
 
 @asynccontextmanager
@@ -46,7 +48,7 @@ async def lifespan(app: FastAPI):
     print("  llama-suite Web UI")
     print("=" * 60)
     print(f"  Static files: {STATIC_DIR}")
-    print(f"  Visit: http://localhost:8088")
+    print("  Visit: http://localhost:8088")
     print("=" * 60)
     yield
     print("\nShutting down llama-suite Web UI...")
@@ -61,14 +63,15 @@ app = FastAPI(
 )
 
 # Include API routers
-app.include_router(config_router)
-app.include_router(models_router)
-app.include_router(results_router)
-app.include_router(bench_router)
-app.include_router(memory_router)
-app.include_router(eval_router)
-app.include_router(watcher_router)
-app.include_router(system_router)
+app.include_router(auth_router)
+app.include_router(config_router, dependencies=[Depends(require_api_key)])
+app.include_router(models_router, dependencies=[Depends(require_api_key)])
+app.include_router(results_router, dependencies=[Depends(require_api_key)])
+app.include_router(bench_router, dependencies=[Depends(require_api_key)])
+app.include_router(memory_router, dependencies=[Depends(require_api_key)])
+app.include_router(eval_router, dependencies=[Depends(require_api_key)])
+app.include_router(watcher_router, dependencies=[Depends(require_api_key)])
+app.include_router(system_router, dependencies=[Depends(require_api_key)])
 
 @app.middleware("http")
 async def _no_cache_static_assets(request, call_next):
@@ -85,6 +88,9 @@ async def _no_cache_static_assets(request, call_next):
 @app.websocket("/ws/progress")
 async def websocket_progress(websocket: WebSocket):
     """WebSocket endpoint for receiving real-time progress updates."""
+    if not websocket_authenticated(websocket):
+        await websocket.close(code=4401)
+        return
     await ws_manager.connect(websocket)
     try:
         while True:

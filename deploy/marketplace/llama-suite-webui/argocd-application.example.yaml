@@ -1,0 +1,39 @@
+# Example Argo CD Application for installing `llama-suite-webui`.
+#
+# This is a template only; adjust to DeployKube conventions (namespace, project, destination, sync policy).
+# Prefer using pinned chart/image versions (and ideally image digests) for reproducible upgrades.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llama-suite-webui
+  namespace: argocd
+  labels:
+    deploykube.io/marketplace: "true"
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tenant-llama-suite
+
+  # NOTE:
+  # - If your Argo CD supports multi-source Applications, use:
+  #   - source #1: OCI chart
+  #   - source #2: tenant repo values/configmaps
+  #
+  # - Otherwise, keep the chart + values in the same Git repo, or reference a Git chart source directly.
+
+  source:
+    repoURL: oci://harbor.example.internal/deploykube/charts
+    chart: llama-suite-webui
+    targetRevision: 0.1.0
+    helm:
+      valueFiles:
+        - values.tenant.yaml
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,11 @@
+{{- if .Values.configs.inline.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "llama-suite-webui.fullname" . }}-configs
+  labels:
+    {{- include "llama-suite-webui.labels" . | nindent 4 }}
+data:
+  config.base.yaml: |-
+{{- required "configs.inline.baseConfigYaml is required when configs.inline.enabled=true" .Values.configs.inline.baseConfigYaml | nindent 4 }}
+{{- end -}}

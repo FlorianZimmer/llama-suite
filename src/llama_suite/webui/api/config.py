@@ -4,14 +4,14 @@ from pathlib import Path
 from typing import Optional
 import yaml
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import (
     find_project_root,
     generate_processed_config,
-    deep_merge_dicts_util
 )
+from llama_suite.webui.utils.mode import require_not_read_only
 
 
 router = APIRouter(prefix="/api/config", tags=["configuration"])
@@ -63,7 +63,7 @@ async def get_base_config():
 
 
 @router.put("")
-async def update_base_config(request: ConfigUpdateRequest):
+async def update_base_config(request: ConfigUpdateRequest, _=Depends(require_not_read_only)):
     """Update the base configuration file."""
     config_path = get_base_config_path()
     
@@ -118,7 +118,7 @@ async def get_override(name: str):
 
 
 @router.put("/overrides/{name}")
-async def update_override(name: str, request: ConfigUpdateRequest):
+async def update_override(name: str, request: ConfigUpdateRequest, _=Depends(require_not_read_only)):
     """Update an override configuration file."""
     override_path = get_overrides_dir() / f"{name}.yaml"
     if not override_path.exists():
@@ -141,7 +141,7 @@ async def update_override(name: str, request: ConfigUpdateRequest):
 
 
 @router.post("/overrides")
-async def create_override(request: OverrideCreateRequest):
+async def create_override(request: OverrideCreateRequest, _=Depends(require_not_read_only)):
     """Create a new override configuration file."""
     overrides_dir = get_overrides_dir()
     overrides_dir.mkdir(parents=True, exist_ok=True)
@@ -167,7 +167,7 @@ async def create_override(request: OverrideCreateRequest):
 
 
 @router.delete("/overrides/{name}")
-async def delete_override(name: str):
+async def delete_override(name: str, _=Depends(require_not_read_only)):
     """Delete an override configuration file."""
     override_path = get_overrides_dir() / f"{name}.yaml"
     if not override_path.exists():

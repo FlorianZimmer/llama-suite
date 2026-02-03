@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "llama-suite-webui.fullname" . }}
+  labels:
+    {{- include "llama-suite-webui.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "llama-suite-webui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "llama-suite-webui.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- $baseCfgName := .Values.configs.existingBaseConfigMap -}}
+      {{- if not $baseCfgName -}}
+      {{- if .Values.configs.inline.enabled -}}
+      {{- $baseCfgName = printf "%s-configs" (include "llama-suite-webui.fullname" .) -}}
+      {{- else -}}
+      {{- fail "Set configs.existingBaseConfigMap or enable configs.inline.enabled=true" -}}
+      {{- end -}}
+      {{- end -}}
+      {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.image.pullSecrets | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: webui
+          image: "{{ .Values.image.repository }}{{- if .Values.image.digest -}}@{{ .Values.image.digest }}{{- else -}}:{{ .Values.image.tag }}{{- end -}}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: HOME
+              value: /tmp
+            - name: LLAMA_SUITE_ROOT
+              value: {{ .Values.env.llamaSuiteRoot | quote }}
+            - name: LLAMA_SUITE_MODE
+              value: {{ .Values.mode | quote }}
+            - name: LLAMA_SUITE_SWAP_API_URL
+              value: {{ .Values.env.swapApiUrl | quote }}
+            - name: LLAMA_SUITE_SWAP_UI_URL
+              value: {{ .Values.env.swapUiUrl | quote }}
+            - name: LLAMA_SUITE_OPEN_WEBUI_URL
+              value: {{ .Values.env.openWebuiUrl | quote }}
+            - name: PORT
+              value: {{ .Values.service.port | quote }}
+            {{- if .Values.auth.enabled }}
+            - name: LLAMA_SUITE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "auth.apiKeySecretName is required when auth.enabled=true" .Values.auth.apiKeySecretName | quote }}
+                  key: {{ .Values.auth.apiKeySecretKey | quote }}
+            - name: LLAMA_SUITE_AUTH_COOKIE_NAME
+              value: {{ .Values.auth.cookieName | quote }}
+            - name: LLAMA_SUITE_SECURE_COOKIES
+              value: {{ ternary "1" "0" .Values.auth.secureCookies | quote }}
+            - name: LLAMA_SUITE_AUTH_TTL_SECONDS
+              value: {{ .Values.auth.ttlSeconds | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 8088
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: configs
+              mountPath: /data/configs
+              readOnly: true
+            - name: overrides
+              mountPath: /data/configs/overrides
+              readOnly: true
+            - name: runs
+              mountPath: /data/runs
+            - name: var
+              mountPath: /data/var
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: configs
+          configMap:
+            name: {{ $baseCfgName | quote }}
+            items:
+              - key: config.base.yaml
+                path: config.base.yaml
+        - name: overrides
+          {{- if .Values.configs.existingOverridesConfigMap }}
+          configMap:
+            name: {{ .Values.configs.existingOverridesConfigMap | quote }}
+          {{- else if and .Values.configs.inline.enabled .Values.configs.inline.overrides }}
+          configMap:
+            name: {{ include "llama-suite-webui.fullname" . }}-overrides
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: runs
+          {{- if .Values.persistence.runs.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-runs" (include "llama-suite-webui.fullname" .)) .Values.persistence.runs.existingClaim | quote }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: var
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

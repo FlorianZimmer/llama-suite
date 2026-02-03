@@ -1,0 +1,14 @@
+apiVersion: v2
+name: llama-suite-webui
+description: llama-suite Web UI (endpoint-only / GitOps-friendly)
+type: application
+keywords:
+  - llm
+  - webui
+  - gitops
+  - fastapi
+version: 0.1.0
+appVersion: "0.1.0"
+annotations:
+  deploykube.io/marketplace-class: curated-deployment
+  deploykube.io/responsibility: "tenant-owned day-2 ops; platform provides hardened GitOps package"

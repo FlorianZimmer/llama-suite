@@ -1,0 +1,11 @@
+llama-suite Web UI
+
+1) Check health:
+   kubectl get pods -l app.kubernetes.io/name={{ include "llama-suite-webui.name" . }}
+   kubectl port-forward svc/{{ include "llama-suite-webui.fullname" . }} 8088:{{ .Values.service.port }}
+   curl -fsS http://localhost:8088/api/health
+
+2) GitOps mode (recommended for Kubernetes):
+   - Set `mode: gitops`
+   - Provide ConfigMaps for `configs.existingBaseConfigMap` (must contain `config.base.yaml`)
+   - Optionally provide `configs.existingOverridesConfigMap` (keys are override filenames)

@@ -1,0 +1,39 @@
+# Example tenant values for the `llama-suite-webui` chart.
+#
+# This file is meant to live in the tenant GitOps repo and be referenced by Argo CD.
+#
+# Tip: prefer pinning by digest for air-gapped / reproducible upgrades.
+
+mode: gitops
+
+image:
+  repository: harbor.example.internal/deploykube/llama-suite-webui
+  tag: "0.1.0"
+  digest: "" # e.g. "sha256:...." (recommended)
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8088
+
+env:
+  # The single stable endpoint URL your UI should talk to.
+  # This can point to a failover proxy that uses desktop GPU when reachable and falls back to in-cluster CPU.
+  swapApiUrl: https://llm-api.tenant.example/v1
+  swapUiUrl: https://llm-api.tenant.example/ui
+  openWebuiUrl: https://openwebui.tenant.example
+
+configs:
+  existingBaseConfigMap: llama-suite-configs
+  existingOverridesConfigMap: llama-suite-overrides
+
+persistence:
+  runs:
+    enabled: true
+    storageClassName: "" # set per-cluster (e.g., "rbd", "longhorn", ...)
+    size: 10Gi
+
+auth:
+  enabled: false
+  # If enabled, reference a Secret managed by ExternalSecrets/SealedSecrets in the tenant repo.
+  apiKeySecretName: ""
+  apiKeySecretKey: api_key

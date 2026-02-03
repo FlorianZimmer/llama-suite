@@ -142,31 +142,31 @@
                             <h2 class="card-title">Quick Start</h2>
                         </div>
                         <div class="quickstart-grid">
-                            <div class="quickstart-item">
-                                <div class="quickstart-title">LLM Endpoint (llama-swap)</div>
-                                <div class="quickstart-meta">
-                                    <span id="dashboard-endpoint-status" class="status-badge status-stopped">Stopped</span>
-                                    <span class="muted">API: http://localhost:8080/v1</span>
-                                </div>
-                                <div class="quickstart-actions">
-                                    <button type="button" id="btn-quickstart-endpoint-start" class="btn btn-primary">▶ Start Endpoint</button>
-                                    <button type="button" id="btn-quickstart-endpoint-stop" class="btn btn-danger" disabled>⏹ Stop Endpoint</button>
-                                    <a class="btn btn-secondary" href="http://localhost:8080/ui" target="_blank" rel="noopener">Open llama-swap UI</a>
-                                </div>
-                            </div>
+	                            <div class="quickstart-item">
+	                                <div class="quickstart-title">LLM Endpoint (llama-swap)</div>
+	                                <div class="quickstart-meta">
+	                                    <span id="dashboard-endpoint-status" class="status-badge status-stopped">Stopped</span>
+	                                    <span class="muted">API: <span id="dashboard-swap-api-url">--</span></span>
+	                                </div>
+	                                <div class="quickstart-actions">
+	                                    <button type="button" id="btn-quickstart-endpoint-start" class="btn btn-primary">▶ Start Endpoint</button>
+	                                    <button type="button" id="btn-quickstart-endpoint-stop" class="btn btn-danger" disabled>⏹ Stop Endpoint</button>
+	                                    <a class="btn btn-secondary" id="dashboard-swap-ui-link" href="#" target="_blank" rel="noopener">Open llama-swap UI</a>
+	                                </div>
+	                            </div>
 
-                            <div class="quickstart-item">
-                                <div class="quickstart-title">Open WebUI (container)</div>
-                                <div class="quickstart-meta">
-                                    <span id="dashboard-openwebui-status" class="status-badge status-stopped">Stopped</span>
-                                    <span class="muted">UI: http://localhost:3000</span>
-                                </div>
-                                <div class="quickstart-actions">
-                                    <button type="button" id="btn-quickstart-openwebui-start" class="btn btn-primary">▶ Start Open WebUI</button>
-                                    <button type="button" id="btn-quickstart-openwebui-stop" class="btn btn-danger" disabled>⏹ Stop Open WebUI</button>
-                                    <a class="btn btn-secondary" href="http://localhost:3000" target="_blank" rel="noopener">Open Open WebUI</a>
-                                </div>
-                            </div>
+	                            <div class="quickstart-item">
+	                                <div class="quickstart-title">Open WebUI (container)</div>
+	                                <div class="quickstart-meta">
+	                                    <span id="dashboard-openwebui-status" class="status-badge status-stopped">Stopped</span>
+	                                    <span class="muted">UI: <span id="dashboard-openwebui-url">--</span></span>
+	                                </div>
+	                                <div class="quickstart-actions">
+	                                    <button type="button" id="btn-quickstart-openwebui-start" class="btn btn-primary">▶ Start Open WebUI</button>
+	                                    <button type="button" id="btn-quickstart-openwebui-stop" class="btn btn-danger" disabled>⏹ Stop Open WebUI</button>
+	                                    <a class="btn btn-secondary" id="dashboard-openwebui-link" href="#" target="_blank" rel="noopener">Open Open WebUI</a>
+	                                </div>
+	                            </div>
                         </div>
                     </div>
 
@@ -236,19 +236,19 @@
 
                 <!-- Models Section -->
                 <section id="section-models" class="section">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2 class="card-title">Configured Models</h2>
-                            <div class="card-actions">
-                                <input type="text" id="model-search" class="search-input"
-                                    placeholder="Search models...">
-                                <button class="btn btn-secondary" onclick="App.showAddModelDialog()">+ Add model entry</button>
-                                <button class="btn btn-secondary" onclick="App.showUploadDialog()">Upload local GGUF</button>
-                                <button class="btn btn-secondary" onclick="App.goToDownloadModels()">Get missing models</button>
-                            </div>
-                        </div>
-                        <div id="models-grid" class="models-grid"></div>
-                    </div>
+	                        <div class="card">
+	                        <div class="card-header">
+	                            <h2 class="card-title">Configured Models</h2>
+	                            <div class="card-actions">
+	                                <input type="text" id="model-search" class="search-input"
+	                                    placeholder="Search models...">
+	                                <button class="btn btn-secondary" id="btn-model-add" onclick="App.showAddModelDialog()">+ Add model entry</button>
+	                                <button class="btn btn-secondary" id="btn-model-upload" onclick="App.showUploadDialog()">Upload local GGUF</button>
+	                                <button class="btn btn-secondary" id="btn-model-download" onclick="App.goToDownloadModels()">Get missing models</button>
+	                            </div>
+	                        </div>
+	                        <div id="models-grid" class="models-grid"></div>
+	                    </div>
                 </section>
 
                 <!-- Benchmark Section -->
@@ -402,10 +402,10 @@
                                 <span id="watcher-status" class="status-badge status-stopped">Stopped</span>
                             </div>
                         </div>
-                        <p class="card-subtitle">
-                            Starts <code>llama-swap</code> and regenerates an effective config from base + override.
-                            The OpenAI-compatible API is typically available at <code>http://localhost:8080/v1</code>.
-                        </p>
+	                        <p class="card-subtitle">
+	                            Starts <code>llama-swap</code> and regenerates an effective config from base + override.
+	                            The OpenAI-compatible API is typically available at <code id="watcher-swap-api-url">--</code>.
+	                        </p>
                         <form id="watcher-form" class="form-grid">
                             <div class="form-group">
                                 <label class="checkbox-label">
@@ -593,9 +593,9 @@
 
                 <!-- System Section -->
                 <section id="section-system" class="section">
-                    <div class="card">
-                        <h2 class="card-title">Open WebUI</h2>
-                        <form id="openwebui-form" class="form-grid">
+	                    <div class="card">
+	                        <h2 class="card-title">Open WebUI</h2>
+	                        <form id="openwebui-form" class="form-grid">
                             <div class="form-group">
                                 <label for="openwebui-port">Port</label>
                                 <input type="number" id="openwebui-port" value="3000" min="1" max="65535">
@@ -604,13 +604,13 @@
                                 <label for="openwebui-data-volume">Data volume (optional)</label>
                                 <input type="text" id="openwebui-data-volume" placeholder="open-webui">
                             </div>
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">▶ Start Open WebUI</button>
-                                <button type="button" id="btn-openwebui-stop" class="btn btn-danger" disabled>⏹ Stop Open WebUI</button>
-                                <a class="btn btn-secondary" href="http://localhost:3000" target="_blank" rel="noopener">Open</a>
-                            </div>
-                        </form>
-                    </div>
+	                            <div class="form-actions">
+	                                <button type="submit" class="btn btn-primary">▶ Start Open WebUI</button>
+	                                <button type="button" id="btn-openwebui-stop" class="btn btn-danger" disabled>⏹ Stop Open WebUI</button>
+	                                <a class="btn btn-secondary" id="system-openwebui-link" href="#" target="_blank" rel="noopener">Open</a>
+	                            </div>
+	                        </form>
+	                    </div>
 
                     <div class="card">
                         <h2 class="card-title">Update Components</h2>

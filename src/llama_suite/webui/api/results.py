@@ -5,9 +5,10 @@ from typing import Optional
 import json
 import csv
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from llama_suite.utils.config_utils import find_project_root
+from llama_suite.webui.utils.mode import require_not_read_only
 
 
 router = APIRouter(prefix="/api/results", tags=["results"])
@@ -316,7 +317,7 @@ async def get_eval_result(run_name: str):
 
 
 @router.delete("/bench/{run_name}")
-async def delete_bench_result(run_name: str):
+async def delete_bench_result(run_name: str, _=Depends(require_not_read_only)):
     """Delete a benchmark run result."""
     import shutil
     run_dir = get_runs_dir() / "bench" / run_name
@@ -328,7 +329,7 @@ async def delete_bench_result(run_name: str):
 
 
 @router.delete("/eval/{run_name}")
-async def delete_eval_result(run_name: str):
+async def delete_eval_result(run_name: str, _=Depends(require_not_read_only)):
     """Delete an evaluation run result."""
     import shutil
     run_dir = get_runs_dir() / "eval" / run_name

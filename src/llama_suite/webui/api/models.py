@@ -1,15 +1,14 @@
 """Models API routes for managing configured models."""
 
-import os
-import shutil
 from pathlib import Path
 from typing import Optional, List
 import yaml
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root, generate_processed_config
+from llama_suite.webui.utils.mode import require_not_read_only
 
 
 router = APIRouter(prefix="/api/models", tags=["models"])
@@ -252,7 +251,8 @@ async def list_available_model_files():
 @router.post("/files/upload")
 async def upload_model_file(
     file: UploadFile = File(...),
-    subfolder: str = Form(default="")
+    subfolder: str = Form(default=""),
+    _=Depends(require_not_read_only),
 ):
     """Upload a GGUF model file to the models directory."""
     if not file.filename.endswith(".gguf"):
@@ -308,7 +308,7 @@ class ModelDisableRequest(BaseModel):
 
 
 @router.post("/{name}/toggle")
-async def toggle_model(name: str, request: ModelDisableRequest):
+async def toggle_model(name: str, request: ModelDisableRequest, _=Depends(require_not_read_only)):
     """Enable or disable a model by updating the base config."""
     base_path = get_configs_dir() / "config.base.yaml"
     
@@ -349,7 +349,7 @@ class ModelUpdateRequest(BaseModel):
 
 
 @router.put("/{name}")
-async def update_model(name: str, request: ModelUpdateRequest):
+async def update_model(name: str, request: ModelUpdateRequest, _=Depends(require_not_read_only)):
     """Update a model's configuration in the base config."""
     base_path = get_configs_dir() / "config.base.yaml"
     
@@ -420,7 +420,7 @@ class ModelCopyRequest(BaseModel):
 
 
 @router.post("/{name}/copy-to")
-async def copy_model_params(name: str, request: ModelCopyRequest):
+async def copy_model_params(name: str, request: ModelCopyRequest, _=Depends(require_not_read_only)):
     """Copy parameters from one model to others."""
     base_path = get_configs_dir() / "config.base.yaml"
     
@@ -494,7 +494,7 @@ class ModelCreateRequest(BaseModel):
 
 
 @router.post("")
-async def create_model(name: str, request: ModelCreateRequest):
+async def create_model(name: str, request: ModelCreateRequest, _=Depends(require_not_read_only)):
     """Create a new model entry in the base config."""
     base_path = get_configs_dir() / "config.base.yaml"
     
@@ -626,7 +626,7 @@ async def get_file_dependencies(filename: str):
 
 
 @router.delete("/{name}")
-async def delete_model(name: str, delete_file: bool = False):
+async def delete_model(name: str, delete_file: bool = False, _=Depends(require_not_read_only)):
     """Delete a model entry from the base config, optionally deleting the GGUF file."""
     base_path = get_configs_dir() / "config.base.yaml"
     
@@ -695,7 +695,7 @@ async def delete_model(name: str, delete_file: bool = False):
 
 
 @router.delete("/files/{filename}")
-async def delete_gguf_file(filename: str, delete_configs: bool = False):
+async def delete_gguf_file(filename: str, delete_configs: bool = False, _=Depends(require_not_read_only)):
     """Delete a GGUF file and optionally remove all configs that reference it."""
     models_dir = get_models_dir()
     try:

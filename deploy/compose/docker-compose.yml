@@ -6,8 +6,8 @@ services:
     environment:
       # Container-local data root (mounts below)
       LLAMA_SUITE_ROOT: /data
-      # Optional: set to "gitops" once enforced; today mainly signals intent.
-      LLAMA_SUITE_MODE: local
+      # Recommended for containers/Kubernetes: endpoint-only + read-only APIs.
+      LLAMA_SUITE_MODE: ${LLAMA_SUITE_MODE:-gitops}
 
       # External endpoints (your llama-swap / Open WebUI can run anywhere)
       LLAMA_SUITE_SWAP_API_URL: ${LLAMA_SUITE_SWAP_API_URL:-http://localhost:8080/v1}
@@ -40,4 +40,3 @@ services:
 
 volumes:
   open-webui-data:
-

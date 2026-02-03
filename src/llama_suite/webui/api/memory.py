@@ -11,13 +11,14 @@ from pathlib import Path
 from typing import Optional
 import sys
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.task_output import handle_task_output
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
+from llama_suite.webui.utils.mode import require_local_mode
 
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
@@ -37,7 +38,7 @@ class MemoryScanRequest(BaseModel):
 
 
 @router.post("/run")
-async def start_memory_scan(request: MemoryScanRequest):
+async def start_memory_scan(request: MemoryScanRequest, _=Depends(require_local_mode)):
     """Start a new memory scan run."""
 
     async def run_memory_scan_task(task_id: str, override: Optional[str], model: Optional[str], health_timeout: int):
@@ -104,4 +105,3 @@ async def cancel_memory_scan(task_id: str):
     if cancelled:
         return {"status": "cancelled", "task_id": task_id}
     raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found or already completed")
-

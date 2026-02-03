@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "mode": { "type": "string", "enum": ["gitops", "local"] },
+    "image": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "digest": { "type": "string" },
+        "pullPolicy": { "type": "string" },
+        "pullSecrets": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "llamaSuiteRoot": { "type": "string", "minLength": 1 },
+        "swapApiUrl": { "type": "string", "minLength": 1 },
+        "swapUiUrl": { "type": "string" },
+        "openWebuiUrl": { "type": "string" }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "apiKeySecretName": { "type": "string" },
+        "apiKeySecretKey": { "type": "string" },
+        "cookieName": { "type": "string" },
+        "secureCookies": { "type": "boolean" },
+        "ttlSeconds": { "type": "integer", "minimum": 60 }
+      }
+    },
+    "configs": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "existingBaseConfigMap": { "type": "string" },
+        "existingOverridesConfigMap": { "type": "string" },
+        "inline": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "baseConfigYaml": { "type": "string" },
+            "overrides": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "runs": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "existingClaim": { "type": "string" },
+            "storageClassName": { "type": "string" },
+            "accessModes": { "type": "array", "items": { "type": "string" } },
+            "size": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
+

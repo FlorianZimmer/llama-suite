@@ -1,17 +1,19 @@
 """System API routes for install, update, uninstall, and model download."""
 
+import os
 from pathlib import Path
 from typing import Optional, List
 import sys
 import platform
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root
 from llama_suite.webui.utils.process_manager import process_manager
 from llama_suite.webui.utils.ws_manager import manager as ws_manager
 from llama_suite.webui.utils.task_output import handle_task_output
+from llama_suite.webui.utils.mode import get_capabilities, require_local_mode
 
 
 router = APIRouter(prefix="/api/system", tags=["system"])
@@ -47,6 +49,22 @@ async def get_system_info():
     }
 
 
+@router.get("/links")
+async def get_links():
+    """
+    Return runtime URLs for the SPA (no hard-coded localhost assumptions).
+
+    The SPA renders these as external links; they may point to local or remote runtimes.
+    """
+    caps = get_capabilities()
+    return {
+        **caps,
+        "swap_api_url": os.getenv("LLAMA_SUITE_SWAP_API_URL", "http://localhost:8080/v1"),
+        "swap_ui_url": os.getenv("LLAMA_SUITE_SWAP_UI_URL", "http://localhost:8080/ui"),
+        "open_webui_url": os.getenv("LLAMA_SUITE_OPEN_WEBUI_URL", "http://localhost:3000"),
+    }
+
+
 class UpdateRequest(BaseModel):
     """Request to run update."""
     update_python: bool = True
@@ -58,7 +76,7 @@ class UpdateRequest(BaseModel):
 
 
 @router.post("/update")
-async def run_update(request: UpdateRequest):
+async def run_update(request: UpdateRequest, _=Depends(require_local_mode)):
     """Run the update script."""
     
     async def run_update_task(task_id: str, **kwargs):
@@ -121,7 +139,7 @@ class InstallRequest(BaseModel):
 
 
 @router.post("/install")
-async def run_install(request: InstallRequest):
+async def run_install(request: InstallRequest, _=Depends(require_local_mode)):
     """Run the install script."""
     
     async def run_install_task(task_id: str, **kwargs):
@@ -177,7 +195,7 @@ class DownloadRequest(BaseModel):
 
 
 @router.post("/download")
-async def download_models(request: DownloadRequest):
+async def download_models(request: DownloadRequest, _=Depends(require_local_mode)):
     """Download models using hf_fetch."""
     
     async def run_download_task(task_id: str, **kwargs):
@@ -277,7 +295,7 @@ class OpenWebUIStartRequest(BaseModel):
 
 
 @router.post("/openwebui/start")
-async def start_openwebui(request: OpenWebUIStartRequest):
+async def start_openwebui(request: OpenWebUIStartRequest, _=Depends(require_local_mode)):
     """Start (or ensure) the Open WebUI container is running."""
 
     async def run_openwebui_task(task_id: str, **kwargs):
@@ -347,7 +365,7 @@ class OpenWebUIStopRequest(BaseModel):
 
 
 @router.post("/openwebui/stop")
-async def stop_openwebui(request: OpenWebUIStopRequest):
+async def stop_openwebui(request: OpenWebUIStopRequest, _=Depends(require_local_mode)):
     """Stop the Open WebUI container (no-op if missing)."""
 
     async def run_openwebui_stop_task(task_id: str, **kwargs):
