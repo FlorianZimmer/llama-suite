@@ -843,7 +843,7 @@ models:
       cont-batching: true
       bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
-      model: F:\LLMs\GGUF\GLM-4.7-Flash-UD-Q6_K_XL.gguf
+      model: ./models/GLM-4.7-Flash-UD-Q6_K_XL.gguf
       ctx-size: 131072
       n-predict: 131072
       gpu-layers: auto

@@ -1,4 +1,4 @@
-![llama-swap header image](header2.png)
+![llama-swap header image](docs/assets/hero3.webp)
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/mostlygeek/llama-swap/total)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/mostlygeek/llama-swap/go-ci.yml)
 ![GitHub Repo stars](https://img.shields.io/github/stars/mostlygeek/llama-swap)
@@ -13,14 +13,21 @@ Built in Go for performance and simplicity, llama-swap has zero dependencies and
 
 - ✅ Easy to deploy and configure: one binary, one configuration file. no external dependencies
 - ✅ On-demand model switching
-- ✅ Use any local OpenAI compatible server (llama.cpp, vllm, tabbyAPI, etc)
+- ✅ Use any local OpenAI compatible server (llama.cpp, vllm, tabbyAPI, etc.)
   - future proof, upgrade your inference servers at any time.
 - ✅ OpenAI API supported endpoints:
   - `v1/completions`
   - `v1/chat/completions`
+  - `v1/responses`
   - `v1/embeddings`
   - `v1/audio/speech` ([#36](https://github.com/mostlygeek/llama-swap/issues/36))
   - `v1/audio/transcriptions` ([docs](https://github.com/mostlygeek/llama-swap/issues/41#issuecomment-2722637867))
+  - `v1/audio/voices`
+  - `v1/images/generations`
+  - `v1/images/edits`
+- ✅ Anthropic API supported endpoints:
+  - `v1/messages`
+  - `v1/messages/count_tokens`
 - ✅ llama-server (llama.cpp) supported endpoints
   - `v1/rerank`, `v1/reranking`, `/rerank`
   - `/infill` - for code infilling
@@ -32,6 +39,7 @@ Built in Go for performance and simplicity, llama-swap has zero dependencies and
   - `/running` - list currently running models ([#61](https://github.com/mostlygeek/llama-swap/issues/61))
   - `/log` - remote log monitoring
   - `/health` - just returns "OK"
+- ✅ API Key support - define keys to restrict access to API endpoints
 - ✅ Customizable
   - Run multiple models at once with `Groups` ([#107](https://github.com/mostlygeek/llama-swap/issues/107))
   - Automatic unloading of models after timeout by setting a `ttl`
@@ -42,7 +50,7 @@ Built in Go for performance and simplicity, llama-swap has zero dependencies and
 
 llama-swap includes a real time web interface for monitoring logs and controlling models:
 
-<img width="1360" height="963" alt="image" src="https://github.com/user-attachments/assets/adef4a8e-de0b-49db-885a-8f6dedae6799" />
+<img width="1164" height="745" alt="image" src="https://github.com/user-attachments/assets/bacf3f9d-819f-430b-9ed2-1bfaa8d54579" />
 
 The Activity Page shows recent requests:
 
@@ -60,7 +68,7 @@ llama-swap can be installed in multiple ways
 
 ### Docker Install ([download images](https://github.com/mostlygeek/llama-swap/pkgs/container/llama-swap))
 
-Nightly container images with llama-swap and llama-server are built for multiple platforms (cuda, vulkan, intel, etc).
+Nightly container images with llama-swap and llama-server are built for multiple platforms (cuda, vulkan, intel, etc.) including [non-root variants with improved security](docs/container-security.md).
 
 ```shell
 $ docker pull ghcr.io/mostlygeek/llama-swap:cuda
@@ -70,6 +78,14 @@ $ docker run -it --rm --runtime nvidia -p 9292:8080 \
  -v /path/to/models:/models \
  -v /path/to/custom/config.yaml:/app/config.yaml \
  ghcr.io/mostlygeek/llama-swap:cuda
+
+# configuration hot reload supported with a
+# directory volume mount
+$ docker run -it --rm --runtime nvidia -p 9292:8080 \
+ -v /path/to/models:/models \
+ -v /path/to/custom/config.yaml:/app/config.yaml \
+ -v /path/to/config:/config \
+ ghcr.io/mostlygeek/llama-swap:cuda -config /config/config.yaml -watch-config
 ```
 
 <details>
@@ -87,6 +103,9 @@ docker pull ghcr.io/mostlygeek/llama-swap:musa
 
 # tagged llama-swap, platform and llama-server version images
 docker pull ghcr.io/mostlygeek/llama-swap:v166-cuda-b6795
+
+# non-root cuda
+docker pull ghcr.io/mostlygeek/llama-swap:cuda-non-root
 
 ```
 
@@ -190,23 +209,26 @@ As a safeguard, llama-swap also sets `X-Accel-Buffering: no` on SSE responses. H
 
 ## Monitoring Logs on the CLI
 
-```shell
+```sh
 # sends up to the last 10KB of logs
-curl http://host/logs'
+$ curl http://host/logs
 
 # streams combined logs
-curl -Ns 'http://host/logs/stream'
+curl -Ns http://host/logs/stream
 
-# just llama-swap's logs
-curl -Ns 'http://host/logs/stream/proxy'
+# stream llama-swap's proxy status logs
+curl -Ns http://host/logs/stream/proxy
 
-# just upstream's logs
-curl -Ns 'http://host/logs/stream/upstream'
+# stream logs from upstream processes that llama-swap loads
+curl -Ns http://host/logs/stream/upstream
+
+# stream logs only from a specific model
+curl -Ns http://host/logs/stream/{model_id}
 
 # stream and filter logs with linux pipes
 curl -Ns http://host/logs/stream | grep 'eval time'
 
-# skips history and just streams new log entries
+# appending ?no-history will disable sending buffered history first
 curl -Ns 'http://host/logs/stream?no-history'
 ```
 
