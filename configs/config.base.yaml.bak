@@ -126,6 +126,39 @@ models:
       gpu-layers: auto
       threads: auto
       reasoning-format: deepseek
+  Qwen3-Coder-Next:
+    hf_tokenizer_for_model: Qwen/Qwen3-Coder-Next
+    sampling:
+      temp: 1
+      min-p: 0
+      top-p: 0.95
+      top-k: 40
+    cmd:
+      cache-type-k: f16
+      cache-type-v: f16
+      jinja: true
+      parallel: 1
+      cont-batching: true
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/Qwen3-Coder-Next-UD-Q5_K_XL-00001-of-00002.gguf
+      ctx-size: 262144
+      gpu-layers: auto
+      threads: auto
+      reasoning-format: deepseek
+  Qwen3-Next:
+    hf_tokenizer_for_model: Qwen/Qwen3-Next
+    sampling:
+      temp: 1
+      min-p: 0
+      top-p: 0.95
+      top-k: 40
+    cmd:
+      bin: llama.cpp/build/bin/llama-server
+      port: ${PORT}
+      model: ./models/Qwen3-Next-80B-A3B-Instruct-UD-Q6_K_XL-00001-of-00002.gguf
+      ctx-size: 131072
+      gpu-layers: auto
   Qwen3-32B-Think:
     hf_tokenizer_for_model: Qwen/Qwen3-32B
     sampling: *id001
@@ -799,8 +832,8 @@ models:
   GLM-4.7-Flash:
     hf_tokenizer_for_model: zai-org/GLM-4.5-Air
     sampling:
-      temp: 0.6
-      top-p: 1.0
+      temp: 1
+      top-p: 0.95
       top-k: 0
     cmd:
       cache-type-k: q8_0
@@ -810,8 +843,8 @@ models:
       cont-batching: true
       bin: llama.cpp/build/bin/llama-server
       port: ${PORT}
-      model: F:\LLMs\GGUF\GLM-4.7-Flash-UD-Q6_K_XL.gguf
-      ctx-size: 16384
-      n-predict: 16384
+      model: ./models/GLM-4.7-Flash-UD-Q6_K_XL.gguf
+      ctx-size: 131072
+      n-predict: 131072
       gpu-layers: auto
       threads: auto

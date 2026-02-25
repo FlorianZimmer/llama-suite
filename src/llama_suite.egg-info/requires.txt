@@ -1,5 +1,6 @@
 lm-eval[api]
 PyYAML
+ruamel.yaml
 requests
 psutil
 colorama
