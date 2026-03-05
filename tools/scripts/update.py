@@ -40,6 +40,7 @@ IS_WINDOWS = platform.system() == "Windows"
 
 # Upstream repos
 LLAMA_CPP_REPO = "https://github.com/ggml-org/llama.cpp.git"
+IK_LLAMA_CPP_REPO = "https://github.com/ikawrakow/ik_llama.cpp.git"
 LLAMA_SWAP_REPO = "https://github.com/mostlygeek/llama-swap.git"
 LLAMA_CPP_RELEASE_REPO = "ggml-org/llama.cpp"
 LLAMA_SWAP_RELEASE_REPO = "mostlygeek/llama-swap"
@@ -612,7 +613,7 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
 
         run(["cmake", "..", *cmake_flags], cwd=build_dir)
         jobs = str(os.cpu_count() or 4)
-        run(["cmake", "--build", ".", "--config", "Release", "-j", jobs], cwd=build_dir)
+        run(["cmake", "--build", ".", "--config", "Release", "--target", "llama-server", "-j", jobs], cwd=build_dir)
 
         _copy_macos_dylibs_next_to_exe(build_dir, bin_dir)
 
@@ -674,6 +675,75 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
             else:
                 LOG.warning("CUDA runtime bundle not found in this release; assuming system CUDA 12.x is present.")
         return final_exe
+
+
+def update_ik_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
+    """
+    method: 'auto' | 'build'
+    """
+    src_root = vendor_dir / "ik_llama.cpp" / "source"
+    bin_dir = vendor_dir / "ik_llama.cpp" / "bin"
+    final_name = "llama-server.exe" if IS_WINDOWS else "llama-server"
+
+    effective = "build" if method == "auto" else method
+    LOG.info("Updating ik_llama.cpp via: %s (backend=%s)", effective, gpu_backend)
+
+    if effective != "build":
+        raise SystemExit("ik_llama.cpp currently supports source builds only.")
+
+    if (src_root / ".git").exists():
+        run(["git", "fetch", "--tags", "--force"], cwd=src_root)
+        run(["git", "pull"], cwd=src_root)
+    else:
+        src_root.parent.mkdir(parents=True, exist_ok=True)
+        run(["git", "clone", "--depth", "1", IK_LLAMA_CPP_REPO, str(src_root)])
+
+    build_dir = src_root / "build"
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir()
+    bin_dir.mkdir(parents=True, exist_ok=True)
+
+    cmake_flags = [
+        f"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY={str(bin_dir)}",
+        f"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE={str(bin_dir)}",
+        f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={str(bin_dir)}",
+        f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE={str(bin_dir)}",
+        f"-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY={str(bin_dir)}",
+        f"-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE={str(bin_dir)}",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DGGML_NATIVE=ON",
+    ]
+    if IS_WINDOWS:
+        cmake_flags.append("-DLLAMA_OPENSSL=OFF")
+    if gpu_backend == "cuda":
+        cmake_flags.append("-DGGML_CUDA=ON")
+    elif gpu_backend == "vulkan":
+        cmake_flags.append("-DGGML_VULKAN=ON")
+    elif gpu_backend == "cpu":
+        cmake_flags += ["-DGGML_CUDA=OFF", "-DGGML_VULKAN=OFF", "-DGGML_METAL=OFF"]
+    elif gpu_backend == "auto" and platform.system() == "Darwin":
+        cmake_flags.append("-DGGML_METAL=ON")
+
+    run(["cmake", "..", *cmake_flags], cwd=build_dir)
+    jobs = str(os.cpu_count() or 4)
+    run(["cmake", "--build", ".", "--config", "Release", "--target", "llama-server", "-j", jobs], cwd=build_dir)
+
+    candidates = [bin_dir / final_name, bin_dir / ("server.exe" if IS_WINDOWS else "server")]
+    for c in candidates:
+        if c.is_file():
+            if c.name != final_name:
+                final_exe = bin_dir / final_name
+                if final_exe.exists():
+                    final_exe.unlink(missing_ok=True)
+                shutil.copy2(c, final_exe)
+                ensure_executable(final_exe)
+                _macos_fix_rpath_to_executable_dir(final_exe)
+                return final_exe
+            ensure_executable(c)
+            _macos_fix_rpath_to_executable_dir(c)
+            return c
+    raise SystemExit("ik_llama.cpp build complete, but server executable was not found.")
 
 
 # ───────────────────────── Open WebUI refresh (container) ────────────────────
@@ -991,6 +1061,8 @@ def main() -> None:
                    help="How to update llama-swap.")
     p.add_argument("--cpp-method", choices=["auto", "build", "download"], default="auto",
                    help="How to update llama.cpp server.")
+    p.add_argument("--ik-cpp-method", choices=["auto", "build"], default="auto",
+                   help="How to update ik_llama.cpp server.")
     p.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="auto",
                    help="Backend preference when downloading/building llama.cpp.")
     p.add_argument("--runtime", choices=list(RUNTIMES_ORDER), help="Force container runtime for Open WebUI.")
@@ -1001,7 +1073,7 @@ def main() -> None:
     p.add_argument(
         "--skip",
         action="append",
-        choices=["none", "venv", "swap", "cpp", "webui"],
+        choices=["none", "venv", "swap", "cpp", "ik_cpp", "webui"],
         default=[],
         help="Skip updating component(s). Can be passed multiple times (e.g. --skip venv --skip webui).",
     )
@@ -1027,6 +1099,8 @@ def main() -> None:
         step_plan.append("Update llama-swap")
     if "cpp" not in skip:
         step_plan.append("Update llama.cpp")
+    if "ik_cpp" not in skip:
+        step_plan.append("Update ik_llama.cpp")
     if "webui" not in skip:
         step_plan.append("Refresh Open WebUI container")
 
@@ -1058,6 +1132,14 @@ def main() -> None:
         LOG.info("llama.cpp server updated: %s", cpp_server)
     else:
         LOG.info("Skipping llama.cpp update")
+
+    if "ik_cpp" not in skip:
+        step_i += 1
+        emit_step(step_i, len(step_plan), "Update ik_llama.cpp")
+        ik_cpp_server = update_ik_llama_cpp(vendor_dir, args.ik_cpp_method, args.gpu_backend)
+        LOG.info("ik_llama.cpp server updated: %s", ik_cpp_server)
+    else:
+        LOG.info("Skipping ik_llama.cpp update")
 
     # Open WebUI
     if "webui" not in skip:

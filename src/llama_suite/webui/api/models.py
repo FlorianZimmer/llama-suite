@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 from llama_suite.utils.config_utils import find_project_root, generate_processed_config
+from llama_suite.utils.runtime_registry import runtime_default_bin_hint
 from llama_suite.webui.utils.paths import get_base_config_path
 from llama_suite.webui.utils.mode import require_not_read_only
 
@@ -67,7 +68,7 @@ def _default_cmd_template(config: dict) -> dict:
             if cmd.get("bin") and cmd.get("port"):
                 return {"bin": cmd.get("bin"), "port": cmd.get("port")}
 
-    return {"bin": "llama.cpp/build/bin/llama-server", "port": "${PORT}"}
+    return {"bin": runtime_default_bin_hint("llama.cpp"), "port": "${PORT}"}
 
 
 def _validate_cmd_has_required_keys(model_name: str, cmd: dict) -> None:

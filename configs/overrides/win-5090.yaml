@@ -35,8 +35,45 @@ models:
       ctx-size: 170000
       n-predict: 170000
 
+  Qwen3.5-27B-UD-Q5_K_XL-ik:
+    hf_tokenizer_for_model: Qwen/Qwen3.5-27B
+    sampling:
+      temp: 0.6
+      min-p: 0.0
+      top-p: 0.95
+      top-k: 20
+    cmd:
+      cache-type-k: f16
+      cache-type-v: f16
+      bin: vendor/ik_llama.cpp/bin/llama-server
+      port: ${PORT}
+      model: ./models/Qwen3.5-27B-UD-Q5_K_XL.gguf
+      ctx-size: 170000
+      n-predict: 170000
+      gpu-layers: 99
+      threads: 28
+
   Qwen3.5-122B-A10B-UD-Q4_K_XL:
     cmd:
+      n-cpu-moe: 35
+
+  Qwen3.5-122B-A10B-UD-Q4_K_XL-ik:
+    hf_tokenizer_for_model: Qwen/Qwen3.5-122B-A10B
+    sampling:
+      temp: 0.6
+      min-p: 0.0
+      top-p: 0.95
+      top-k: 20
+    cmd:
+      cache-type-k: f16
+      cache-type-v: f16
+      bin: vendor/ik_llama.cpp/bin/llama-server
+      port: ${PORT}
+      model: ./models/Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf
+      ctx-size: 262144
+      n-predict: 262144
+      gpu-layers: 99
+      threads: 28
       n-cpu-moe: 35
 
 # The top-level keys like healthCheckTimeout, logLevel, and profiles from your

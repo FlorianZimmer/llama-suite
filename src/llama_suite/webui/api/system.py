@@ -36,6 +36,8 @@ async def get_system_info():
                         (vendor_dir / "llama-swap.exe").exists()
     llama_cpp_exists = (vendor_dir / "llama.cpp").exists() or \
                        (root / "llama.cpp").exists()
+    ik_llama_cpp_exists = (vendor_dir / "ik_llama.cpp").exists() or \
+                          (root / "ik_llama.cpp").exists()
     
     return {
         "platform": platform.system(),
@@ -45,6 +47,7 @@ async def get_system_info():
         "venv_path": str(venv_dir),
         "llama_swap_installed": llama_swap_exists,
         "llama_cpp_installed": llama_cpp_exists,
+        "ik_llama_cpp_installed": ik_llama_cpp_exists,
         "vendor_path": str(vendor_dir)
     }
 
@@ -70,6 +73,7 @@ class UpdateRequest(BaseModel):
     update_python: bool = True
     update_llama_swap: bool = True
     update_llama_cpp: bool = True
+    update_ik_llama_cpp: bool = False
     update_open_webui: bool = True
     open_webui_data_volume: Optional[str] = None
     gpu_backend: str = "auto"
@@ -95,6 +99,8 @@ async def run_update(request: UpdateRequest, _=Depends(require_local_mode)):
             cmd.extend(["--skip", "swap"])
         if not kwargs.get("update_llama_cpp"):
             cmd.extend(["--skip", "cpp"])
+        if not kwargs.get("update_ik_llama_cpp"):
+            cmd.extend(["--skip", "ik_cpp"])
         if not kwargs.get("update_open_webui"):
             cmd.extend(["--skip", "webui"])
         else:
@@ -135,6 +141,7 @@ async def run_update(request: UpdateRequest, _=Depends(require_local_mode)):
 class InstallRequest(BaseModel):
     """Request to run install."""
     gpu_backend: str = "auto"
+    install_ik_llama_cpp: bool = False
     open_webui_data_volume: Optional[str] = None
 
 
@@ -152,6 +159,8 @@ async def run_install(request: InstallRequest, _=Depends(require_local_mode)):
         
         if kwargs.get("gpu_backend") and kwargs["gpu_backend"] != "auto":
             cmd.extend(["--gpu-backend", kwargs["gpu_backend"]])
+        if kwargs.get("install_ik_llama_cpp"):
+            cmd.append("--with-ik-llama-cpp")
 
         data_volume = kwargs.get("open_webui_data_volume")
         if data_volume:

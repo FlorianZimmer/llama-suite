@@ -62,6 +62,7 @@ from typing import TYPE_CHECKING
 
 try:
     from llama_suite.utils.config_utils import generate_processed_config, colour_util as _colour_util  # type: ignore[attr-defined]
+    from llama_suite.utils.runtime_registry import all_runtime_server_candidates, default_server_basename
 except Exception as _e:
     # If import fails entirely, re-raise with a clearer message
     raise ImportError(
@@ -306,13 +307,8 @@ def _fix_llama_server_token(cmd_str: str, repo_root: Path) -> str:
         return cmd_str  # good
 
     # Try vendor + legacy fallbacks
-    base = first_abs.name or "llama-server.exe" if os.name == "nt" else "llama-server"
-    candidates = [
-        repo_root / "vendor" / "llama.cpp" / "bin" / base,
-        repo_root / "vendor" / "llama.cpp" / "bin" / ("llama-server.exe" if os.name == "nt" else "llama-server"),
-        repo_root / "llama.cpp" / "build" / "bin" / base,
-        repo_root / "llama.cpp" / "build" / "bin" / ("llama-server.exe" if os.name == "nt" else "llama-server"),
-    ]
+    base = first_abs.name or default_server_basename()
+    candidates = all_runtime_server_candidates(repo_root, base_name=base)
     for c in candidates:
         if c.is_file():
             tokens[0] = str(c.resolve())
@@ -384,19 +380,14 @@ def _resolve_repo_relpath(val: Any, repo_root: Path) -> str:
 
 def _resolve_llama_server_bin(bin_value: str, repo_root: Path) -> str:
     """
-    Resolve cmd.bin. Prefer repo-root anchoring; if missing, try vendor/ and legacy llama.cpp tree.
+    Resolve cmd.bin. Prefer repo-root anchoring; if missing, try known runtime vendor/build trees.
     """
     candidate = _reanchor_from_configs(Path(_resolve_repo_relpath(bin_value, repo_root)), repo_root)
     if candidate.is_file():
         return str(candidate)
 
     base = Path(bin_value).name
-    fallbacks = [
-        repo_root / "vendor" / "llama.cpp" / "bin" / base,
-        repo_root / "vendor" / "llama.cpp" / "bin" / (base + ".exe"),
-        repo_root / "llama.cpp" / "build" / "bin" / base,             # legacy source-tree layout
-        repo_root / "llama.cpp" / "build" / "bin" / (base + ".exe"),
-    ]
+    fallbacks = all_runtime_server_candidates(repo_root, base_name=base)
     for fb in fallbacks:
         if fb.is_file():
             return str(fb.resolve())

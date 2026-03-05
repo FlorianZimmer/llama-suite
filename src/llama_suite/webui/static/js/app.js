@@ -3061,6 +3061,7 @@ const App = {
                 update_python: document.getElementById('update-python').checked,
                 update_llama_swap: document.getElementById('update-swap').checked,
                 update_llama_cpp: document.getElementById('update-cpp').checked,
+                update_ik_llama_cpp: document.getElementById('update-ik-cpp').checked,
                 update_open_webui: document.getElementById('update-webui').checked,
                 open_webui_data_volume: dataVolume || undefined,
                 gpu_backend: document.getElementById('update-gpu').value

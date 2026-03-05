@@ -141,6 +141,7 @@ from llama_suite.utils.config_utils import (  # type: ignore
     _dump_stderr_on_failure, color_status,
     PROCESS_TERMINATE_TIMEOUT_S, DEFAULT_HEALTH_POLL_INTERVAL_S
 )
+from llama_suite.utils.runtime_registry import all_runtime_server_candidates
 
 # Importing the module is enough to register both adapters with lm-eval.
 import llama_suite.utils.custom_lm_eval_models as _custom_models  # noqa: F401
@@ -251,10 +252,9 @@ def _fallback_llama_server(logger: Logger) -> Optional[str]:
     names = ["llama-server"]
     if platform.system().lower().startswith("win"):
         names.append("llama-server.exe")
-    for base in [project_root_dir / "vendor" / "llama.cpp" / "bin",
-                 project_root_dir / "llama.cpp" / "build" / "bin"]:
-        for n in names:
-            cand = (base / n).resolve()
+    for n in names:
+        for cand in all_runtime_server_candidates(project_root_dir, base_name=n):
+            cand = cand.resolve()
             if cand.is_file():
                 logger.debug(f"    Fallback llama-server found at: {cand}")
                 return str(cand)

@@ -33,6 +33,7 @@ LOG = logging.getLogger("installer")
 
 # Repos
 LLAMA_CPP_REPO = "https://github.com/ggml-org/llama.cpp.git"
+IK_LLAMA_CPP_REPO = "https://github.com/ikawrakow/ik_llama.cpp.git"
 LLAMA_SWAP_REPO = "https://github.com/mostlygeek/llama-swap.git"
 LLAMA_CPP_RELEASE_REPO = "ggml-org/llama.cpp"
 LLAMA_SWAP_RELEASE_REPO = "mostlygeek/llama-swap"
@@ -550,6 +551,69 @@ def obtain_llama_cpp(vendor_dir: Path, build: bool, gpu_backend: str) -> Path:
     return download_llama_cpp(vendor_dir, gpu_backend)
 
 
+def build_ik_llama_cpp(src_dir: Path, gpu_backend: str, target_bin_dir: Path) -> Path:
+    LOG.info("Building ik_llama.cpp from source (backend=%s)", gpu_backend)
+    if src_dir.exists():
+        run(["git", "pull"], cwd=src_dir)
+    else:
+        run(["git", "clone", "--depth", "1", IK_LLAMA_CPP_REPO, str(src_dir)])
+
+    build_dir = src_dir / "build"
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+    build_dir.mkdir()
+
+    target_bin_dir.mkdir(parents=True, exist_ok=True)
+    final_name = "llama-server.exe" if IS_WINDOWS else "llama-server"
+
+    cmake_flags = [
+        f"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY={str(target_bin_dir)}",
+        f"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE={str(target_bin_dir)}",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DGGML_NATIVE=ON",
+    ]
+    if IS_WINDOWS:
+        cmake_flags.append("-DLLAMA_OPENSSL=OFF")
+    if gpu_backend == "cuda":
+        cmake_flags.append("-DGGML_CUDA=ON")
+    elif gpu_backend == "vulkan":
+        cmake_flags.append("-DGGML_VULKAN=ON")
+    elif gpu_backend == "cpu":
+        cmake_flags += ["-DGGML_CUDA=OFF", "-DGGML_VULKAN=OFF", "-DGGML_METAL=OFF"]
+    elif gpu_backend == "auto" and platform.system() == "Darwin":
+        cmake_flags.append("-DGGML_METAL=ON")
+
+    run(["cmake", "..", *cmake_flags], cwd=build_dir)
+    jobs = str(os.cpu_count() or 4)
+    run(["cmake", "--build", ".", "--config", "Release", "--target", "llama-server", "-j", jobs], cwd=build_dir)
+
+    for p in (target_bin_dir, target_bin_dir / "Release", build_dir, build_dir / "Release"):
+        if IS_WINDOWS:
+            cand = p / "llama-server.exe"
+            cand_alt = p / "server.exe"
+        else:
+            cand = p / "llama-server"
+            cand_alt = p / "server"
+        for c in (cand, cand_alt):
+            if c.is_file():
+                ensure_executable(c)
+                final_exe = target_bin_dir / final_name
+                if final_exe.exists() and final_exe != c:
+                    final_exe.unlink(missing_ok=True)
+                if c != final_exe:
+                    shutil.copy2(c, final_exe)
+                    ensure_executable(final_exe)
+                return final_exe
+
+    raise SystemExit("ik_llama.cpp build complete, but server executable was not found.")
+
+
+def obtain_ik_llama_cpp(vendor_dir: Path, gpu_backend: str) -> Path:
+    src_dir = vendor_dir / "ik_llama.cpp" / "source"
+    bin_dir = vendor_dir / "ik_llama.cpp" / "bin"
+    return build_ik_llama_cpp(src_dir, gpu_backend, bin_dir)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Open WebUI container via module
 # ──────────────────────────────────────────────────────────────────────────────
@@ -598,6 +662,8 @@ def main() -> None:
     parser.add_argument("--venv", type=Path, default=None, help="Path to create/use venv (default: <repo>/.venv)")
     parser.add_argument("--build-from-source", choices=["swap", "cpp", "all"], help="Build these from source instead of downloading releases.")
     parser.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="auto", help="Preferred GPU backend for llama.cpp.")
+    parser.add_argument("--with-ik-llama-cpp", action="store_true",
+                        help="Also build ik_llama.cpp into vendor/ik_llama.cpp/bin.")
     parser.add_argument("--webui-name", default="open-webui", help="Container name for Open WebUI.")
     parser.add_argument("--webui-port", type=int, default=3000, help="Host port for Open WebUI (default: 3000).")
     parser.add_argument("--webui-data-volume", default=None, help="Named volume for Open WebUI data (mounted to /app/backend/data). If set, overrides var/open-webui/data.")
@@ -630,6 +696,7 @@ def main() -> None:
     Vendor dir        : {vendor_dir}
     GPU Backend Pref  : {args.gpu_backend}
     Build from source : swap={build_swap}  cpp={build_cpp}
+    Install ik runtime: {args.with_ik_llama_cpp}
     =============================================================================
     """).strip())
 
@@ -640,6 +707,8 @@ def main() -> None:
         "Obtain llama-swap",
         "Obtain llama.cpp server",
     ]
+    if args.with_ik_llama_cpp:
+        step_plan.append("Build ik_llama.cpp server")
     if not args.no_webui:
         step_plan.append("Set up Open WebUI container")
     step_i = 0
@@ -713,6 +782,14 @@ def main() -> None:
     cpp_server_path = obtain_llama_cpp(vendor_dir, build_cpp, args.gpu_backend)
     LOG.info("llama-server binary: %s", cpp_server_path)
 
+    ik_cpp_server_path: Path | None = None
+    if args.with_ik_llama_cpp:
+        step_i += 1
+        emit_step(step_i, len(step_plan), "Build ik_llama.cpp server")
+        LOG.info("Building ik_llama.cpp server")
+        ik_cpp_server_path = obtain_ik_llama_cpp(vendor_dir, args.gpu_backend)
+        LOG.info("ik_llama.cpp server binary: %s", ik_cpp_server_path)
+
     # Open WebUI (best-effort)
     if not args.no_webui:
         step_i += 1
@@ -742,6 +819,7 @@ def main() -> None:
     Vendor           : {vendor_dir}
       - llama-swap   : {swap_path}
       - llama.cpp    : {cpp_server_path}
+      - ik_llama.cpp : {ik_cpp_server_path if ik_cpp_server_path else 'not installed'}
     Models           : {models_dir}
     Configs          : {configs_dir}
       - generated    : {configs_gen_dir}
