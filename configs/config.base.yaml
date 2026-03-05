@@ -1,4 +1,4 @@
-startPort: 10001
+startPort: 20000
 COMMON_FLAGS:
   cache-type-k: q8_0
   cache-type-v: q8_0
@@ -848,18 +848,6 @@ models:
       n-predict: 131072
       gpu-layers: auto
       threads: auto
-  Qwen3.5-35B-A3B-Q5_K_M:
-    hf_tokenizer_for_model: Qwen/Qwen3.5-35B-A3B
-    sampling: *id001
-    cmd:
-      cache-type-k: f16
-      cache-type-v: f16
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3.5-35B-A3B-Q5_K_M.gguf
-      ctx-size: 262144
-      n-predict: 262144
-      gpu-layers: auto
   Qwen3.5-35B-A3B-UD-Q5_K_XL:
     hf_tokenizer_for_model: Qwen/Qwen3.5-35B-A3B
     sampling: *id001
