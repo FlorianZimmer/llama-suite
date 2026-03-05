@@ -279,14 +279,11 @@ models:
     cmd:
       gpu-layers: 99
       threads: 28
-
-  Qwen3.5-27B-UD-Q6_K_XL:
-    cmd:
-      gpu-layers: 99
-      threads: 28
       
   Qwen3.5-27B-UD-Q5_K_XL:
     cmd:
+      ctx-size: 170000
+      n-predict: 170000
       gpu-layers: 99
       threads: 28
 

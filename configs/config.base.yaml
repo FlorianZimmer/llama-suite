@@ -872,18 +872,6 @@ models:
       ctx-size: 131072
       n-predict: 131072
       gpu-layers: auto
-  Qwen3.5-27B-UD-Q6_K_XL:
-    hf_tokenizer_for_model: Qwen/Qwen3.5-27B
-    sampling: *id001
-    cmd:
-      cache-type-k: f16
-      cache-type-v: f16
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3.5-27B-UD-Q6_K_XL.gguf
-      ctx-size: 131072
-      n-predict: 131072
-      gpu-layers: auto
   Qwen3.5-27B-UD-Q5_K_XL:
     hf_tokenizer_for_model: Qwen/Qwen3.5-27B
     sampling: *id001
