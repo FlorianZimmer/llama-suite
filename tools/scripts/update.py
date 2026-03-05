@@ -571,12 +571,15 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
             f"-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE={str(bin_dir)}",
             "-DCMAKE_BUILD_TYPE=Release",
         ]
+        if IS_WINDOWS:
+            # Avoid requiring a separate OpenSSL dev install for local Windows builds.
+            cmake_flags.append("-DLLAMA_OPENSSL=OFF")
         if gpu_backend == "cuda":
-            cmake_flags.append("-DLLAMA_CUBLAS=ON")
+            cmake_flags.append("-DGGML_CUDA=ON")
         elif gpu_backend == "vulkan":
-            cmake_flags.append("-DLLAMA_VULKAN=ON")
+            cmake_flags.append("-DGGML_VULKAN=ON")
         elif gpu_backend == "cpu":
-            cmake_flags += ["-DLLAMA_CUBLAS=OFF", "-DLLAMA_VULKAN=OFF", "-DGGML_METAL=OFF"]
+            cmake_flags += ["-DGGML_CUDA=OFF", "-DGGML_VULKAN=OFF", "-DGGML_METAL=OFF"]
         elif gpu_backend == "auto" and platform.system() == "Darwin":
             cmake_flags.append("-DGGML_METAL=ON")
 

@@ -1,5 +1,10 @@
 # Learnings (distilled / evergreen)
 
+## 2026-03-05 - Current llama.cpp source builds need GGML backend flags; Windows builds may need OpenSSL disabled
+
+- Symptom: The repo helpers still used `LLAMA_CUBLAS` / `LLAMA_VULKAN`, which are deprecated in current upstream `llama.cpp` and block current source builds. A direct Windows CUDA configure also failed to complete cleanly until `-DLLAMA_OPENSSL=OFF` was added on a machine without OpenSSL dev libraries.
+- Fix: Use `-DGGML_CUDA=ON` / `-DGGML_VULKAN=ON` (and the `OFF` variants for CPU-only builds) in `tools/scripts/install.py` and `tools/scripts/update.py`. For local Windows source builds without OpenSSL dev packages, add `-DLLAMA_OPENSSL=OFF` during CMake configure.
+
 ## 2026-02-02 — Web UI button “does nothing” can be a JS crash from missing DOM ids
 
 - Symptom: Clicking “⬆ Run Update” reloads the page (form submit) but no `/api/system/update` request is sent; console shows `Cannot read properties of null (reading 'addEventListener')`.

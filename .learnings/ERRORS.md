@@ -1,5 +1,11 @@
 # Errors (raw logs / fixes)
 
+## 2026-03-05 - `cmd /c` quoting for `VsDevCmd.bat` from PowerShell
+
+- Symptom: Launching the VS 2022 developer environment via a heavily escaped `cmd /c "\"C:\...\VsDevCmd.bat\" ... && ..."` string failed immediately with `Der Befehl "\" ist entweder falsch geschrieben oder konnte nicht gefunden werden.`
+- Context: This happened while trying to build `llama.cpp` from PowerShell with a chained `VsDevCmd.bat` + Python updater command.
+- Fix: From PowerShell, call `cmd.exe /c` with the batch path directly quoted once inside the command string, e.g. `cmd.exe /c "\"C:\...\VsDevCmd.bat\" -arch=x64 -host_arch=x64 && set CMAKE_GENERATOR=Ninja && .\\.venv\\Scripts\\python.exe ..."` or build the command in a PowerShell variable first to avoid over-escaping.
+
 ## 2026-02-03 - PowerShell vs cmd/unix syntax pitfalls in commands
 
 - Symptom: Commands like `cd /d f:\LLMs\llama-suite && ...` failed (`Set-Location: A positional parameter cannot be found that accepts argument ...`) because `/d` and `&&` are `cmd.exe` syntax.
