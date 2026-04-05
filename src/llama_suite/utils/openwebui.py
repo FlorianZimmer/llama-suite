@@ -30,6 +30,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT = "open-webui_open-webui"
+
 
 def _print(level: str, msg: str) -> None:
     print(f"{level}: {msg}", flush=True)
@@ -155,6 +157,11 @@ def _container_inspect(rt_path: str, name: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def volume_exists(rt_path: str, name: str) -> bool:
+    cp = run(rt_path, ["volume", "inspect", name])
+    return cp.returncode == 0
+
+
 def _extract_data_mount_kind_and_name(info: Dict[str, Any]) -> Tuple[Optional[str], Optional[str]]:
     """
     Returns (kind, name) for the /app/backend/data mount.
@@ -182,6 +189,49 @@ def _extract_data_mount_kind_and_name(info: Dict[str, Any]) -> Tuple[Optional[st
         return str(kind) if kind else None, None
 
     return None, None
+
+
+def resolve_container_data_settings(
+    rt_path: str,
+    name: str,
+    data_dir: Optional[Path],
+    data_volume: Optional[str],
+    default_data_dir: Optional[Path] = None,
+) -> Tuple[Optional[Path], Optional[str]]:
+    """
+    Resolve which persistence target to use for /app/backend/data.
+
+    Priority:
+      1. Explicit --data-volume
+      2. Explicit --data-dir
+      3. Existing container named volume
+      4. Existing container bind mount -> default_data_dir
+      5. Existing OrbStack compose volume
+      6. default_data_dir
+    """
+    if data_volume is not None:
+        return None, data_volume
+    if data_dir is not None:
+        return data_dir, None
+
+    inspected = _container_inspect(rt_path, name)
+    if inspected:
+        existing_kind, existing_volume_name = _extract_data_mount_kind_and_name(inspected)
+        if existing_kind == "volume" and existing_volume_name:
+            info(f"Reusing existing Open WebUI named volume '{existing_volume_name}'.")
+            return None, existing_volume_name
+        if existing_kind == "bind" and default_data_dir is not None:
+            info(f"Reusing default Open WebUI bind-mount directory {default_data_dir}.")
+            return default_data_dir, None
+
+    if volume_exists(rt_path, OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT):
+        info(f"Using detected OrbStack Open WebUI volume '{OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT}'.")
+        return None, OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT
+
+    if default_data_dir is not None:
+        return default_data_dir, None
+
+    raise SystemExit("Exactly one of --data-dir or --data-volume must be provided (or pass --default-data-dir for auto resolution).")
 
 
 def _extract_host_port(info: Dict[str, Any], container_port: int) -> Optional[int]:
@@ -319,6 +369,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     data_group = p.add_mutually_exclusive_group(required=False)
     data_group.add_argument("--data-dir", type=Path, help="Host directory to persist /app/backend/data (bind mount)")
     data_group.add_argument("--data-volume", type=str, help="Named volume to mount at /app/backend/data")
+    p.add_argument("--default-data-dir", type=Path, help="Fallback host directory used for auto resolution when neither --data-dir nor --data-volume is set")
     p.add_argument("--image", default="ghcr.io/open-webui/open-webui:main", help="Container image")
     p.add_argument("--runtime", choices=list(RUNTIMES_ORDER), help="Force a specific runtime (docker|podman|nerdctl)")
     p.add_argument("--container-port", type=int, default=8080, help="Container internal port (default: 8080)")
@@ -346,8 +397,15 @@ def main(argv: Optional[List[str]] = None) -> None:
         stop_container(rt_path, args.name)
         return
 
-    if (args.data_dir is None) == (args.data_volume is None):
-        raise SystemExit("Exactly one of --data-dir or --data-volume must be provided.")
+    resolved_default_data_dir = args.default_data_dir.resolve() if args.default_data_dir is not None else None
+    resolved_data_dir = args.data_dir.resolve() if args.data_dir is not None else None
+    resolved_data_dir, resolved_data_volume = resolve_container_data_settings(
+        rt_path=rt_path,
+        name=args.name,
+        data_dir=resolved_data_dir,
+        data_volume=args.data_volume,
+        default_data_dir=resolved_default_data_dir,
+    )
 
     # If container exists but was created with different settings (port/mount), recreate it.
     # This is especially important for the Web UI, where users expect changing "port" or
@@ -355,16 +413,15 @@ def main(argv: Optional[List[str]] = None) -> None:
     if exists:
         inspected = _container_inspect(rt_path, args.name)
         if inspected:
-            desired_volume = args.data_volume
             needs_recreate, reason = _needs_recreate_for_settings(
                 inspected,
                 desired_host_port=args.port,
-                desired_data_volume=desired_volume,
+                desired_data_volume=resolved_data_volume,
                 container_port=args.container_port,
             )
             if needs_recreate:
                 warn(f"Existing container '{args.name}' does not match requested settings ({reason}). Recreating...")
-                if args.data_volume is not None:
+                if resolved_data_volume is not None:
                     warn("Switching to a named volume does not migrate data from any previous bind-mount automatically.")
 
                 running = container_running(rt_path, args.name)
@@ -377,8 +434,8 @@ def main(argv: Optional[List[str]] = None) -> None:
                     rt_path=rt_path,
                     name=args.name,
                     host_port=args.port,
-                    data_dir=args.data_dir.resolve() if args.data_dir is not None else None,
-                    data_volume=args.data_volume,
+                    data_dir=resolved_data_dir,
+                    data_volume=resolved_data_volume,
                     image=args.image,
                     container_port=args.container_port,
                 )
@@ -391,8 +448,8 @@ def main(argv: Optional[List[str]] = None) -> None:
             rt_path=rt_path,
             name=args.name,
             host_port=args.port,
-            data_dir=args.data_dir.resolve() if args.data_dir is not None else None,
-            data_volume=args.data_volume,
+            data_dir=resolved_data_dir,
+            data_volume=resolved_data_volume,
             image=args.image,
             container_port=args.container_port,
         )

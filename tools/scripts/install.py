@@ -582,8 +582,7 @@ def ensure_openwebui_container(
     else:
         if data_dir is None:
             raise SystemExit("Open WebUI: data_dir is required when --webui-data-volume is not set.")
-        data_dir.mkdir(parents=True, exist_ok=True)
-        cmd.extend(["--data-dir", str(data_dir)])
+        cmd.extend(["--default-data-dir", str(data_dir)])
     try:
         run(cmd)
     except SystemExit:

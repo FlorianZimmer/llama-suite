@@ -324,7 +324,7 @@ async def start_openwebui(request: OpenWebUIStartRequest, _=Depends(require_loca
         if data_volume:
             cmd.extend(["--data-volume", str(data_volume)])
         else:
-            cmd.extend(["--data-dir", str(data_dir)])
+            cmd.extend(["--default-data-dir", str(data_dir)])
 
         rt = kwargs.get("runtime")
         if rt:
