@@ -223,3 +223,92 @@ def test_refresh_openwebui_skips_when_runtime_backend_unavailable(
     assert calls == []
     assert "Skipping Open WebUI refresh" in caplog.text
     assert "Cannot connect to the Docker daemon" in caplog.text
+
+
+def test_resolve_openwebui_data_volume_prefers_requested_value() -> None:
+    update_script = load_update_script_module()
+
+    resolved = update_script.resolve_openwebui_data_volume(
+        rt_path="/usr/local/bin/docker",
+        container_name="open-webui",
+        requested_data_volume="custom-volume",
+    )
+
+    assert resolved == "custom-volume"
+
+
+def test_resolve_openwebui_data_volume_reuses_existing_container_volume(monkeypatch: pytest.MonkeyPatch) -> None:
+    update_script = load_update_script_module()
+
+    monkeypatch.setattr(
+        update_script,
+        "container_inspect",
+        lambda rt_path, name: {
+            "Mounts": [
+                {
+                    "Destination": "/app/backend/data",
+                    "Type": "volume",
+                    "Name": "open-webui_open-webui",
+                },
+            ],
+        },
+    )
+    monkeypatch.setattr(update_script, "volume_exists", lambda rt_path, name: False)
+
+    resolved = update_script.resolve_openwebui_data_volume(
+        rt_path="/usr/local/bin/docker",
+        container_name="open-webui",
+        requested_data_volume=None,
+    )
+
+    assert resolved == "open-webui_open-webui"
+
+
+def test_resolve_openwebui_data_volume_uses_orbstack_volume_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    update_script = load_update_script_module()
+
+    monkeypatch.setattr(update_script, "container_inspect", lambda rt_path, name: None)
+    monkeypatch.setattr(
+        update_script,
+        "volume_exists",
+        lambda rt_path, name: name == update_script.OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT,
+    )
+
+    resolved = update_script.resolve_openwebui_data_volume(
+        rt_path="/usr/local/bin/docker",
+        container_name="open-webui",
+        requested_data_volume=None,
+    )
+
+    assert resolved == "open-webui_open-webui"
+
+
+def test_refresh_openwebui_uses_named_volume_when_orbstack_volume_exists(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    update_script = load_update_script_module()
+    calls: list[list[str]] = []
+
+    monkeypatch.setattr(update_script, "detect_runtime", lambda explicit=None: ("docker", "/usr/local/bin/docker"))
+    monkeypatch.setattr(update_script, "runtime_available", lambda rt_name, rt_path: (True, ""))
+    monkeypatch.setattr(update_script, "container_inspect", lambda rt_path, name: None)
+    monkeypatch.setattr(
+        update_script,
+        "volume_exists",
+        lambda rt_path, name: name == update_script.OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT,
+    )
+    monkeypatch.setattr(update_script, "run", lambda cmd, **kwargs: calls.append(list(cmd)))
+
+    update_script.refresh_openwebui(
+        repo=tmp_path,
+        venv_python=tmp_path / ".venv" / "bin" / "python",
+        container_name="open-webui",
+        port=3000,
+        image="ghcr.io/open-webui/open-webui:main",
+        runtime=None,
+        data_volume=None,
+    )
+
+    assert calls[-1][-2:] == ["--data-volume", "open-webui_open-webui"]
+    assert "--data-dir" not in calls[-1]

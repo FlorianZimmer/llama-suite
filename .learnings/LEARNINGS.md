@@ -21,3 +21,9 @@
 - Symptom: UI shows an older navigation label/content even though `src/llama_suite/webui/static/index.html` was changed; a hard refresh fixes it.
 - Root cause: The dev server disables caching for `/static/*` but not for `GET /` / SPA fallback responses serving `index.html`.
 - Fix: Serve `index.html` with `Cache-Control: no-store` (and optionally other non-API file responses) in `src/llama_suite/webui/server.py`.
+
+## 2026-04-05 - `update.py` should reuse the OrbStack Open WebUI named volume when available
+
+- Symptom: Running `tools/scripts/update.py` recreated the `open-webui` container with a bind mount at `var/open-webui/data`, even when OrbStack already had the desired named volume `open-webui_open-webui`.
+- Root cause: The updater only used a named volume when `--webui-data-volume` was passed explicitly; otherwise it always fell back to the repo bind mount before recreating the container.
+- Fix: In `tools/scripts/update.py`, resolve the data mount before recreation by preferring an explicit `--webui-data-volume`, then an existing container volume, then the existing OrbStack volume `open-webui_open-webui`, and only fall back to the bind mount if no named volume is available.

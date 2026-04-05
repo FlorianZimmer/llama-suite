@@ -45,6 +45,7 @@ LLAMA_CPP_RELEASE_REPO = "ggml-org/llama.cpp"
 LLAMA_SWAP_RELEASE_REPO = "mostlygeek/llama-swap"
 
 OPEN_WEBUI_IMAGE_DEFAULT = "ghcr.io/open-webui/open-webui:main"
+OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT = "open-webui_open-webui"
 
 RUNTIMES_ORDER = ("docker", "podman", "nerdctl")
 
@@ -682,6 +683,73 @@ def runtime_available(rt_name: str, rt_path: str) -> Tuple[bool, str]:
     return False, detail
 
 
+def container_inspect(rt_path: str, name: str) -> Optional[Dict[str, object]]:
+    cp = subprocess.run(
+        [rt_path, "container", "inspect", name],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if cp.returncode != 0:
+        return None
+
+    try:
+        payload = json.loads(cp.stdout)
+    except json.JSONDecodeError:
+        return None
+
+    if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+        return payload[0]
+    return None
+
+
+def volume_exists(rt_path: str, name: str) -> bool:
+    cp = subprocess.run(
+        [rt_path, "volume", "inspect", name],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return cp.returncode == 0
+
+
+def extract_data_mount_kind_and_name(info: Dict[str, object]) -> Tuple[Optional[str], Optional[str]]:
+    mounts = info.get("Mounts")
+    if not isinstance(mounts, list):
+        return None, None
+
+    for mount in mounts:
+        if not isinstance(mount, dict):
+            continue
+        if mount.get("Destination") != "/app/backend/data":
+            continue
+        kind = mount.get("Type")
+        if kind == "volume":
+            name = mount.get("Name")
+            return "volume", str(name) if name else None
+        if kind == "bind":
+            return "bind", None
+        return str(kind) if kind else None, None
+
+    return None, None
+
+
+def resolve_openwebui_data_volume(rt_path: str, container_name: str, requested_data_volume: Optional[str]) -> Optional[str]:
+    if requested_data_volume:
+        return requested_data_volume
+
+    inspected = container_inspect(rt_path, container_name)
+    if inspected is not None:
+        existing_kind, existing_volume_name = extract_data_mount_kind_and_name(inspected)
+        if existing_kind == "volume" and existing_volume_name:
+            return existing_volume_name
+
+    if volume_exists(rt_path, OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT):
+        return OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT
+
+    return None
+
+
 def refresh_openwebui(
     repo: Path,
     venv_python: Path,
@@ -692,8 +760,6 @@ def refresh_openwebui(
     data_volume: Optional[str],
 ) -> None:
     data_dir = repo / "var" / "open-webui" / "data"
-    if data_volume is None:
-        data_dir.mkdir(parents=True, exist_ok=True)
 
     rt = detect_runtime(runtime)
     if rt is None:
@@ -709,6 +775,20 @@ def refresh_openwebui(
         )
         LOG.warning("%s", detail)
         return
+
+    requested_data_volume = data_volume
+    existing_container = container_inspect(rt_path, container_name)
+    existing_kind, _existing_volume_name = extract_data_mount_kind_and_name(existing_container) if existing_container else (None, None)
+    data_volume = resolve_openwebui_data_volume(rt_path, container_name, requested_data_volume)
+    if data_volume is None:
+        data_dir.mkdir(parents=True, exist_ok=True)
+    elif requested_data_volume is None:
+        LOG.info("Using named volume for Open WebUI data: %s", data_volume)
+        if existing_kind == "bind":
+            LOG.warning(
+                "Switching Open WebUI data from the repo bind mount to named volume '%s'. Existing bind-mounted data is not migrated automatically.",
+                data_volume,
+            )
 
     LOG.info("Pulling latest image: %s", image)
     run([rt_path, "pull", image], check=False)
