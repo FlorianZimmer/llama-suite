@@ -27,3 +27,28 @@
 - Symptom: Running `tools/scripts/update.py` recreated the `open-webui` container with a bind mount at `var/open-webui/data`, even when OrbStack already had the desired named volume `open-webui_open-webui`.
 - Root cause: The updater only used a named volume when `--webui-data-volume` was passed explicitly; otherwise it always fell back to the repo bind mount before recreating the container.
 - Fix: In `tools/scripts/update.py`, resolve the data mount before recreation by preferring an explicit `--webui-data-volume`, then an existing container volume, then the existing OrbStack volume `open-webui_open-webui`, and only fall back to the bind mount if no named volume is available.
+
+## [LRN-20260405-001] best_practice
+
+**Logged**: 2026-04-05T21:38:43Z
+**Priority**: high
+**Status**: pending
+**Area**: infra
+
+### Summary
+`tools/scripts/update.py` can report an Open WebUI refresh while still reusing a stale cached image.
+
+### Details
+The updater does not manage Compose or Helm image references. It only refreshes one local runtime-managed container by pulling `ghcr.io/open-webui/open-webui:main`, stopping/removing `open-webui`, and recreating it via `python -m llama_suite.utils.openwebui`.
+
+The critical gap is that the image pull is best-effort: `refresh_openwebui()` calls `run([rt_path, "pull", image], check=False)`. If the pull fails due to network, registry, or daemon issues, the script continues and recreates the container from whatever cached image is already present locally. That makes the update look successful while the actual image may be unchanged.
+
+### Suggested Action
+Make the Open WebUI pull step fail-fast, and if Compose-managed Open WebUI is a supported workflow, add a dedicated compose-aware update path instead of assuming a standalone container.
+
+### Metadata
+- Source: conversation
+- Related Files: tools/scripts/update.py, deploy/compose/docker-compose.yml, src/llama_suite/webui/api/system.py
+- Tags: openwebui, updater, docker, compose
+
+---
