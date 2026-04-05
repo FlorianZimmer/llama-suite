@@ -14,6 +14,12 @@ models:
   #   cmd:
   #     bin: ./llama.cpp/build/bin/llama-server.exe # Example
 
+  gemma-4-26B-A4B-it-UD-Q5_K_XL:
+    disabled: true
+
+  gemma-4-31B-it-UD-Q4_K_XL:
+    disabled: true
+
   gpt-oss-120b-Q4-med:
     disabled: true
 
