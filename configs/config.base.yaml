@@ -16,10 +16,8 @@ QWEN3_SAMPLING: &id001
   top-k: 20
 GEMMA_SAMPLING: &id003
   temp: 1.0
-  min-p: 0.01
   top-p: 0.95
   top-k: 64
-  repeat-penalty: 1.0
 GPTOSS_SAMPLING: &id008
   temp: 1
   top-p: 1.0
