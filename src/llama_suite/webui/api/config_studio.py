@@ -10,7 +10,12 @@ import yaml
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from llama_suite.utils.config_utils import ConfigEnvLoader, deep_merge_dicts_util, generate_processed_config
+from llama_suite.utils.config_utils import (
+    ConfigEnvLoader,
+    apply_common_cmd_defaults_util,
+    deep_merge_dicts_util,
+    generate_processed_config,
+)
 from llama_suite.webui.utils.mode import require_not_read_only
 from llama_suite.webui.utils.paths import get_base_config_path as _get_base_config_path
 from llama_suite.webui.utils.paths import get_project_root as _get_project_root
@@ -81,6 +86,7 @@ def _merge_base_and_override(base: dict[str, Any], override: dict[str, Any]) -> 
     merged = deepcopy(base)
     if override:
         deep_merge_dicts_util(merged, override)
+    apply_common_cmd_defaults_util(merged)
     return merged
 
 

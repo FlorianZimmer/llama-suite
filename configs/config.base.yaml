@@ -1,45 +1,15 @@
 startPort: 20000
 COMMON_FLAGS:
+  port: ${PORT}
+  bin: llama.cpp/build/bin/llama-server
   cache-type-k: q8_0
   cache-type-v: q8_0
   jinja: true
   parallel: 1
   cont-batching: true
+  gpu-layers: auto
+  threads: auto
 QWEN3_SAMPLING: &id001
-  temp: 0.6
-  min-p: 0.0
-  top-p: 0.95
-  top-k: 20
-QWEN3_INSTRUCT_SAMPLING: &id002
-  temp: 0.7
-  min-p: 0.0
-  top-p: 0.8
-  top-k: 20
-QWEN25_SAMPLING: &id007
-  temp: 0.7
-  min-p: 0.0
-  top-p: 0.8
-  repeat-penalty: 1.05
-GEMMA_SAMPLING: &id003
-  temp: 1.0
-  min-p: 0.01
-  top-p: 0.95
-  top-k: 64
-  repeat-penalty: 1.0
-MISTRAL_SAMPLING: &id004
-  temp: 0.15
-MISTRAL_THINKING_SAMPLING: &id005
-  temp: 0.7
-  top-p: 0.95
-QWQ_SAMPLING: &id006
-  top-k: 40
-  top-p: 0.95
-  min-p: 0.0
-  temp: 0.6
-  repeat-penalty: 1.1
-  dry-multiplier: 0.5
-  samplers: top_k;top_p;min_p;temperature;dry;typ_p;xtc
-GLM_SAMPLING:
   temp: 0.6
   min-p: 0.0
   top-p: 0.95
@@ -52,783 +22,47 @@ GLM45_SAMPLING: &id009
   temp: 0.6
   top-p: 1.0
   top-k: 0
-MiniMaxM2_SAMPLING: &id010
-  temp: 1
-  top-p: 0.95
-  top-k: 40
 healthCheckTimeout: 60
 logLevel: info
 models:
-  Qwen3-8B-Q4_K_M:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-8B
-    supports_no_think_toggle: true
-    sampling: *id001
-    aliases:
-    - Qwen3-8B-NoThink
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-8B-Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-30B-A3B-Instruct-2507:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-30B-A3B-Instruct-2507
-    sampling: *id002
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-30B-A3B-Instruct-2507-UD-Q5_K_XL.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-30B-A3B-Thinking-2507:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-30B-A3B-Thinking-2507
-    sampling: *id001
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-30B-A3B-Thinking-2507-UD-Q5_K_XL.gguf
-      ctx-size: 32768
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-Coder-30B-A3B-Instruct-1M:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-30B-A3B-Instruct-2507
-    sampling: *id002
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-Coder-30B-A3B-Instruct-1M-UD-Q5_K_XL.gguf
-      ctx-size: 40000
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-Coder-Next:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-Coder-Next
-    sampling:
-      temp: 1
-      min-p: 0
-      top-p: 0.95
-      top-k: 40
-    cmd:
-      cache-type-k: f16
-      cache-type-v: f16
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-Coder-Next-UD-Q5_K_XL-00001-of-00002.gguf
-      ctx-size: 262144
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-Next:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-Next
-    sampling:
-      temp: 1
-      min-p: 0
-      top-p: 0.95
-      top-k: 40
-    cmd:
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-Next-80B-A3B-Instruct-UD-Q6_K_XL-00001-of-00002.gguf
-      ctx-size: 131072
-      gpu-layers: auto
-  Qwen3-32B-Think:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-32B
-    sampling: *id001
-    aliases:
-    - Qwen3-32B-NoThink
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-32B-Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Huihui-Qwen3-VL-32B-Instruct-abliterated:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-VL-32B-Instruct
-    sampling: *id001
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Huihui-Qwen3-VL-32B-Instruct-abliterated.Q5_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-0.6B:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-0.6B
-    sampling: *id001
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-0.6B-Q4_K_M.gguf
-      ctx-size: 32768
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-4B-Instruct-2507-UD-Q8:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-4B-Instruct-2507
-    sampling: *id002
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-4B-Instruct-2507-UD-Q8_K_XL.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-4B-Thinking-2507-UD-Q8:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-4B-Thinking-2507
-    sampling: *id001
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-4B-Thinking-2507-UD-Q8_K_XL.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  Qwen3-32B-SpeculativeDecoding-32768:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-32B
-    sampling: *id001
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3-32B-Q4_K_M.gguf
-      ctx-size: 32768
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-      model-draft: ./models/Qwen3-0.6B-Q4_K_M.gguf
-      gpu-layers-draft: 99
-      draft-max: 8
-      draft-min: 2
-      device-draft: Metal
-      ctx-size-draft: 8192
-  gemma-3-1b-it:
-    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-1b-it
-    sampling: *id003
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gemma-3-1b-it-q4_0.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  gemma-3-4b-it:
-    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-4b-it
-    sampling: *id003
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gemma-3-4b-it-q4_0.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  gemma-3-12b-it:
-    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-12b-it
-    sampling: *id003
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gemma-3-12b-it-q4_0.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  gemma-3-27b-it:
-    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-27b-it
-    sampling: *id003
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gemma-3-27b-it-q4_0.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  Mistral-Small-3.1-24B:
-    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Mistral-Small-3.1-24B-Instruct-2503
-    sampling: *id004
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Mistral-Small-3.1-24B-Instruct-2503-UD-Q5_K_XL.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  Magistral-Small-2507:
-    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Magistral-Small-2507
-    sampling: *id005
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Magistral-Small-2507-UD-Q5_K_XL.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  Devstral-Small-2507:
-    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Mistral-Small-3.1-24B-Instruct-2503
-    sampling: *id004
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Devstral-Small-2507-UD-Q5_K_XL.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  Mistral-Small-3.2-24B:
-    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Mistral-Small-3.1-24B-Base-2503
-    sampling: *id004
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Mistral-Small-3.2-24B-Instruct-2506-UD-Q5_K_XL.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-  QwQ-32B-Q4_K_M:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/QwQ-32B
-    sampling: *id006
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/QwQ-32B-Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      model-draft: ./models/InfiniAILab_QwQ-0.5B-Q5_K_M.gguf
-      gpu-layers-draft: 99
-      device-draft: Metal
-      ctx-size-draft: 8192
-      draft-max: 8
-      draft-min: 2
-  OpenCodeReasoning-Nemotron-32B-IOI:
-    hf_tokenizer_for_model: ./models/tokenizers/nvidia/OpenCodeReasoning-Nemotron-32B-IOI
-    sampling: *id001
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/OpenCodeReasoning-Nemotron-32B-IOI-Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  OpenReasoning-Nemotron-32B-Q4_K_M:
-    hf_tokenizer_for_model: ./models/tokenizers/nvidia/OpenReasoning-Nemotron-32B
-    sampling: *id007
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/OpenReasoning-Nemotron-32B-Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  OpenReasoning-Nemotron-7B:
-    hf_tokenizer_for_model: ./models/tokenizers/nvidia/OpenReasoning-Nemotron-7B
-    supports_no_think_toggle: true
-    sampling: *id007
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/nvidia_OpenReasoning-Nemotron-7B-Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  gpt-oss-20b-Q4-low:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-20b-UD-Q4_K_XL.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"low"}'
-  gpt-oss-20b-Q4-med:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-20b-UD-Q4_K_XL.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"medium"}'
-  gpt-oss-20b-Q4-high:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-20b-UD-Q4_K_XL.gguf
-      ctx-size: 32768
-      n-predict: 32768
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"high"}'
-  gpt-oss-20b-Q8-low:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-20b-UD-Q8_K_XL.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"low"}'
   gpt-oss-20b-Q8-med:
     hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/gpt-oss-20b-UD-Q8_K_XL.gguf
       ctx-size: 16384
       n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-  gpt-oss-20b-Q8-high:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-20b-UD-Q8_K_XL.gguf
-      ctx-size: 32768
-      n-predict: 32768
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"high"}'
-  gpt-oss-120b-Q8-low:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-120b-UD-Q8_K_XL-00001-of-00002.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"low"}'
-  gpt-oss-120b-Q8-med:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-120b-UD-Q8_K_XL-00001-of-00002.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"medium"}'
-  gpt-oss-120b-Q8-high:
-    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
-    sampling: *id008
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/gpt-oss-120b-UD-Q8_K_XL-00001-of-00002.gguf
-      ctx-size: 32768
-      n-predict: 32768
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"reasoning_effort":"high"}'
   gpt-oss-120b-Q4-med:
     hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/gpt-oss-120b-UD-Q4_K_XL-00001-of-00002.gguf
       ctx-size: 16384
       n-predict: 16384
-      gpu-layers: auto
-      threads: auto
       chat-template-kwargs: '{"reasoning_effort":"medium"}'
   GLM-4.5-Air-Q3:
     hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling: *id009
     cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/GLM-4.5-Air-Q3_K_S.gguf
       ctx-size: 64000
       n-predict: 64000
-      gpu-layers: auto
-      threads: auto
-  GLM-4.5-Air-Q3-No-Think:
-    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
-    sampling: *id009
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/GLM-4.5-Air-Q3_K_S.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-      chat-template-kwargs: '{"enable_thinking":"False"}'
-  GLM-4.5-Air-IQ4:
-    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
-    sampling: *id009
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/GLM-4.5-Air-IQ4_XS-00001-of-00002.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-  GLM-4.5-Air-UD-Q5_K_XL:
-    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
-    sampling: *id009
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/GLM-4.5-Air-UD-Q5_K_XL-00001-of-00002.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-  GLM-4.6-REAP-218B-A32B-FP8-Q2_K_S:
-    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
-    sampling: *id009
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/GLM-4.6-REAP-218B-A32B-FP8-Q2_K_S.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
   ERNIE-4.5-21B-A3B:
     hf_tokenizer_for_model: ./models/tokenizers/baidu/ERNIE-4.5-21B-A3B-PT
     cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/ERNIE-4.5-21B-A3B-PT-UD-Q5_K_XL.gguf
       ctx-size: 16384
       n-predict: 16384
-      gpu-layers: auto
-      threads: auto
-  EXAONE-4.0-32B:
-    hf_tokenizer_for_model: ./models/tokenizers/LGAI-EXAONE/EXAONE-4.0-32B
-    sampling: *id009
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/EXAONE-4.0-32B-Q4_K_M.gguf
-      ctx-size: 16384
-      n-predict: 16384
-      gpu-layers: auto
-      threads: auto
   Apriel-1.5-15b-Thinker:
     hf_tokenizer_for_model: ./models/tokenizers/ServiceNow-AI/Apriel-1.5-15b-Thinker
     sampling:
       temp: 0.6
     cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/Apriel-1.5-15b-Thinker-UD-Q5_K_XL.gguf
       ctx-size: 16384
       n-predict: 16384
       gpu-layers: 99
       threads: 28
-  tinyllama-1.1b-llama-suite:
-    hf_tokenizer_for_model: tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  tinyllama-1.1b-xQuant-llamacpp:
-    hf_tokenizer_for_model: tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: F:\LLMs\llama.cpp\build-ninja-user-release\bin\llama-server
-      port: ${PORT}
-      model: ./models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  MiniMax-M2-UD-IQ2_M:
-    hf_tokenizer_for_model: ./models/tokenizers/MiniMaxAI/MiniMax-M2
-    sampling: *id010
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: F:\LLMs\llama.cpp\build-ninja-user-release\bin\llama-server
-      port: ${PORT}
-      model: ./models/MiniMax-M2-UD-IQ2_M-00001-of-00002.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  MiniMax-M2-REAP-139B-A10B-Q3_K_M:
-    hf_tokenizer_for_model: ./models/tokenizers/MiniMaxAI/MiniMax-M2
-    sampling: *id010
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: F:\LLMs\llama.cpp\build-ninja-user-release\bin\llama-server
-      port: ${PORT}
-      model: ./models/cerebras.MiniMax-M2-REAP-139B-A10B.Q3_K_M-00001-of-00005.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
-  MiniMax-M2-REAP-139B-A10B-MXFP4:
-    hf_tokenizer_for_model: ./models/tokenizers/MiniMaxAI/MiniMax-M2
-    sampling: *id010
-    cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: F:\LLMs\llama.cpp\build-ninja-user-release\bin\llama-server
-      port: ${PORT}
-      model: ./models/cerebras.MiniMax-M2-REAP-139B-A10B.MXFP4_MOE-00001-of-00005.gguf
-      ctx-size: 16384
-      gpu-layers: auto
-      threads: auto
-      reasoning-format: deepseek
   GLM-4.7-Flash:
     hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling:
@@ -836,63 +70,33 @@ models:
       top-p: 0.95
       top-k: 0
     cmd:
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      jinja: true
-      parallel: 1
-      cont-batching: true
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/GLM-4.7-Flash-UD-Q6_K_XL.gguf
       ctx-size: 131072
       n-predict: 131072
-      gpu-layers: auto
-      threads: auto
-  Qwen3.5-35B-A3B-UD-Q5_K_XL:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-35B-A3B
-    sampling: *id001
-    cmd:
-      cache-type-k: f16
-      cache-type-v: f16
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
-      model: ./models/Qwen3.5-35B-A3B-UD-Q5_K_XL.gguf
-      ctx-size: 262144
-      n-predict: 262144
-      gpu-layers: auto
   Qwen3.5-35B-A3B-UD-Q4_K_XL:
     hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-35B-A3B
     sampling: *id001
     cmd:
       cache-type-k: f16
       cache-type-v: f16
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf
       ctx-size: 131072
       n-predict: 131072
-      gpu-layers: auto
   Qwen3.5-27B-UD-Q5_K_XL:
     hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-27B
     sampling: *id001
     cmd:
       cache-type-k: f16
       cache-type-v: f16
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/Qwen3.5-27B-UD-Q5_K_XL.gguf
       ctx-size: 32000
       n-predict: 32000
-      gpu-layers: auto
   Qwen3.5-122B-A10B-UD-Q4_K_XL:
     hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-122B-A10B
     sampling: *id001
     cmd:
       cache-type-k: f16
       cache-type-v: f16
-      bin: llama.cpp/build/bin/llama-server
-      port: ${PORT}
       model: ./models/Qwen3.5-122B-A10B-UD-Q4_K_XL-00001-of-00003.gguf
       ctx-size: 262144
       n-predict: 262144
-      gpu-layers: auto

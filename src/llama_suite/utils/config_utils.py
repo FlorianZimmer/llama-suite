@@ -1,4 +1,5 @@
 # config_utils.py (new-layout ready)
+from copy import deepcopy
 import os
 import platform
 from pathlib import Path
@@ -223,6 +224,34 @@ def resolve_path_relative_to_config(
 MANDATORY_CMD_KEYS = {"bin", "port", "model", "ctx-size"}
 PATH_KEYS_IN_CMD = {"bin", "model", "model-draft"}  # extend as needed
 MODEL_META_KEYS_FOR_CMD_BUILD = {"aliases", "sampling"}
+COMMON_FLAGS_KEY = "COMMON_FLAGS"
+
+
+def apply_common_cmd_defaults_util(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge top-level COMMON_FLAGS into each model's cmd with model keys taking priority."""
+    common_cmd = config.get(COMMON_FLAGS_KEY)
+    if common_cmd is None:
+        return config
+    if not isinstance(common_cmd, dict):
+        raise ValueError(f"Top-level '{COMMON_FLAGS_KEY}' must be a mapping.")
+
+    models_section = config.get("models", {})
+    if not isinstance(models_section, dict):
+        return config
+
+    for _, model_data in models_section.items():
+        if not isinstance(model_data, dict):
+            continue
+        cmd = model_data.get("cmd")
+        if cmd is None:
+            continue
+        if not isinstance(cmd, dict):
+            continue
+        merged_cmd = deepcopy(common_cmd)
+        deep_merge_dicts_util(merged_cmd, cmd)
+        model_data["cmd"] = merged_cmd
+
+    return config
 
 def build_llama_server_command_util(model_config: Dict[str, Any]) -> str:
     cmd_map = model_config.get("cmd")
@@ -336,6 +365,8 @@ def generate_processed_config(
             raise ValueError(f"Error loading override {override_to_load}: {e}") from e
     elif verbose_logging and not override_config_path_arg:
         print(colour_util("Util: No override specified or default found.", Fore.BLUE))
+
+    apply_common_cmd_defaults_util(effective_config)
 
     models_section = effective_config.get("models", {})
     if isinstance(models_section, dict):
