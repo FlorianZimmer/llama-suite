@@ -12,6 +12,7 @@ Features
 - Supports nested paths inside repos (download by the correct relative path).
 - Optional per-model `hf_repo_for_gguf` to skip searching and pin a repo.
 - Optional `--also-tokenizers` to snapshot repos from `hf_tokenizer_for_model`.
+  Local tokenizer paths under `./models/tokenizers/<org>/<repo>` are supported.
 
 Install deps:
     pip install pyyaml huggingface_hub rich
@@ -96,6 +97,56 @@ def extract_cmd_paths(model_cfg: Dict[str, Any], include_drafts: bool) -> List[T
 
 def normalize_local_path(target_dir: str, p: str) -> pathlib.Path:
     return pathlib.Path(target_dir) / pathlib.Path(p).name
+
+def tokenizer_ref_is_local(ref: str) -> bool:
+    normalized = ref.strip().replace("\\", "/")
+    if not normalized:
+        return False
+    if pathlib.Path(normalized).is_absolute():
+        return True
+    if normalized.startswith("./") or normalized.startswith("../"):
+        return True
+    if normalized.startswith("models/") or normalized.startswith("tokenizers/"):
+        return True
+    return normalized.lower().endswith(".gguf")
+
+def tokenizer_repo_from_ref(ref: str) -> Optional[str]:
+    normalized = ref.strip().replace("\\", "/")
+    if not normalized:
+        return None
+    if not tokenizer_ref_is_local(normalized):
+        return normalized if "/" in normalized else None
+
+    parts = [part for part in pathlib.PurePosixPath(normalized).parts if part not in {"", "."}]
+    if "tokenizers" not in parts:
+        return None
+    repo_parts = parts[parts.index("tokenizers") + 1:]
+    if len(repo_parts) < 2:
+        return None
+    return "/".join(repo_parts)
+
+def tokenizer_dest_dir(
+    target_dir: pathlib.Path,
+    tokenizers_dir: pathlib.Path,
+    model_name: str,
+    ref: str,
+) -> pathlib.Path:
+    normalized = ref.strip().replace("\\", "/")
+    if tokenizer_ref_is_local(normalized):
+        path = pathlib.Path(normalized)
+        if path.is_absolute():
+            return path
+        parts = [part for part in pathlib.PurePosixPath(normalized).parts if part not in {"", "."}]
+        if parts and parts[0] == "models":
+            return (target_dir.parent / pathlib.Path(*parts)).resolve()
+        if parts and parts[0] == "tokenizers":
+            return (target_dir / pathlib.Path(*parts)).resolve()
+        return (tokenizers_dir / pathlib.Path(normalized).name).resolve()
+
+    repo = tokenizer_repo_from_ref(normalized)
+    if repo:
+        return (tokenizers_dir / pathlib.Path(*repo.split("/"))).resolve()
+    return (tokenizers_dir / model_name).resolve()
 
 def expand_shards(filename: str) -> List[str]:
     m = SHARD_RE.match(filename)
@@ -302,7 +353,7 @@ def main():
 
     # Collect files to fetch
     to_fetch: List[Tuple[str, str, str]] = []  # (model_name, desired_filename, repo_hint_or_empty)
-    tokenizer_repos: List[Tuple[str, str]] = []
+    tokenizer_repos: List[Tuple[str, str, pathlib.Path]] = []
 
     for name, cfg in models.items():
         if selected_models is not None and name not in selected_models:
@@ -324,9 +375,13 @@ def main():
             for shard in expand_shards(filename):
                 to_fetch.append((name, shard, repo_hint))
 
-        tok_repo = cfg.get("hf_tokenizer_for_model")
-        if args.also_tokenizers and isinstance(tok_repo, str) and tok_repo.strip():
-            tokenizer_repos.append((name, tok_repo.strip()))
+        tok_ref = cfg.get("hf_tokenizer_for_model")
+        if args.also_tokenizers and isinstance(tok_ref, str) and tok_ref.strip():
+            repo = tokenizer_repo_from_ref(tok_ref)
+            if repo:
+                tokenizer_repos.append(
+                    (name, repo, tokenizer_dest_dir(target_dir, tokenizers_dir, name, tok_ref))
+                )
 
     # Deduplicate by filename
     seen: Set[str] = set()
@@ -463,9 +518,8 @@ def main():
     if tokenizer_repos:
         if args.plain:
             print("INFO: Tokenizer snapshots", flush=True)
-            for model_name, repo in tokenizer_repos:
+            for model_name, repo, out_dir in tokenizer_repos:
                 step_idx += 1
-                out_dir = tokenizers_dir / model_name
                 print(f"STEP {step_idx}/{total}: Snapshot tokenizer {model_name}", flush=True)
                 ok = download_tokenizer(repo, out_dir, args.force, args.token)
                 if ok:
@@ -474,8 +528,7 @@ def main():
                     print(f"WARN: tokenizer {repo} -> {out_dir}", flush=True)
         else:
             console.print("\nTokenizer snapshots", style="bold")
-            for model_name, repo in tokenizer_repos:
-                out_dir = tokenizers_dir / model_name
+            for model_name, repo, out_dir in tokenizer_repos:
                 ok = download_tokenizer(repo, out_dir, args.force, args.token)
                 if ok:
                     console.print(f"OK tokenizer {repo} -> {out_dir}", style="green")

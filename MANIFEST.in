@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+include src/llama_suite/webui/config_schema.yaml
+recursive-include src/llama_suite/webui/static *

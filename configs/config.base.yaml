@@ -60,7 +60,7 @@ healthCheckTimeout: 60
 logLevel: info
 models:
   Qwen3-8B-Q4_K_M:
-    hf_tokenizer_for_model: Qwen/Qwen3-8B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-8B
     supports_no_think_toggle: true
     sampling: *id001
     aliases:
@@ -79,7 +79,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-30B-A3B-Instruct-2507:
-    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B-Instruct-2507
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-30B-A3B-Instruct-2507
     sampling: *id002
     cmd:
       cache-type-k: q8_0
@@ -95,7 +95,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-30B-A3B-Thinking-2507:
-    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B-Thinking-2507
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-30B-A3B-Thinking-2507
     sampling: *id001
     cmd:
       cache-type-k: q8_0
@@ -111,7 +111,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-Coder-30B-A3B-Instruct-1M:
-    hf_tokenizer_for_model: Qwen/Qwen3-30B-A3B-Instruct-2507
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-30B-A3B-Instruct-2507
     sampling: *id002
     cmd:
       cache-type-k: q8_0
@@ -127,7 +127,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-Coder-Next:
-    hf_tokenizer_for_model: Qwen/Qwen3-Coder-Next
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-Coder-Next
     sampling:
       temp: 1
       min-p: 0
@@ -147,7 +147,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-Next:
-    hf_tokenizer_for_model: Qwen/Qwen3-Next
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-Next
     sampling:
       temp: 1
       min-p: 0
@@ -160,7 +160,7 @@ models:
       ctx-size: 131072
       gpu-layers: auto
   Qwen3-32B-Think:
-    hf_tokenizer_for_model: Qwen/Qwen3-32B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-32B
     sampling: *id001
     aliases:
     - Qwen3-32B-NoThink
@@ -178,7 +178,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Huihui-Qwen3-VL-32B-Instruct-abliterated:
-    hf_tokenizer_for_model: Qwen/Qwen3-VL-32B-Instruct
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-VL-32B-Instruct
     sampling: *id001
     cmd:
       cache-type-k: q8_0
@@ -194,7 +194,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-0.6B:
-    hf_tokenizer_for_model: Qwen/Qwen3-0.6B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-0.6B
     sampling: *id001
     cmd:
       cache-type-k: q8_0
@@ -210,7 +210,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-4B-Instruct-2507-UD-Q8:
-    hf_tokenizer_for_model: Qwen/Qwen3-4B-Instruct-2507
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-4B-Instruct-2507
     sampling: *id002
     cmd:
       cache-type-k: q8_0
@@ -226,7 +226,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-4B-Thinking-2507-UD-Q8:
-    hf_tokenizer_for_model: Qwen/Qwen3-4B-Thinking-2507
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-4B-Thinking-2507
     sampling: *id001
     cmd:
       cache-type-k: q8_0
@@ -242,7 +242,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   Qwen3-32B-SpeculativeDecoding-32768:
-    hf_tokenizer_for_model: Qwen/Qwen3-32B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3-32B
     sampling: *id001
     cmd:
       cache-type-k: q8_0
@@ -264,7 +264,7 @@ models:
       device-draft: Metal
       ctx-size-draft: 8192
   gemma-3-1b-it:
-    hf_tokenizer_for_model: google/gemma-3-1b-it
+    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-1b-it
     sampling: *id003
     cmd:
       cache-type-k: q8_0
@@ -279,7 +279,7 @@ models:
       gpu-layers: auto
       threads: auto
   gemma-3-4b-it:
-    hf_tokenizer_for_model: google/gemma-3-4b-it
+    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-4b-it
     sampling: *id003
     cmd:
       cache-type-k: q8_0
@@ -294,7 +294,7 @@ models:
       gpu-layers: auto
       threads: auto
   gemma-3-12b-it:
-    hf_tokenizer_for_model: google/gemma-3-12b-it
+    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-12b-it
     sampling: *id003
     cmd:
       cache-type-k: q8_0
@@ -309,7 +309,7 @@ models:
       gpu-layers: auto
       threads: auto
   gemma-3-27b-it:
-    hf_tokenizer_for_model: google/gemma-3-27b-it
+    hf_tokenizer_for_model: ./models/tokenizers/google/gemma-3-27b-it
     sampling: *id003
     cmd:
       cache-type-k: q8_0
@@ -324,7 +324,7 @@ models:
       gpu-layers: auto
       threads: auto
   Mistral-Small-3.1-24B:
-    hf_tokenizer_for_model: mistralai/Mistral-Small-3.1-24B-Instruct-2503
+    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Mistral-Small-3.1-24B-Instruct-2503
     sampling: *id004
     cmd:
       cache-type-k: q8_0
@@ -339,7 +339,7 @@ models:
       gpu-layers: auto
       threads: auto
   Magistral-Small-2507:
-    hf_tokenizer_for_model: mistralai/Magistral-Small-2507
+    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Magistral-Small-2507
     sampling: *id005
     cmd:
       cache-type-k: q8_0
@@ -354,7 +354,7 @@ models:
       gpu-layers: auto
       threads: auto
   Devstral-Small-2507:
-    hf_tokenizer_for_model: mistralai/Mistral-Small-3.1-24B-Instruct-2503
+    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Mistral-Small-3.1-24B-Instruct-2503
     sampling: *id004
     cmd:
       cache-type-k: q8_0
@@ -369,7 +369,7 @@ models:
       gpu-layers: auto
       threads: auto
   Mistral-Small-3.2-24B:
-    hf_tokenizer_for_model: mistralai/Mistral-Small-3.1-24B-Base-2503
+    hf_tokenizer_for_model: ./models/tokenizers/mistralai/Mistral-Small-3.1-24B-Base-2503
     sampling: *id004
     cmd:
       cache-type-k: q8_0
@@ -384,7 +384,7 @@ models:
       gpu-layers: auto
       threads: auto
   QwQ-32B-Q4_K_M:
-    hf_tokenizer_for_model: Qwen/QwQ-32B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/QwQ-32B
     sampling: *id006
     cmd:
       cache-type-k: q8_0
@@ -405,7 +405,7 @@ models:
       draft-max: 8
       draft-min: 2
   OpenCodeReasoning-Nemotron-32B-IOI:
-    hf_tokenizer_for_model: nvidia/OpenCodeReasoning-Nemotron-32B-IOI
+    hf_tokenizer_for_model: ./models/tokenizers/nvidia/OpenCodeReasoning-Nemotron-32B-IOI
     sampling: *id001
     cmd:
       cache-type-k: q8_0
@@ -421,7 +421,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   OpenReasoning-Nemotron-32B-Q4_K_M:
-    hf_tokenizer_for_model: nvidia/OpenReasoning-Nemotron-32B
+    hf_tokenizer_for_model: ./models/tokenizers/nvidia/OpenReasoning-Nemotron-32B
     sampling: *id007
     cmd:
       cache-type-k: q8_0
@@ -437,7 +437,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   OpenReasoning-Nemotron-7B:
-    hf_tokenizer_for_model: nvidia/OpenReasoning-Nemotron-7B
+    hf_tokenizer_for_model: ./models/tokenizers/nvidia/OpenReasoning-Nemotron-7B
     supports_no_think_toggle: true
     sampling: *id007
     cmd:
@@ -454,7 +454,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   gpt-oss-20b-Q4-low:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -471,7 +471,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"low"}'
   gpt-oss-20b-Q4-med:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -488,7 +488,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"medium"}'
   gpt-oss-20b-Q4-high:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -505,7 +505,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"high"}'
   gpt-oss-20b-Q8-low:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -522,7 +522,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"low"}'
   gpt-oss-20b-Q8-med:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -538,7 +538,7 @@ models:
       gpu-layers: auto
       threads: auto
   gpt-oss-20b-Q8-high:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -555,7 +555,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"high"}'
   gpt-oss-120b-Q8-low:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -572,7 +572,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"low"}'
   gpt-oss-120b-Q8-med:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -589,7 +589,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"medium"}'
   gpt-oss-120b-Q8-high:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -606,7 +606,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"high"}'
   gpt-oss-120b-Q4-med:
-    hf_tokenizer_for_model: openai/gpt-oss-20b
+    hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
     cmd:
       cache-type-k: q8_0
@@ -623,7 +623,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"reasoning_effort":"medium"}'
   GLM-4.5-Air-Q3:
-    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling: *id009
     cmd:
       cache-type-k: q8_0
@@ -639,7 +639,7 @@ models:
       gpu-layers: auto
       threads: auto
   GLM-4.5-Air-Q3-No-Think:
-    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling: *id009
     cmd:
       cache-type-k: q8_0
@@ -656,7 +656,7 @@ models:
       threads: auto
       chat-template-kwargs: '{"enable_thinking":"False"}'
   GLM-4.5-Air-IQ4:
-    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling: *id009
     cmd:
       cache-type-k: q8_0
@@ -672,7 +672,7 @@ models:
       gpu-layers: auto
       threads: auto
   GLM-4.5-Air-UD-Q5_K_XL:
-    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling: *id009
     cmd:
       cache-type-k: q8_0
@@ -688,7 +688,7 @@ models:
       gpu-layers: auto
       threads: auto
   GLM-4.6-REAP-218B-A32B-FP8-Q2_K_S:
-    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling: *id009
     cmd:
       cache-type-k: q8_0
@@ -704,7 +704,7 @@ models:
       gpu-layers: auto
       threads: auto
   ERNIE-4.5-21B-A3B:
-    hf_tokenizer_for_model: baidu/ERNIE-4.5-21B-A3B-PT
+    hf_tokenizer_for_model: ./models/tokenizers/baidu/ERNIE-4.5-21B-A3B-PT
     cmd:
       cache-type-k: q8_0
       cache-type-v: q8_0
@@ -719,7 +719,7 @@ models:
       gpu-layers: auto
       threads: auto
   EXAONE-4.0-32B:
-    hf_tokenizer_for_model: LGAI-EXAONE/EXAONE-4.0-32B
+    hf_tokenizer_for_model: ./models/tokenizers/LGAI-EXAONE/EXAONE-4.0-32B
     sampling: *id009
     cmd:
       cache-type-k: q8_0
@@ -735,7 +735,7 @@ models:
       gpu-layers: auto
       threads: auto
   Apriel-1.5-15b-Thinker:
-    hf_tokenizer_for_model: ServiceNow-AI/Apriel-1.5-15b-Thinker
+    hf_tokenizer_for_model: ./models/tokenizers/ServiceNow-AI/Apriel-1.5-15b-Thinker
     sampling:
       temp: 0.6
     cmd:
@@ -782,7 +782,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   MiniMax-M2-UD-IQ2_M:
-    hf_tokenizer_for_model: MiniMaxAI/MiniMax-M2
+    hf_tokenizer_for_model: ./models/tokenizers/MiniMaxAI/MiniMax-M2
     sampling: *id010
     cmd:
       cache-type-k: q8_0
@@ -798,7 +798,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   MiniMax-M2-REAP-139B-A10B-Q3_K_M:
-    hf_tokenizer_for_model: MiniMaxAI/MiniMax-M2
+    hf_tokenizer_for_model: ./models/tokenizers/MiniMaxAI/MiniMax-M2
     sampling: *id010
     cmd:
       cache-type-k: q8_0
@@ -814,7 +814,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   MiniMax-M2-REAP-139B-A10B-MXFP4:
-    hf_tokenizer_for_model: MiniMaxAI/MiniMax-M2
+    hf_tokenizer_for_model: ./models/tokenizers/MiniMaxAI/MiniMax-M2
     sampling: *id010
     cmd:
       cache-type-k: q8_0
@@ -830,7 +830,7 @@ models:
       threads: auto
       reasoning-format: deepseek
   GLM-4.7-Flash:
-    hf_tokenizer_for_model: zai-org/GLM-4.5-Air
+    hf_tokenizer_for_model: ./models/tokenizers/zai-org/GLM-4.5-Air
     sampling:
       temp: 1
       top-p: 0.95
@@ -849,7 +849,7 @@ models:
       gpu-layers: auto
       threads: auto
   Qwen3.5-35B-A3B-UD-Q5_K_XL:
-    hf_tokenizer_for_model: Qwen/Qwen3.5-35B-A3B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-35B-A3B
     sampling: *id001
     cmd:
       cache-type-k: f16
@@ -861,7 +861,7 @@ models:
       n-predict: 262144
       gpu-layers: auto
   Qwen3.5-35B-A3B-UD-Q4_K_XL:
-    hf_tokenizer_for_model: Qwen/Qwen3.5-35B-A3B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-35B-A3B
     sampling: *id001
     cmd:
       cache-type-k: f16
@@ -873,7 +873,7 @@ models:
       n-predict: 131072
       gpu-layers: auto
   Qwen3.5-27B-UD-Q5_K_XL:
-    hf_tokenizer_for_model: Qwen/Qwen3.5-27B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-27B
     sampling: *id001
     cmd:
       cache-type-k: f16
@@ -885,7 +885,7 @@ models:
       n-predict: 32000
       gpu-layers: auto
   Qwen3.5-122B-A10B-UD-Q4_K_XL:
-    hf_tokenizer_for_model: Qwen/Qwen3.5-122B-A10B
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-122B-A10B
     sampling: *id001
     cmd:
       cache-type-k: f16

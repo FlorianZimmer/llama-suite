@@ -18,3 +18,11 @@ def test_system_download_passes_models_to_hf_fetch() -> None:
     system_py = (repo_root / "src" / "llama_suite" / "webui" / "api" / "system.py").read_text(encoding="utf-8")
     assert "--models" in system_py
 
+
+def test_hf_fetch_supports_local_tokenizer_paths() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    hf_fetch = (repo_root / "tools" / "scripts" / "hf_fetch.py").read_text(encoding="utf-8")
+
+    assert "def tokenizer_repo_from_ref" in hf_fetch
+    assert "def tokenizer_dest_dir" in hf_fetch
+    assert '"tokenizers" not in parts' in hf_fetch

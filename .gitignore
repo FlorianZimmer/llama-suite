@@ -2,6 +2,11 @@
 .venv/
 llama-suite-venv/
 
+# Build/package artifacts
+/build/
+/dist/
+*.egg-info/
+
 # Generated configs & outputs
 /configs/generated/
 /runs/
