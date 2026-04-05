@@ -393,6 +393,74 @@ def test_resolve_openwebui_data_volume_uses_orbstack_volume_when_present(monkeyp
     assert resolved == "open-webui_open-webui"
 
 
+def test_split_image_reference_handles_tags_and_digests() -> None:
+    update_script = load_update_script_module()
+
+    assert update_script.split_image_reference("ghcr.io/open-webui/open-webui:main") == (
+        "ghcr.io/open-webui/open-webui",
+        "main",
+        None,
+    )
+    assert update_script.split_image_reference("ghcr.io/open-webui/open-webui@sha256:abc") == (
+        "ghcr.io/open-webui/open-webui",
+        None,
+        "sha256:abc",
+    )
+
+
+def test_resolve_pulled_image_reference_prefers_matching_repo_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    update_script = load_update_script_module()
+
+    monkeypatch.setattr(
+        update_script,
+        "inspect_image_repo_digests",
+        lambda rt_path, image: [
+            "other.example/app@sha256:111",
+            "ghcr.io/open-webui/open-webui@sha256:222",
+        ],
+    )
+
+    resolved = update_script.resolve_pulled_image_reference(
+        "/usr/local/bin/docker",
+        "ghcr.io/open-webui/open-webui:main",
+    )
+
+    assert resolved == "ghcr.io/open-webui/open-webui@sha256:222"
+
+
+def test_update_compose_openwebui_image_rewrites_service_image(tmp_path: Path) -> None:
+    update_script = load_update_script_module()
+    compose_path = tmp_path / "docker-compose.yml"
+    compose_path.write_text(
+        "services:\n"
+        "  open-webui:\n"
+        "    image: ghcr.io/open-webui/open-webui:main\n"
+        "    profiles: [\"openwebui\"]\n",
+        encoding="utf-8",
+    )
+
+    changed = update_script.update_compose_openwebui_image(
+        compose_path,
+        "ghcr.io/open-webui/open-webui@sha256:deadbeef",
+    )
+
+    assert changed is True
+    assert "image: ghcr.io/open-webui/open-webui@sha256:deadbeef" in compose_path.read_text(encoding="utf-8")
+
+
+def test_openwebui_pull_candidates_use_latest_release_and_docker_hub_latest(monkeypatch: pytest.MonkeyPatch) -> None:
+    update_script = load_update_script_module()
+    monkeypatch.setattr(update_script, "latest_openwebui_release_version", lambda: "0.8.12")
+
+    candidates = update_script.openwebui_pull_candidates("ghcr.io/open-webui/open-webui:main")
+
+    assert candidates == [
+        "ghcr.io/open-webui/open-webui:main",
+        "openwebui/open-webui:0.8.12",
+        "openwebui/open-webui:latest",
+    ]
+
+
 def test_refresh_openwebui_uses_named_volume_when_orbstack_volume_exists(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -422,3 +490,100 @@ def test_refresh_openwebui_uses_named_volume_when_orbstack_volume_exists(
 
     assert calls[-1][-2:] == ["--data-volume", "open-webui_open-webui"]
     assert "--data-dir" not in calls[-1]
+
+
+def test_refresh_openwebui_pins_compose_and_recreates_with_resolved_digest(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    update_script = load_update_script_module()
+    calls: list[list[str]] = []
+    compose_dir = tmp_path / "deploy" / "compose"
+    compose_dir.mkdir(parents=True)
+    compose_path = compose_dir / "docker-compose.yml"
+    compose_path.write_text(
+        "services:\n"
+        "  open-webui:\n"
+        "    image: ghcr.io/open-webui/open-webui:main\n"
+        "    profiles: [\"openwebui\"]\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(update_script, "detect_runtime", lambda explicit=None: ("docker", "/usr/local/bin/docker"))
+    monkeypatch.setattr(update_script, "runtime_available", lambda rt_name, rt_path: (True, ""))
+    monkeypatch.setattr(update_script, "container_inspect", lambda rt_path, name: None)
+    monkeypatch.setattr(update_script, "resolve_openwebui_data_volume", lambda rt_path, container_name, requested: "open-webui")
+    monkeypatch.setattr(
+        update_script,
+        "resolve_pulled_image_reference",
+        lambda rt_path, image: "ghcr.io/open-webui/open-webui@sha256:beadfeed",
+    )
+    monkeypatch.setattr(update_script, "run", lambda cmd, **kwargs: calls.append(list(cmd)))
+
+    update_script.refresh_openwebui(
+        repo=tmp_path,
+        venv_python=tmp_path / ".venv" / "bin" / "python",
+        container_name="open-webui",
+        port=3000,
+        image="ghcr.io/open-webui/open-webui:main",
+        runtime=None,
+        data_volume=None,
+    )
+
+    assert calls[0] == ["/usr/local/bin/docker", "pull", "ghcr.io/open-webui/open-webui:main"]
+    assert calls[-1][-2:] == ["--data-volume", "open-webui"]
+    assert "ghcr.io/open-webui/open-webui@sha256:beadfeed" in calls[-1]
+    assert "image: ghcr.io/open-webui/open-webui@sha256:beadfeed" in compose_path.read_text(encoding="utf-8")
+
+
+def test_refresh_openwebui_falls_back_to_docker_hub_when_ghcr_pull_is_denied(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    update_script = load_update_script_module()
+    calls: list[list[str]] = []
+    compose_dir = tmp_path / "deploy" / "compose"
+    compose_dir.mkdir(parents=True)
+    compose_path = compose_dir / "docker-compose.yml"
+    compose_path.write_text(
+        "services:\n"
+        "  open-webui:\n"
+        "    image: ghcr.io/open-webui/open-webui:main\n"
+        "    profiles: [\"openwebui\"]\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(update_script, "detect_runtime", lambda explicit=None: ("docker", "/usr/local/bin/docker"))
+    monkeypatch.setattr(update_script, "runtime_available", lambda rt_name, rt_path: (True, ""))
+    monkeypatch.setattr(update_script, "container_inspect", lambda rt_path, name: None)
+    monkeypatch.setattr(update_script, "resolve_openwebui_data_volume", lambda rt_path, container_name, requested: "open-webui")
+    monkeypatch.setattr(update_script, "latest_openwebui_release_version", lambda: "0.8.12")
+    monkeypatch.setattr(
+        update_script,
+        "resolve_pulled_image_reference",
+        lambda rt_path, image: "openwebui/open-webui@sha256:cafebabe",
+    )
+
+    def fake_run(cmd: list[str], **kwargs) -> None:
+        calls.append(list(cmd))
+        if cmd[:3] == ["/usr/local/bin/docker", "pull", "ghcr.io/open-webui/open-webui:main"]:
+            raise subprocess.CalledProcessError(returncode=1, cmd=cmd)
+        if cmd[:3] == ["/usr/local/bin/docker", "pull", "openwebui/open-webui:0.8.12"]:
+            return
+
+    monkeypatch.setattr(update_script, "run", fake_run)
+
+    update_script.refresh_openwebui(
+        repo=tmp_path,
+        venv_python=tmp_path / ".venv" / "bin" / "python",
+        container_name="open-webui",
+        port=3000,
+        image="ghcr.io/open-webui/open-webui:main",
+        runtime=None,
+        data_volume=None,
+    )
+
+    assert calls[0] == ["/usr/local/bin/docker", "pull", "ghcr.io/open-webui/open-webui:main"]
+    assert calls[1] == ["/usr/local/bin/docker", "pull", "openwebui/open-webui:0.8.12"]
+    assert "openwebui/open-webui@sha256:cafebabe" in calls[-1]
+    assert "image: openwebui/open-webui@sha256:cafebabe" in compose_path.read_text(encoding="utf-8")

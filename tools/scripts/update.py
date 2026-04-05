@@ -43,8 +43,10 @@ LLAMA_CPP_REPO = "https://github.com/ggml-org/llama.cpp.git"
 LLAMA_SWAP_REPO = "https://github.com/mostlygeek/llama-swap.git"
 LLAMA_CPP_RELEASE_REPO = "ggml-org/llama.cpp"
 LLAMA_SWAP_RELEASE_REPO = "mostlygeek/llama-swap"
+OPEN_WEBUI_RELEASE_REPO = "open-webui/open-webui"
 
 OPEN_WEBUI_IMAGE_DEFAULT = "ghcr.io/open-webui/open-webui:main"
+OPEN_WEBUI_IMAGE_DOCKER_HUB_DEFAULT = "openwebui/open-webui:latest"
 OPEN_WEBUI_ORBSTACK_DATA_VOLUME_DEFAULT = "open-webui_open-webui"
 
 RUNTIMES_ORDER = ("docker", "podman", "nerdctl")
@@ -76,6 +78,30 @@ def run(cmd: Sequence[str] | str, cwd: Optional[Path] = None, check: bool = True
             # propagate so the caller (or top-level) fails with non-zero exit
             raise
         # If check=False, subprocess.run wouldn't raise; this is just defensive.
+
+
+def run_capture(
+    cmd: Sequence[str] | str,
+    cwd: Optional[Path] = None,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
+    """Run a command and capture stdout/stderr."""
+    printable = " ".join(map(str, cmd)) if isinstance(cmd, (list, tuple)) else str(cmd)
+    LOG.debug("exec(capture): %s", printable)
+    try:
+        return subprocess.run(
+            cmd,
+            cwd=cwd,
+            check=check,
+            shell=isinstance(cmd, str),
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        LOG.error("Command failed (%s): %s", e.returncode, printable)
+        if check:
+            raise
+        return e
 
 
 
@@ -713,6 +739,146 @@ def volume_exists(rt_path: str, name: str) -> bool:
     return cp.returncode == 0
 
 
+def split_image_reference(image: str) -> Tuple[str, Optional[str], Optional[str]]:
+    if "@" in image:
+        repo, digest = image.split("@", 1)
+        return repo, None, digest
+
+    last_slash = image.rfind("/")
+    last_colon = image.rfind(":")
+    if last_colon > last_slash:
+        return image[:last_colon], image[last_colon + 1 :], None
+    return image, None, None
+
+
+def inspect_image_repo_digests(rt_path: str, image: str) -> list[str]:
+    cp = run_capture([rt_path, "image", "inspect", image], check=True)
+    try:
+        payload = json.loads(cp.stdout or "[]")
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"Could not parse image inspect output for {image}: {e}") from e
+
+    if isinstance(payload, list) and payload:
+        payload0 = payload[0]
+    elif isinstance(payload, dict):
+        payload0 = payload
+    else:
+        payload0 = {}
+
+    digests = payload0.get("RepoDigests", [])
+    if not isinstance(digests, list):
+        return []
+    return [str(item) for item in digests if isinstance(item, str)]
+
+
+def resolve_pulled_image_reference(rt_path: str, image: str) -> str:
+    repo, _tag, digest = split_image_reference(image)
+    if digest:
+        return image
+
+    repo_digests = inspect_image_repo_digests(rt_path, image)
+    for candidate in repo_digests:
+        cand_repo, _cand_tag, cand_digest = split_image_reference(candidate)
+        if cand_digest and cand_repo == repo:
+            return candidate
+
+    if repo_digests:
+        LOG.warning("Could not find a repo-matching digest for %s; using first available digest %s", image, repo_digests[0])
+        return repo_digests[0]
+
+    raise SystemExit(f"Could not resolve a pulled image digest for {image}.")
+
+
+def update_compose_openwebui_image(compose_path: Path, image: str) -> bool:
+    if not compose_path.exists():
+        LOG.warning("Compose file not found; skipping Open WebUI image patch: %s", compose_path)
+        return False
+
+    text = compose_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    in_openwebui = False
+    service_indent: Optional[int] = None
+
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" "))
+
+        if stripped == "open-webui:":
+            in_openwebui = True
+            service_indent = indent
+            continue
+
+        if not in_openwebui:
+            continue
+
+        if stripped and indent <= (service_indent or 0) and not line.lstrip(" ").startswith("#"):
+            break
+
+        if stripped.startswith("image:"):
+            prefix = line[: len(line) - len(line.lstrip(" "))]
+            current = stripped[len("image:") :].strip()
+            new_line = f"{prefix}image: {image}"
+            if line == new_line:
+                return False
+            LOG.info("Patching Compose Open WebUI image: %s -> %s", current, image)
+            lines[idx] = new_line
+            compose_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return True
+
+    raise SystemExit(f"Could not locate open-webui image entry in {compose_path}")
+
+
+def latest_openwebui_release_version() -> str:
+    release = get_latest_release(OPEN_WEBUI_RELEASE_REPO)
+    tag = str(release.get("tag_name") or "").strip()
+    if not tag:
+        raise SystemExit(f"Could not determine latest release tag for {OPEN_WEBUI_RELEASE_REPO}.")
+    return tag[1:] if tag.startswith("v") else tag
+
+
+def openwebui_pull_candidates(image: str) -> list[str]:
+    if image != OPEN_WEBUI_IMAGE_DEFAULT:
+        return [image]
+
+    version = latest_openwebui_release_version()
+    candidates = [
+        OPEN_WEBUI_IMAGE_DEFAULT,
+        f"openwebui/open-webui:{version}",
+        OPEN_WEBUI_IMAGE_DOCKER_HUB_DEFAULT,
+    ]
+
+    deduped: list[str] = []
+    for candidate in candidates:
+        if candidate not in deduped:
+            deduped.append(candidate)
+    return deduped
+
+
+def pull_openwebui_image(rt_path: str, image: str) -> str:
+    candidates = openwebui_pull_candidates(image)
+
+    last_error: Optional[subprocess.CalledProcessError] = None
+    for idx, candidate in enumerate(candidates):
+        LOG.info("Pulling latest image: %s", candidate)
+        try:
+            run([rt_path, "pull", candidate], check=True)
+            return candidate
+        except subprocess.CalledProcessError as e:
+            last_error = e
+            if idx + 1 < len(candidates):
+                LOG.warning(
+                    "Failed to pull %s. Trying fallback image: %s",
+                    candidate,
+                    candidates[idx + 1],
+                )
+                continue
+            raise
+
+    if last_error is not None:
+        raise last_error
+    raise SystemExit(f"Could not pull Open WebUI image: {image}")
+
+
 def extract_data_mount_kind_and_name(info: Dict[str, object]) -> Tuple[Optional[str], Optional[str]]:
     mounts = info.get("Mounts")
     if not isinstance(mounts, list):
@@ -790,8 +956,11 @@ def refresh_openwebui(
                 data_volume,
             )
 
-    LOG.info("Pulling latest image: %s", image)
-    run([rt_path, "pull", image], check=False)
+    pulled_image = pull_openwebui_image(rt_path, image)
+    resolved_image = resolve_pulled_image_reference(rt_path, pulled_image)
+    if resolved_image != pulled_image:
+        LOG.info("Resolved Open WebUI image to immutable digest: %s", resolved_image)
+    update_compose_openwebui_image(repo / "deploy" / "compose" / "docker-compose.yml", resolved_image)
 
     LOG.info("Stopping/removing container: %s", container_name)
     run([rt_path, "stop", container_name], check=False)
@@ -803,7 +972,7 @@ def refresh_openwebui(
         str(venv_python), "-m", "llama_suite.utils.openwebui",
         "--name", container_name,
         "--port", str(port),
-        "--image", image,
+        "--image", resolved_image,
     ]
     if data_volume is not None:
         cmd.extend(["--data-volume", data_volume])

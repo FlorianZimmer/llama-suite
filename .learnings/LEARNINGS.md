@@ -32,7 +32,7 @@
 
 **Logged**: 2026-04-05T21:38:43Z
 **Priority**: high
-**Status**: pending
+**Status**: resolved
 **Area**: infra
 
 ### Summary
@@ -50,5 +50,38 @@ Make the Open WebUI pull step fail-fast, and if Compose-managed Open WebUI is a 
 - Source: conversation
 - Related Files: tools/scripts/update.py, deploy/compose/docker-compose.yml, src/llama_suite/webui/api/system.py
 - Tags: openwebui, updater, docker, compose
+
+### Resolution
+- **Resolved**: 2026-04-05T22:00:14Z
+- **Commit/PR**: uncommitted
+- **Notes**: `update.py` now fails fast on pull errors, resolves the pulled image to an immutable digest, patches the Compose `open-webui` service image to that digest, and falls back from `ghcr.io/open-webui/open-webui:main` to published Docker Hub tags derived from the latest release when the default GHCR pull is denied.
+
+---
+
+## [LRN-20260406-001] knowledge_gap
+
+**Logged**: 2026-04-05T22:06:59Z
+**Priority**: medium
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Open WebUI Docker Hub does not publish a `main` tag even though some upstream docs still reference `:main`.
+
+### Details
+Direct registry inspection showed `openwebui/open-webui:main` returns `manifest unknown`, while Docker Hub currently publishes `latest`, semver tags such as `0.8.12`, and variant tags like `latest-slim` and `latest-ollama`. GitHub releases reported `v0.8.12` as the latest stable release on 2026-04-06.
+
+### Suggested Action
+When `update.py` falls back away from `ghcr.io/open-webui/open-webui:main`, derive the Docker Hub fallback from the latest GitHub release (`openwebui/open-webui:<version>`) and keep `openwebui/open-webui:latest` as a secondary fallback instead of using `openwebui/open-webui:main`.
+
+### Metadata
+- Source: conversation
+- Related Files: tools/scripts/update.py, tests/test_openwebui.py
+- Tags: openwebui, docker-hub, tags, updater
+
+### Resolution
+- **Resolved**: 2026-04-05T22:09:46Z
+- **Commit/PR**: uncommitted
+- **Notes**: `update.py` now derives Docker Hub fallbacks from the latest Open WebUI GitHub release and retries with `openwebui/open-webui:<version>` before `openwebui/open-webui:latest`, which matches the tags actually published on Docker Hub.
 
 ---
