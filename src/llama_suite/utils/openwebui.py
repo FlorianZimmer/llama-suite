@@ -79,6 +79,23 @@ def run(rt_path: str, args: List[str], check: bool = False) -> subprocess.Comple
     return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=check)
 
 
+def runtime_available(rt_name: str, rt_path: str) -> Tuple[bool, str]:
+    """
+    Check whether the selected runtime is reachable, not just installed.
+
+    This catches the common case where the CLI exists but the Docker/OrbStack
+    backend is not running yet.
+    """
+    cp = run(rt_path, ["info"])
+    if cp.returncode == 0:
+        return True, ""
+
+    detail = (cp.stderr or cp.stdout or "").strip()
+    if not detail:
+        detail = f"'{rt_name} info' exited with status {cp.returncode}"
+    return False, detail
+
+
 # ------------------------------ container helpers ------------------------------
 
 def container_exists(rt_path: str, name: str) -> bool:
@@ -309,6 +326,11 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     rt_name, rt_path = detect_runtime(args.runtime)
     info(f"Using container runtime: {rt_name} ({rt_path})")
+    available, detail = runtime_available(rt_name, rt_path)
+    if not available:
+        warn(f"Container runtime '{rt_name}' is installed but its daemon/service is unavailable. Skipping Open WebUI management.")
+        warn(detail)
+        return
 
     exists = container_exists(rt_path, args.name)
     if args.status:

@@ -662,6 +662,26 @@ def detect_runtime(explicit: Optional[str] = None) -> Tuple[str, str] | None:
     return None
 
 
+def runtime_available(rt_name: str, rt_path: str) -> Tuple[bool, str]:
+    try:
+        cp = subprocess.run(
+            [rt_path, "info"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as e:
+        return False, str(e)
+
+    if cp.returncode == 0:
+        return True, ""
+
+    detail = (cp.stderr or cp.stdout or "").strip()
+    if not detail:
+        detail = f"'{rt_name} info' exited with status {cp.returncode}"
+    return False, detail
+
+
 def refresh_openwebui(
     repo: Path,
     venv_python: Path,
@@ -681,6 +701,14 @@ def refresh_openwebui(
         return
     rt_name, rt_path = rt
     LOG.info("Using container runtime: %s (%s)", rt_name, rt_path)
+    available, detail = runtime_available(rt_name, rt_path)
+    if not available:
+        LOG.warning(
+            "Container runtime '%s' is installed but its daemon/service is unavailable. Skipping Open WebUI refresh.",
+            rt_name,
+        )
+        LOG.warning("%s", detail)
+        return
 
     LOG.info("Pulling latest image: %s", image)
     run([rt_path, "pull", image], check=False)
