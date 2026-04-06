@@ -1063,7 +1063,7 @@ def main() -> None:
                    help="How to update llama.cpp server.")
     p.add_argument("--ik-cpp-method", choices=["auto", "build"], default="auto",
                    help="How to update ik_llama.cpp server.")
-    p.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="auto",
+    p.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="cuda",
                    help="Backend preference when downloading/building llama.cpp.")
     p.add_argument("--runtime", choices=list(RUNTIMES_ORDER), help="Force container runtime for Open WebUI.")
     p.add_argument("--webui-name", default="open-webui", help="Open WebUI container name.")

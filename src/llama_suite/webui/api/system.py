@@ -76,7 +76,7 @@ class UpdateRequest(BaseModel):
     update_ik_llama_cpp: bool = False
     update_open_webui: bool = True
     open_webui_data_volume: Optional[str] = None
-    gpu_backend: str = "auto"
+    gpu_backend: str = "cuda"
 
 
 @router.post("/update")
@@ -140,7 +140,7 @@ async def run_update(request: UpdateRequest, _=Depends(require_local_mode)):
 
 class InstallRequest(BaseModel):
     """Request to run install."""
-    gpu_backend: str = "auto"
+    gpu_backend: str = "cuda"
     install_ik_llama_cpp: bool = False
     open_webui_data_volume: Optional[str] = None
 

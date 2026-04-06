@@ -661,7 +661,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Install llama-suite vendor binaries and Python deps (pyproject-first).")
     parser.add_argument("--venv", type=Path, default=None, help="Path to create/use venv (default: <repo>/.venv)")
     parser.add_argument("--build-from-source", choices=["swap", "cpp", "all"], help="Build these from source instead of downloading releases.")
-    parser.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="auto", help="Preferred GPU backend for llama.cpp.")
+    parser.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="cuda", help="Preferred GPU backend for llama.cpp.")
     parser.add_argument("--with-ik-llama-cpp", action="store_true",
                         help="Also build ik_llama.cpp into vendor/ik_llama.cpp/bin.")
     parser.add_argument("--webui-name", default="open-webui", help="Container name for Open WebUI.")
