@@ -227,6 +227,23 @@ MODEL_META_KEYS_FOR_CMD_BUILD = {"aliases", "sampling"}
 COMMON_FLAGS_KEY = "COMMON_FLAGS"
 
 
+def _append_cli_arg(args: List[str], key: str, value: Any) -> None:
+    key_norm = key.replace("_", "-")
+    cli_flag = f"--{key_norm}"
+
+    if key_norm == "flash-attn" and isinstance(value, bool):
+        args.extend([cli_flag, "on" if value else "off"])
+        return
+
+    if isinstance(value, bool):
+        if value:
+            args.append(cli_flag)
+        return
+
+    if value not in (None, False, "auto", "Auto", ""):
+        args.extend([cli_flag, str(value)])
+
+
 def apply_common_cmd_defaults_util(config: Dict[str, Any]) -> Dict[str, Any]:
     """Merge top-level COMMON_FLAGS into each model's cmd with model keys taking priority."""
     common_cmd = config.get(COMMON_FLAGS_KEY)
@@ -272,20 +289,12 @@ def build_llama_server_command_util(model_config: Dict[str, Any]) -> str:
     for key, value in cmd_map.items():
         if key in MANDATORY_CMD_KEYS | {"gpu-layers", "threads"}:
             continue
-        cli_flag = f"--{key.replace('_', '-')}"
-        if isinstance(value, bool) and value:
-            args.append(cli_flag)
-        elif value not in (None, False, "auto", "Auto", ""):
-            args.extend([cli_flag, str(value)])
+        _append_cli_arg(args, key, value)
 
     for key, value in model_config.items():
         if key in {"cmd", "_name_for_log"} | MODEL_META_KEYS_FOR_CMD_BUILD:
             continue
-        cli_flag = f"--{key.replace('_', '-')}"
-        if isinstance(value, bool) and value:
-            args.append(cli_flag)
-        elif value not in (None, False, "auto", "Auto", ""):
-            args.extend([cli_flag, str(value)])
+        _append_cli_arg(args, key, value)
 
     sampling_config = model_config.get("sampling")
     if isinstance(sampling_config, dict):

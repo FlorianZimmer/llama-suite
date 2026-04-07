@@ -77,6 +77,15 @@ groups:
         enum_values: [q8_0, f16, f32]
         restart_required: true
 
+      - id: common_flash_attn
+        label: Flash Attention
+        path: [COMMON_FLAGS, flash-attn]
+        type: enum
+        ui: select
+        enum_values: [on, off, auto]
+        restart_required: true
+        help: Explicit Flash Attention mode for llama.cpp runtimes that require on/off/auto.
+
   - id: presets
     title: Sampling Presets
     kind: presets
@@ -172,6 +181,14 @@ groups:
         path: [cmd, cont-batching]
         type: bool
         ui: toggle
+
+      - id: flash_attn
+        label: Flash Attention
+        path: [cmd, flash-attn]
+        type: enum
+        ui: select
+        enum_values: [on, off, auto]
+        help: Explicit Flash Attention mode for llama.cpp runtimes that require on/off/auto.
 
       - id: n_cpu_moe
         label: n-cpu-moe
