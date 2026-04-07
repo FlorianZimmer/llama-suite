@@ -34,6 +34,8 @@ models:
     cmd:
       ctx-size: 170000
       n-predict: 170000
+      gpu-layers: 99
+      threads: 28
 
   Qwen3.5-27B-UD-Q5_K_XL-ik:
     hf_tokenizer_for_model: Qwen/Qwen3.5-27B

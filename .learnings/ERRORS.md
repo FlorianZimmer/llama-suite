@@ -21,3 +21,9 @@
 
 - Symptom: `bash ~/.codex/.../activator.sh` failed because `~` resolved inside WSL and the path didn’t exist.
 - Fix: Use the WSL-mounted Windows path: `/mnt/c/Users/Florian/.codex/skills/self-improving-agent-1.0.1/scripts/{activator,error-detector}.sh`.
+
+## 2026-04-06 - `rg.exe` from Codex WindowsApps package failed to start
+
+- Symptom: `rg -n ...` failed immediately with `Program 'rg.exe' failed to run ... Zugriff verweigert` when launched from PowerShell in this Codex desktop environment.
+- Context: This happened while inspecting `llama-suite` config and runtime state on Windows.
+- Fix: Fall back to PowerShell-native search (`Get-ChildItem ... | Select-String ...`) instead of assuming the bundled `rg.exe` is executable in this environment.
