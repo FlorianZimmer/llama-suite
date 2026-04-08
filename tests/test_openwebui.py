@@ -428,6 +428,24 @@ def test_resolve_pulled_image_reference_prefers_matching_repo_digest(monkeypatch
     assert resolved == "ghcr.io/open-webui/open-webui@sha256:222"
 
 
+def test_resolve_pulled_image_reference_falls_back_to_pulled_tag_when_inspect_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    update_script = load_update_script_module()
+
+    def boom(rt_path: str, image: str) -> list[str]:
+        raise FileNotFoundError("/usr/local/bin/docker")
+
+    monkeypatch.setattr(update_script, "inspect_image_repo_digests", boom)
+
+    resolved = update_script.resolve_pulled_image_reference(
+        "/usr/local/bin/docker",
+        "ghcr.io/open-webui/open-webui:main",
+    )
+
+    assert resolved == "ghcr.io/open-webui/open-webui:main"
+
+
 def test_update_compose_openwebui_image_rewrites_service_image(tmp_path: Path) -> None:
     update_script = load_update_script_module()
     compose_path = tmp_path / "docker-compose.yml"
@@ -459,6 +477,44 @@ def test_openwebui_pull_candidates_use_latest_release_and_docker_hub_latest(monk
         "openwebui/open-webui:0.8.12",
         "openwebui/open-webui:latest",
     ]
+
+
+def test_update_asset_for_platform_cpp_accepts_linux_tarballs(monkeypatch: pytest.MonkeyPatch) -> None:
+    update_script = load_update_script_module()
+    monkeypatch.setattr(update_script.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(update_script.platform, "machine", lambda: "x86_64")
+
+    asset = update_script.asset_for_platform_cpp(
+        {
+            "assets": [
+                {"name": "llama-b9999-bin-ubuntu-x64.tar.gz"},
+                {"name": "llama-b9999-bin-ubuntu-vulkan-x64.tar.gz"},
+            ]
+        },
+        "vulkan",
+    )
+
+    assert asset is not None
+    assert asset["name"] == "llama-b9999-bin-ubuntu-vulkan-x64.tar.gz"
+
+
+def test_install_asset_for_platform_cpp_accepts_linux_tarballs(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_script = load_install_script_module()
+    monkeypatch.setattr(install_script.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(install_script.platform, "machine", lambda: "x86_64")
+
+    asset = install_script.asset_for_platform_cpp(
+        {
+            "assets": [
+                {"name": "llama-b9999-bin-ubuntu-x64.tar.gz"},
+                {"name": "llama-b9999-bin-ubuntu-vulkan-x64.tar.gz"},
+            ]
+        },
+        "vulkan",
+    )
+
+    assert asset is not None
+    assert asset["name"] == "llama-b9999-bin-ubuntu-vulkan-x64.tar.gz"
 
 
 def test_refresh_openwebui_uses_named_volume_when_orbstack_volume_exists(

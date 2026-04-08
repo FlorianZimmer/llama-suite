@@ -346,11 +346,16 @@ def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dic
     arch_token = {"amd64": "x64", "x86_64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(
         platform.machine().lower(), platform.machine().lower()
     )
+    archive_ok = (
+        (".zip",)
+        if platform.system() == "Windows"
+        else (".tar.gz", ".tgz", ".zip")
+    )
 
     candidates: list[tuple[int, Dict]] = []
     for asset in release.get("assets", []):
         n = asset["name"].lower()
-        if not n.endswith(".zip"): continue
+        if not n.endswith(archive_ok): continue
         if any(t in n for t in ("cudart", "runtime", "deps", "cudnn", "cutensor")): continue
         if not (_os_token_match(n, system_token) and arch_token in n and "bin" in n): continue
 
@@ -846,7 +851,12 @@ def resolve_pulled_image_reference(rt_path: str, image: str) -> str:
     if digest:
         return image
 
-    repo_digests = inspect_image_repo_digests(rt_path, image)
+    try:
+        repo_digests = inspect_image_repo_digests(rt_path, image)
+    except (FileNotFoundError, subprocess.CalledProcessError, SystemExit) as exc:
+        LOG.warning("Could not inspect image %s for an immutable digest; using the pulled tag reference. (%s)", image, exc)
+        return image
+
     for candidate in repo_digests:
         cand_repo, _cand_tag, cand_digest = split_image_reference(candidate)
         if cand_digest and cand_repo == repo:
@@ -1063,7 +1073,7 @@ def main() -> None:
                    help="How to update llama.cpp server.")
     p.add_argument("--ik-cpp-method", choices=["auto", "build"], default="auto",
                    help="How to update ik_llama.cpp server.")
-    p.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="cuda",
+    p.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="auto",
                    help="Backend preference when downloading/building llama.cpp.")
     p.add_argument("--runtime", choices=list(RUNTIMES_ORDER), help="Force container runtime for Open WebUI.")
     p.add_argument("--webui-name", default="open-webui", help="Open WebUI container name.")

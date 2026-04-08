@@ -120,6 +120,27 @@ def get_venv_paths(venv_dir: Path) -> Tuple[Path, Path, Path]:
     return python_exe, pip_exe, activate_hint
 
 
+def create_venv(venv_dir: Path) -> None:
+    """
+    Create a venv with stdlib `venv`, but fall back to `uv venv --seed` when
+    ensurepip is unavailable on Debian/Ubuntu-style Python installs.
+    """
+    try:
+        venv.EnvBuilder(with_pip=True, upgrade_deps=True).create(str(venv_dir))
+        return
+    except Exception as exc:
+        uv = shutil.which("uv")
+        if not uv:
+            raise SystemExit(
+                "Failed to create a Python virtual environment with stdlib venv. "
+                "Install python3-venv (or equivalent), or install `uv` and retry."
+            ) from exc
+
+        LOG.warning("Stdlib venv creation failed (%s). Falling back to `uv venv --seed`.", exc)
+        shutil.rmtree(venv_dir, ignore_errors=True)
+        run([uv, "venv", "--seed", str(venv_dir)])
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # downloads / releases
 # ──────────────────────────────────────────────────────────────────────────────
@@ -269,11 +290,16 @@ def asset_for_platform_cpp(release: Dict, gpu_backend_pref: str) -> Optional[Dic
     arch_token = {"amd64": "x64", "x86_64": "x64", "arm64": "arm64", "aarch64": "arm64"}.get(
         platform.machine().lower(), platform.machine().lower()
     )
+    archive_ok = (
+        (".zip",)
+        if platform.system() == "Windows"
+        else (".tar.gz", ".tgz", ".zip")
+    )
 
     candidates: list[tuple[int, Dict]] = []
     for asset in release.get("assets", []):
         name = asset["name"].lower()
-        if not name.endswith(".zip"):
+        if not name.endswith(archive_ok):
             continue
         if any(t in name for t in ("cudart", "runtime", "deps", "cudnn", "cutensor")):
             continue
@@ -661,7 +687,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Install llama-suite vendor binaries and Python deps (pyproject-first).")
     parser.add_argument("--venv", type=Path, default=None, help="Path to create/use venv (default: <repo>/.venv)")
     parser.add_argument("--build-from-source", choices=["swap", "cpp", "all"], help="Build these from source instead of downloading releases.")
-    parser.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="cuda", help="Preferred GPU backend for llama.cpp.")
+    parser.add_argument("--gpu-backend", choices=["auto", "cpu", "cuda", "vulkan"], default="auto", help="Preferred GPU backend for llama.cpp.")
     parser.add_argument("--with-ik-llama-cpp", action="store_true",
                         help="Also build ik_llama.cpp into vendor/ik_llama.cpp/bin.")
     parser.add_argument("--webui-name", default="open-webui", help="Container name for Open WebUI.")
@@ -724,7 +750,7 @@ def main() -> None:
     emit_step(step_i, len(step_plan), "Set up Python virtual environment")
     LOG.info("Setting up Python virtual environment: %s", venv_dir)
     if not venv_dir.exists():
-        venv.EnvBuilder(with_pip=True, upgrade_deps=True).create(str(venv_dir))
+        create_venv(venv_dir)
         LOG.info("Virtual environment created.")
     else:
         LOG.info("Virtual environment already exists; will ensure packages are present.")
