@@ -41,8 +41,8 @@ models:
     sampling: *id003
     cmd:
       model: ./models/gemma-4-31B-it-UD-Q4_K_XL.gguf
-      ctx-size: 262144
-      n-predict: 262144
+      ctx-size: 32000
+      n-predict: 32000
   gpt-oss-20b-Q8-med:
     hf_tokenizer_for_model: ./models/tokenizers/openai/gpt-oss-20b
     sampling: *id008
