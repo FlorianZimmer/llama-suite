@@ -1,27 +1,104 @@
 # llama-suite
 
+[![CI](https://github.com/FlorianZimmer/llama-suite/actions/workflows/ci.yml/badge.svg)](https://github.com/FlorianZimmer/llama-suite/actions/workflows/ci.yml)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-0f766e)
+[![License: MIT](https://img.shields.io/badge/license-MIT-1f2937.svg)](LICENSE)
+
 `llama-suite` is a config-driven local LLM operations toolkit built around `llama.cpp` and `llama-swap`.
-It combines runtime/watch automation, a small FastAPI Web UI, and eval/benchmark helpers in one repo.
+It keeps machine-specific model configuration, runtime control, evaluation, benchmarking, and deployment packaging in one repo instead of scattering them across shell scripts, local notes, and one-off containers.
 
-This is an active personal infrastructure repo, not a general-purpose Python library or a polished hosted product. The value is in keeping local model configs, runtime control, evaluation, and deployment packaging in one coherent place.
+## Why
 
-## What it does
+Running local models across multiple machines gets messy fast:
 
-- Launches and restarts `llama-swap` from machine-specific config overrides.
-- Serves a local Web UI for config inspection, model/runtime tasks, and run results.
-- Runs evaluation and benchmarking helpers against local model setups.
-- Packages the Web UI for local containers, OrbStack, Compose, and Helm-based deployment.
+- one base config drifts into several hand-edited variants
+- runtime launch scripts and eval scripts stop agreeing on ports or model names
+- UI controls, deployment packaging, and benchmark outputs live in different places
 
-## Repo map
+`llama-suite` exists to make that workflow reproducible. The repo treats local LLM ops as a system, not just a server binary.
 
-- `src/llama_suite/watchers/`: launch and restart `llama-swap`
-- `src/llama_suite/webui/`: FastAPI Web UI, API routes, and static assets
-- `src/llama_suite/eval/`: eval harness integrations
-- `src/llama_suite/bench/`: benchmarking and memory-scan utilities
-- `configs/`: shared baseline config plus machine-specific overrides
-- `deploy/`: container, Compose, OrbStack, Helm, and marketplace packaging
+## How
 
-## Quick start
+1. Define the shared baseline in `configs/config.base.yaml`.
+2. Layer machine-specific overrides from `configs/overrides/`.
+3. Generate an effective runtime config for `llama-swap` and `llama.cpp`-compatible backends.
+4. Use the FastAPI Web UI to inspect config, launch endpoints, run sweeps, benchmarks, memory scans, and evals.
+5. Package the same control plane for local containers, OrbStack, Compose, Helm, and marketplace-style deployment.
+
+## What's Different
+
+- It is ops-first, not SDK-first. The main artifact is a working local control plane.
+- Config overrides are first-class, so one repo can drive macOS, Windows, and larger workstation setups.
+- The Web UI is connected to real local tasks: endpoint lifecycle, config editing, download flows, sweeps, and results.
+- Deployment packaging lives next to the runtime and eval tooling, so local experimentation and hosted control surfaces stay aligned.
+
+## Screenshots
+
+**Dashboard**
+
+![llama-suite dashboard](docs/assets/readme/dashboard.png)
+
+The dashboard shows active endpoint tasks, Open WebUI controls, system state, and the currently selected machine override.
+
+**Config Studio**
+
+![llama-suite config studio](docs/assets/readme/config-studio.png)
+
+Config Studio exposes the merged config model instead of raw YAML only, which makes override editing and validation much faster.
+
+**Model Inventory**
+
+![llama-suite models view](docs/assets/readme/models.png)
+
+The models view surfaces readiness, context size, GPU/thread settings, and missing artifacts from the same source of truth used by the runtime.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Base["configs/config.base.yaml"]
+    Overrides["configs/overrides/*.yaml"]
+    Merge["config merge + validation"]
+    Effective["generated effective config"]
+    Watcher["llama_swap_watch.py"]
+    Swap["llama-swap"]
+    Runtime["llama.cpp / ik_llama.cpp"]
+    WebUI["FastAPI Web UI"]
+    Bench["bench tools"]
+    Eval["eval tools"]
+    Memory["memory scan"]
+    Results["runs/ + result artifacts"]
+    Deploy["deploy/{compose,orbstack,helm,marketplace}"]
+
+    Base --> Merge
+    Overrides --> Merge
+    Merge --> Effective
+    Effective --> Watcher
+    Watcher --> Swap
+    Swap --> Runtime
+
+    WebUI --> Effective
+    WebUI --> Watcher
+    WebUI --> Bench
+    WebUI --> Eval
+    WebUI --> Memory
+
+    Bench --> Results
+    Eval --> Results
+    Memory --> Results
+
+    Deploy --> WebUI
+```
+
+## Core Capabilities
+
+- Launch and restart `llama-swap` from merged base plus override config.
+- Expose a local Web UI for config inspection, endpoint control, model management, and results.
+- Run benchmark, evaluation, sweep, and memory-scan tasks against the same configured model inventory.
+- Support Open WebUI lifecycle management alongside the endpoint layer.
+- Package the Web UI for Docker/Compose, OrbStack, Helm, and marketplace-style deployment.
+
+## Quick Start
 
 Use Python 3.10+.
 
@@ -41,7 +118,7 @@ python tools\scripts\install.py --dev-extras
 
 The Web UI serves on `http://localhost:8088`.
 
-## Common commands
+## Common Commands
 
 Install or refresh the repo environment:
 
@@ -62,11 +139,16 @@ Run tests:
 ./.venv/bin/python -m pytest -q
 ```
 
-## Deployment notes
+## Deployment
 
-- `deploy/orbstack/README.md`: easiest local container run on macOS.
-- `deploy/compose/docker-compose.yml`: local container deployment.
-- `deploy/charts/llama-suite-webui/README.md`: Helm chart for the Web UI.
+- [deploy/orbstack/README.md](deploy/orbstack/README.md): local macOS container deployment.
+- [deploy/charts/llama-suite-webui/README.md](deploy/charts/llama-suite-webui/README.md): Helm chart for the Web UI.
+- [deploy/marketplace/llama-suite-webui/README.md](deploy/marketplace/llama-suite-webui/README.md): marketplace packaging.
+
+## Release Hygiene
+
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Release playbook: [docs/releasing.md](docs/releasing.md)
 
 ## Notes
 
