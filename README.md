@@ -133,6 +133,19 @@ Run the watcher with a machine override:
 ./.venv/bin/python -m llama_suite.watchers.llama_swap_watch -o configs/overrides/mac-m3-max-36G.yaml
 ```
 
+Run the OpenCode proxy in front of llama-swap:
+
+```bash
+./.venv/bin/python -m llama_suite.proxy.opencode \
+  --host 127.0.0.1 \
+  --port 8081 \
+  --upstream http://127.0.0.1:8080/v1 \
+  --slots 1 \
+  --cache-reuse 256
+```
+
+Point OpenCode at `http://127.0.0.1:8081/v1`. The proxy injects llama.cpp prompt-cache controls and stable slot affinity so repeated OpenCode system/tool prefixes can reuse KV cache.
+
 Run tests:
 
 ```bash

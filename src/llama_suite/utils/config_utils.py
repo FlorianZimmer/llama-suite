@@ -1,5 +1,6 @@
 # config_utils.py (new-layout ready)
 from copy import deepcopy
+import json
 import os
 import platform
 from pathlib import Path
@@ -230,6 +231,17 @@ COMMON_FLAGS_KEY = "COMMON_FLAGS"
 def _append_cli_arg(args: List[str], key: str, value: Any) -> None:
     key_norm = key.replace("_", "-")
     cli_flag = f"--{key_norm}"
+
+    if key_norm.endswith("-kwargs"):
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except Exception:
+                pass
+        if isinstance(value, (dict, list, int, float, bool)) or value is None:
+            value = json.dumps(value, separators=(",", ":"))
+        args.extend([cli_flag, shlex.quote(str(value))])
+        return
 
     if key_norm == "flash-attn" and isinstance(value, bool):
         args.extend([cli_flag, "on" if value else "off"])

@@ -4,6 +4,8 @@ COMMON_FLAGS:
   bin: llama.cpp/build/bin/llama-server
   cache-type-k: q8_0
   cache-type-v: q8_0
+  cache-ram: 8192
+  cache-reuse: 256
   jinja: true
   parallel: 1
   cont-batching: true
@@ -91,13 +93,13 @@ models:
       model: ./models/GLM-4.7-Flash-UD-Q6_K_XL.gguf
       ctx-size: 131072
       n-predict: 131072
-  Qwen3.5-35B-A3B-UD-Q4_K_XL:
-    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-35B-A3B
+  Qwen3.6-35B-A3B-UD-Q4_K_XL:
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.6-35B-A3B
     sampling: *id001
     cmd:
       cache-type-k: f16
       cache-type-v: f16
-      model: ./models/Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf
+      model: ./models/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
       ctx-size: 131072
       n-predict: 131072
   Qwen3.5-27B-UD-Q5_K_XL:
@@ -109,6 +111,30 @@ models:
       model: ./models/Qwen3.5-27B-UD-Q5_K_XL.gguf
       ctx-size: 32000
       n-predict: 32000
+  Qwen3.6-27B-UD-Q5_K_XL:
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.6-27B
+    sampling: *id001
+    cmd:
+      cache-type-k: f16
+      cache-type-v: f16
+      model: ./models/Qwen3.6-27B-UD-Q5_K_XL.gguf
+      ctx-size: 131072
+      n-predict: 65536
+  Qwen3.6-27B-UD-Q5_K_XL-DFlash:
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.6-27B
+    sampling: *id001
+    cmd:
+      bin: vendor/llama.cpp-dflash/bin/llama-server
+      cache-type-k: f16
+      cache-type-v: f16
+      model: ./models/Qwen3.6-27B-UD-Q5_K_XL.gguf
+      model-draft: ./models/dflash-draft-3.6-q8_0.gguf
+      ctx-size: 131072
+      ctx-size-draft: 512
+      n-predict: 65536
+      spec-type: dflash
+      draft: 16
+      reasoning: "off"
   Qwen3.5-122B-A10B-UD-Q4_K_XL:
     hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.5-122B-A10B
     sampling: *id001

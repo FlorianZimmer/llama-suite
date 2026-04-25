@@ -13,3 +13,36 @@ models:
     cmd:
       ctx-size: 16384
       n-predict: 16384
+
+  Qwen3.6-35B-A3B-UD-Q4_K_XL:
+    cmd:
+      cache-type-k: q8_0
+      cache-type-v: q8_0
+      ctx-size: 262144
+      n-predict: 65536
+      slot-save-path: /Users/florian/Local/github/llama-suite/var/slots/qwen3.6-35b-a3b
+      spec-type: ngram-mod
+      draft: 16
+
+  Qwen3.6-27B-UD-Q5_K_XL:
+    cmd:
+      cache-type-k: q8_0
+      cache-type-v: q8_0
+      ctx-size: 131072
+      n-predict: 65536
+      slot-save-path: /Users/florian/Local/github/llama-suite/var/slots/qwen3.6-27b
+      spec-type: ngram-mod
+      draft: 16
+
+  Qwen3.6-27B-UD-Q5_K_XL-DFlash:
+    cmd:
+      cache-type-k: q8_0
+      cache-type-v: q8_0
+      ctx-size: 131072
+      ctx-size-draft: 512
+      n-predict: 65536
+      flash-attn: true
+      slot-save-path: /Users/florian/Local/github/llama-suite/var/slots/qwen3.6-27b-dflash
+      spec-type: dflash
+      draft: 16
+      reasoning: "off"

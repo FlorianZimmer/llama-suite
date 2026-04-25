@@ -275,7 +275,7 @@ def _resolve_model_path(val: Any, repo_root: Path, processed_top: Dict[str, Any]
 
 
 def _reanchor_configs_path(s: str, repo_root: Path) -> str:
-    """Rewrite .../configs/{models|llama.cpp}/... -> .../{models|llama.cpp}/... in any string."""
+    """Rewrite .../configs/{models|llama.cpp|vendor}/... -> .../{models|llama.cpp|vendor}/... in any string."""
     root = str(repo_root.resolve())
     # Normalize slashes for search
     s_norm = s.replace("\\", "/")
@@ -283,6 +283,7 @@ def _reanchor_configs_path(s: str, repo_root: Path) -> str:
     replacements = [
         (f"{root_norm}/configs/models/", f"{root_norm}/models/"),
         (f"{root_norm}/configs/llama.cpp/", f"{root_norm}/llama.cpp/"),
+        (f"{root_norm}/configs/vendor/", f"{root_norm}/vendor/"),
     ]
     for old, new in replacements:
         s_norm = s_norm.replace(old, new)

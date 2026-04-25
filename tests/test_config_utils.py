@@ -37,3 +37,20 @@ def test_build_llama_server_command_maps_flash_attn_bool_to_off() -> None:
     )
 
     assert "--flash-attn off" in cmd
+
+
+def test_build_llama_server_command_quotes_json_kwargs() -> None:
+    cmd = build_llama_server_command_util(
+        {
+            "_name_for_log": "m1",
+            "cmd": {
+                "bin": "llama-server",
+                "port": 9001,
+                "model": "models/m1.gguf",
+                "ctx-size": 8192,
+                "chat-template-kwargs": {"enable_thinking": False},
+            },
+        }
+    )
+
+    assert "--chat-template-kwargs '{\"enable_thinking\":false}'" in cmd

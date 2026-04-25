@@ -39,6 +39,7 @@ dev = [
 # llama-suite-scan-mem = "llama_suite.bench.scan_model_memory:main"
 # llama-suite-swap-watch = "llama_suite.watchers.llama_swap:main"
 # llama-suite-eval = "llama_suite.eval.eval:main"
+llama-suite-opencode-proxy = "llama_suite.proxy.opencode:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

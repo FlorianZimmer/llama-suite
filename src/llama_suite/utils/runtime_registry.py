@@ -22,6 +22,12 @@ RUNTIME_SPECS: tuple[RuntimeSpec, ...] = (
         aliases=("llama_cpp", "llama-cpp"),
     ),
     RuntimeSpec(
+        name="llama.cpp-dflash",
+        vendor_dir="llama.cpp-dflash",
+        repo_url="https://github.com/ggml-org/llama.cpp.git",
+        aliases=("llama_cpp_dflash", "llama-cpp-dflash", "dflash"),
+    ),
+    RuntimeSpec(
         name="ik_llama.cpp",
         vendor_dir="ik_llama.cpp",
         repo_url="https://github.com/ikawrakow/ik_llama.cpp.git",
