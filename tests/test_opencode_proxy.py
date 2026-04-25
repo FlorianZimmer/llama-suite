@@ -34,6 +34,17 @@ def test_prepare_chat_payload_injects_llama_cpp_cache_controls() -> None:
     assert out["prompt_cache_key"] == cache_key
 
 
+def test_prepare_chat_payload_strips_llamasuite_provider_prefix() -> None:
+    payload = {
+        "model": "llamasuite/Qwen3.6-35B-A3B-UD-Q4_K_XL",
+        "messages": [{"role": "user", "content": "hello"}],
+    }
+
+    out, _, _ = prepare_chat_payload(payload, _cfg())
+
+    assert out["model"] == "Qwen3.6-35B-A3B-UD-Q4_K_XL"
+
+
 def test_prepare_chat_payload_preserves_explicit_cache_key() -> None:
     payload = {
         "model": "m",

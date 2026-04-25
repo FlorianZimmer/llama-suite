@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 
 DEFAULT_UPSTREAM_BASE_URL = "http://127.0.0.1:8080/v1"
+LLAMA_SUITE_MODEL_PREFIX = "llamasuite/"
 
 
 @dataclass(frozen=True)
@@ -71,10 +72,18 @@ def _slot_for(payload: dict[str, Any], cfg: ProxyConfig) -> int:
     return int.from_bytes(digest, "big") % cfg.slots
 
 
+def _normalize_upstream_model_name(model: Any) -> Any:
+    if isinstance(model, str) and model.startswith(LLAMA_SUITE_MODEL_PREFIX):
+        return model[len(LLAMA_SUITE_MODEL_PREFIX):]
+    return model
+
+
 def prepare_chat_payload(payload: dict[str, Any], cfg: ProxyConfig) -> tuple[dict[str, Any], int, str]:
     out = dict(payload)
     cache_key = _stable_cache_key(out)
     slot = _slot_for(out, cfg)
+    if "model" in out:
+        out["model"] = _normalize_upstream_model_name(out["model"])
 
     if cfg.force_cache_prompt:
         out["cache_prompt"] = True
