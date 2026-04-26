@@ -395,6 +395,9 @@ def generate_processed_config(
             if not isinstance(model_data, dict):
                 if verbose_logging: print(colour_util(f"Util Warning: Config for model '{model_name}' not a dict.", Fore.YELLOW))
                 continue
+            prebuilt_cmd = model_data.get("generated_cmd_str") or model_data.get("generated-cmd-str")
+            if isinstance(prebuilt_cmd, str) and prebuilt_cmd.strip():
+                continue
             original_cmd_dict = model_data.get("cmd")
             if not isinstance(original_cmd_dict, dict):
                 raise ValueError(f"Model '{model_name}' must have a 'cmd' dict.")

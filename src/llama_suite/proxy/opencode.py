@@ -16,6 +16,22 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 DEFAULT_UPSTREAM_BASE_URL = "http://127.0.0.1:8080/v1"
 LLAMA_SUITE_MODEL_PREFIX = "llamasuite/"
+QWEN_GENERAL_SUFFIX = "-General"
+QWEN_CODING_SUFFIX = "-Coding"
+QWEN_GENERAL_SAMPLING = {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+}
+QWEN_CODING_SAMPLING = {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+}
 
 
 @dataclass(frozen=True)
@@ -78,8 +94,24 @@ def _normalize_upstream_model_name(model: Any) -> Any:
     return model
 
 
+def _apply_sampling_preset(payload: dict[str, Any]) -> None:
+    model = payload.get("model")
+    if not isinstance(model, str):
+        return
+
+    model_name = _normalize_upstream_model_name(model)
+    if not isinstance(model_name, str) or "Qwen3." not in model_name:
+        return
+
+    if model_name.endswith(QWEN_GENERAL_SUFFIX):
+        payload.update(QWEN_GENERAL_SAMPLING)
+    elif model_name.endswith(QWEN_CODING_SUFFIX):
+        payload.update(QWEN_CODING_SAMPLING)
+
+
 def prepare_chat_payload(payload: dict[str, Any], cfg: ProxyConfig) -> tuple[dict[str, Any], int, str]:
     out = dict(payload)
+    _apply_sampling_preset(out)
     cache_key = _stable_cache_key(out)
     slot = _slot_for(out, cfg)
     if "model" in out:

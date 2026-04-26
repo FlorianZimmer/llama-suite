@@ -1,0 +1,117 @@
+diff --git a/mlx_lm/server.py b/mlx_lm/server.py
+index d843b02..8159c2f 100644
+--- a/mlx_lm/server.py
++++ b/mlx_lm/server.py
+@@ -1,6 +1,7 @@
+ # Copyright © 2023-2024 Apple Inc.
+ 
+ import argparse
++import copy
+ import json
+ import logging
+ import pickle
+@@ -685,6 +686,65 @@ class ResponseGenerator:
+     def _is_batchable(self, args):
+         return self.model_provider.is_batchable and args.seed is None
+ 
++    def _prefill_for_single_request(
++        self,
++        model,
++        prompt,
++        rest,
++        prompt_cache,
++        segments,
++        segment_types,
++    ):
++        """Prefill reusable prompt segments before single-request generation.
++
++        The MTP path bypasses BatchGenerator, so without this it only stores a
++        post-generation cache. Some Qwen cache entries are not trimmable, which
++        makes those post-generation caches unusable as prefixes. This mirrors
++        the batched path by storing caches at system/user segment boundaries.
++        """
++        cached_tokens = len(prompt) - len(rest)
++        prefill_target = max(cached_tokens, len(prompt) - 1)
++        if cached_tokens >= prefill_target:
++            return rest
++
++        boundaries = []
++        cursor = 0
++        for segment, segment_type in zip(segments, segment_types):
++            cursor += len(segment)
++            if cached_tokens < cursor <= prefill_target:
++                boundaries.append((cursor, segment_type))
++
++        rest_offset = 0
++        position = cached_tokens
++        while position < prefill_target:
++            next_boundary = min(
++                [boundary for boundary, _ in boundaries if boundary > position]
++                or [prefill_target]
++            )
++            next_position = min(
++                prefill_target,
++                next_boundary,
++                position + self.cli_args.prefill_step_size,
++            )
++            chunk = rest[rest_offset : rest_offset + next_position - position]
++            if chunk:
++                model(mx.array(chunk, mx.uint32)[None], cache=prompt_cache)
++                mx.eval([c.state for c in prompt_cache if hasattr(c, "state")])
++                mx.clear_cache()
++            position = next_position
++            rest_offset += len(chunk)
++
++            while boundaries and boundaries[0][0] == position:
++                boundary, segment_type = boundaries.pop(0)
++                self.prompt_cache.insert_cache(
++                    self.model_provider.model_key,
++                    prompt[:boundary],
++                    copy.deepcopy(prompt_cache),
++                    cache_type=segment_type,
++                )
++
++        return rest[rest_offset:]
++
+     def _generate(self):
+         # Local thread stream that we 'll pass to the BatchGenerator to make
+         # sure that all generation runs in the same stream as the
+@@ -940,7 +1000,9 @@ class ResponseGenerator:
+             draft_model = self.model_provider.draft_model
+ 
+             # Prepare the prompt and state machine
+-            prompt, _, _, initial_state = self._tokenize(tokenizer, request, args)
++            prompt, segments, segment_types, initial_state = self._tokenize(
++                tokenizer, request, args
++            )
+             sm, sequences = self._make_state_machine(
+                 self.model_provider.model_key,
+                 tokenizer,
+@@ -979,6 +1041,19 @@ class ResponseGenerator:
+                 if self.model_provider.draft_model is not None:
+                     cache += make_prompt_cache(self.model_provider.draft_model)
+ 
++            rest = self._prefill_for_single_request(
++                model,
++                prompt,
++                rest,
++                cache,
++                segments,
++                segment_types,
++            )
++
++            if args.max_tokens == 0:
++                rqueue.put(None)
++                return
++
+             # Process the prompt and generate tokens
+             for gen in stream_generate(
+                 model=model,
+@@ -1029,6 +1104,7 @@ class ResponseGenerator:
+             )
+ 
+         except Exception as e:
++            logging.exception("Generation worker failed")
+             rqueue.put(e)
+ 
+     def generate(

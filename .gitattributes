@@ -2,3 +2,4 @@
 *.command text eol=lf
 Dockerfile text eol=lf
 Dockerfile* text eol=lf
+patches/**/*.patch whitespace=-blank-at-eol
