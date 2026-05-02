@@ -60,14 +60,18 @@ models:
       model: ./models/Qwen3.5-35B-A3B-UD-Q4_K_XL.gguf
       model-draft: ./models/eagle3/Qwen3.5-35B-A3B-Eagle3-Specforge-f16.gguf
       eagle3: true
-      cache-type-k: q8_0
-      cache-type-v: q8_0
-      ctx-size: 32768
-      ctx-size-draft: 32768
-      ctx-checkpoints: 32
-      checkpoint-every-n-tokens: 8192
-      n-predict: 32768
-      draft: 4
+      cache-type-k: q4_0
+      cache-type-v: q4_0
+      cache-type-k-draft: q4_0
+      cache-type-v-draft: q4_0
+      ctx-size: 24576
+      ctx-size-draft: 24576
+      cache-ram: 2048
+      cache-reuse: 128
+      ctx-checkpoints: 4
+      checkpoint-every-n-tokens: 4096
+      n-predict: 24576
+      draft: 2
       slot-save-path: /Users/florian/Local/github/llama-suite/var/slots/qwen3.5-35b-a3b-eagle3
 
   Qwen3.5-35B-A3B-UD-Q4_K_XL-Eagle3-Coding:
@@ -158,17 +162,21 @@ models:
       bin: vendor/llama.cpp-dflash/bin/llama-server
       model: ./models/Qwen3.6-27B-UD-Q5_K_XL.gguf
       model-draft: ./models/dflash-draft-3.6-q8_0.gguf
-      cache-type-k: q8_0
-      cache-type-v: q8_0
+      cache-type-k: turbo3
+      cache-type-v: turbo3
+      cache-type-k-draft: turbo3
+      cache-type-v-draft: turbo3
       ctx-size: 131072
       ctx-size-draft: 512
-      ctx-checkpoints: 32
-      checkpoint-every-n-tokens: 8192
+      cache-ram: 2048
+      cache-reuse: 128
+      ctx-checkpoints: 4
+      checkpoint-every-n-tokens: 4096
       n-predict: 65536
       flash-attn: true
       slot-save-path: /Users/florian/Local/github/llama-suite/var/slots/qwen3.6-27b-dflash
       spec-type: dflash
-      draft: 16
+      draft: 4
       reasoning: "off"
 
   Qwen3.6-27B-UD-Q5_K_XL-DFlash-Coding:
