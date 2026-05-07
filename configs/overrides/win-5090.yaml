@@ -28,14 +28,15 @@ models:
 
   GLM-4.7-Flash: {}
 
-  Qwen3.5-35B-A3B-UD-Q4_K_XL: {}
+  Qwen3.6-35B-A3B-UD-Q4_K_XL: {}
       
-  Qwen3.5-27B-UD-Q5_K_XL:
-    cmd:
-      ctx-size: 170000
-      n-predict: 170000
-      gpu-layers: 99
-      threads: 28
+  Qwen3.6-27B-UD-Q5_K_XL:
+      cmd:
+        ctx-size: 262144
+        n-predict: 32768
+        flash-attn: "on"
+        gpu-layers: 99
+        threads: 28
 
   Qwen3.5-27B-UD-Q5_K_XL-ik:
     hf_tokenizer_for_model: Qwen/Qwen3.5-27B

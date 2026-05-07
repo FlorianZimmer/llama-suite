@@ -105,6 +105,27 @@ def run_capture(
         return e
 
 
+def effective_gpu_backend_for_build(gpu_backend: str) -> str:
+    """Resolve "auto" for source builds where CMake otherwise defaults to CPU."""
+    if gpu_backend != "auto":
+        return gpu_backend
+
+    system = platform.system()
+    if system == "Darwin":
+        return "metal"
+
+    cuda_hint = (
+        os.getenv("CUDA_PATH")
+        or os.getenv("CUDA_HOME")
+        or os.getenv("CUDAToolkit_ROOT")
+        or shutil.which("nvcc")
+    )
+    if system in {"Windows", "Linux"} and cuda_hint:
+        return "cuda"
+
+    return "auto"
+
+
 
 # ───────────────────────────── repo discovery ────────────────────────────────
 
@@ -582,6 +603,10 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
     LOG.info("Updating llama.cpp via: %s (backend=%s)", effective, gpu_backend)
 
     if effective == "build":
+        build_gpu_backend = effective_gpu_backend_for_build(gpu_backend)
+        if build_gpu_backend != gpu_backend:
+            LOG.info("Resolved llama.cpp build backend: %s -> %s", gpu_backend, build_gpu_backend)
+
         if (src_root / ".git").exists():
             run(["git", "fetch", "--tags", "--force"], cwd=src_root)
             run(["git", "pull"], cwd=src_root)
@@ -607,13 +632,13 @@ def update_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path:
         if IS_WINDOWS:
             # Avoid requiring a separate OpenSSL dev install for local Windows builds.
             cmake_flags.append("-DLLAMA_OPENSSL=OFF")
-        if gpu_backend == "cuda":
+        if build_gpu_backend == "cuda":
             cmake_flags.append("-DGGML_CUDA=ON")
-        elif gpu_backend == "vulkan":
+        elif build_gpu_backend == "vulkan":
             cmake_flags.append("-DGGML_VULKAN=ON")
-        elif gpu_backend == "cpu":
+        elif build_gpu_backend == "cpu":
             cmake_flags += ["-DGGML_CUDA=OFF", "-DGGML_VULKAN=OFF", "-DGGML_METAL=OFF"]
-        elif gpu_backend == "auto" and platform.system() == "Darwin":
+        elif build_gpu_backend == "metal":
             cmake_flags.append("-DGGML_METAL=ON")
 
         run(["cmake", "..", *cmake_flags], cwd=build_dir)
@@ -696,6 +721,10 @@ def update_ik_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path
     if effective != "build":
         raise SystemExit("ik_llama.cpp currently supports source builds only.")
 
+    build_gpu_backend = effective_gpu_backend_for_build(gpu_backend)
+    if build_gpu_backend != gpu_backend:
+        LOG.info("Resolved ik_llama.cpp build backend: %s -> %s", gpu_backend, build_gpu_backend)
+
     if (src_root / ".git").exists():
         run(["git", "fetch", "--tags", "--force"], cwd=src_root)
         run(["git", "pull"], cwd=src_root)
@@ -721,13 +750,13 @@ def update_ik_llama_cpp(vendor_dir: Path, method: str, gpu_backend: str) -> Path
     ]
     if IS_WINDOWS:
         cmake_flags.append("-DLLAMA_OPENSSL=OFF")
-    if gpu_backend == "cuda":
+    if build_gpu_backend == "cuda":
         cmake_flags.append("-DGGML_CUDA=ON")
-    elif gpu_backend == "vulkan":
+    elif build_gpu_backend == "vulkan":
         cmake_flags.append("-DGGML_VULKAN=ON")
-    elif gpu_backend == "cpu":
+    elif build_gpu_backend == "cpu":
         cmake_flags += ["-DGGML_CUDA=OFF", "-DGGML_VULKAN=OFF", "-DGGML_METAL=OFF"]
-    elif gpu_backend == "auto" and platform.system() == "Darwin":
+    elif build_gpu_backend == "metal":
         cmake_flags.append("-DGGML_METAL=ON")
 
     run(["cmake", "..", *cmake_flags], cwd=build_dir)
