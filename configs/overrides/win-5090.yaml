@@ -38,6 +38,25 @@ models:
         gpu-layers: 99
         threads: 28
 
+  Qwen3.6-27B-UD-Q5_K_XL-MTP_Q8:
+    hf_tokenizer_for_model: ./models/tokenizers/Qwen/Qwen3.6-27B
+    sampling:
+      temp: 0.6
+      min-p: 0.0
+      top-p: 0.95
+      top-k: 20
+    cmd:
+      cache-type-k: q8_0
+      cache-type-v: q8_0
+      model: ./models/Qwen3.6-27B-UD-Q5_K_XL-MTP_Q8.gguf
+      ctx-size: 262144
+      n-predict: 32768
+      flash-attn: "on"
+      gpu-layers: 99
+      threads: 28
+      spec-type: draft-mtp
+      spec-draft-n-max: 2
+
   Qwen3.5-27B-UD-Q5_K_XL-ik:
     hf_tokenizer_for_model: Qwen/Qwen3.5-27B
     sampling:

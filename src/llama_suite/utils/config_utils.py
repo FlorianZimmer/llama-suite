@@ -230,6 +230,8 @@ COMMON_FLAGS_KEY = "COMMON_FLAGS"
 
 def _append_cli_arg(args: List[str], key: str, value: Any) -> None:
     key_norm = key.replace("_", "-")
+    if key_norm in {"draft", "draft-n", "draft-max"}:
+        key_norm = "spec-draft-n-max"
     cli_flag = f"--{key_norm}"
 
     if key_norm.endswith("-kwargs"):

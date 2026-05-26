@@ -466,7 +466,7 @@ def build_server_command(
             if isinstance(v, (int, float)) or (isinstance(v, str) and v.strip().replace(".", "", 1).isdigit()):
                 n = int(float(v))
                 if n > 0:
-                    extra_args += ["--draft", str(n)]
+                    extra_args += ["--spec-draft-n-max", str(n)]
             elif isinstance(v, str) and _is_path_like(v):
                 path = _normalize_model_path(v, logger=logger)
                 extra_args += ["--model-draft", path]
@@ -496,7 +496,7 @@ def build_server_command(
             if isinstance(v, (int, float)) or (isinstance(v, str) and v.strip().replace(".", "", 1).isdigit()):
                 n = int(float(v))
                 if n > 0:
-                    extra_args += ["--draft", str(n)]
+                    extra_args += ["--spec-draft-n-max", str(n)]
             elif isinstance(v, str) and _is_path_like(v):
                 path = _normalize_model_path(v, logger=logger)
                 extra_args += ["--model-draft", path]
