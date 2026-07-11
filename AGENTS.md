@@ -30,3 +30,10 @@
 ## Repo Rules (ignore on Windows)
 - At the start of every session, run: `~/.codex/skills/self-improving-agent-1.0.5/scripts/activator.sh`
 - After any failed shell command, run: `~/.codex/skills/self-improving-agent-1.0.5/scripts/error-detector.sh`
+
+## Task Sizing and Scope Discipline
+
+- When the user identifies the files, desired change, and acceptance criteria, make the direct edit and run focused verification.
+- Do not create design documents, implementation plans, tracking artifacts, or commits beyond the requested changes unless the user asks or a genuine unresolved design, cross-cutting dependency, or material scope decision requires it.
+- Use brainstorming or detailed planning only for new behavior, architecture decisions, or genuinely ambiguous requirements.
+- Skills guide execution; they do not authorize expanding the accepted scope.
