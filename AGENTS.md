@@ -1,4 +1,8 @@
-# Repository Guidelines
+# llama-suite contributor guidance
+
+`llama-suite` is an ops-first local LLM control plane. Its primary outcome is a
+reproducible effective configuration and safe runtime workflow across machines,
+not a general Python SDK.
 
 ## Project Structure
 - `src/llama_suite/`: core Python code.
@@ -22,18 +26,34 @@
 - Keep scripts cross-platform.
 - Use `snake_case` for functions/variables and `PascalCase` for classes.
 
+## Engineering judgment
+
+- Make the smallest maintainable change that delivers the requested config,
+  runtime, evaluation, Web UI, or packaging outcome using existing boundaries.
+- Preserve config merge precedence, explicit machine overrides, process
+  lifecycle safety, authentication, local filesystem isolation, and clear
+  failure messages. Add abstraction or infrastructure only for demonstrated
+  reuse, risk, or an accepted deployment requirement.
+- Do not download models, launch model servers, run benchmarks/evaluations,
+  start containers, or deploy to a cluster merely to validate local code.
+  External or resource-intensive actions require explicit user intent.
+- Ask only when a machine-wide effect, external action, or material product
+  choice is required. Otherwise implement, run focused checks, and stop when
+  the requested outcome is complete.
+
 ## Repo Hygiene
 - Do not commit local runtime data or generated artifacts.
 - Keep secrets out of YAML and git; use environment variables or CLI flags.
 - Treat `configs/config.base.yaml` as the shared baseline and keep machine-specific changes in `configs/overrides/`.
 
-## Repo Rules (ignore on Windows)
-- At the start of every session, run: `~/.codex/skills/self-improving-agent-1.0.5/scripts/activator.sh`
-- After any failed shell command, run: `~/.codex/skills/self-improving-agent-1.0.5/scripts/error-detector.sh`
+## Proportionate validation
 
-## Task Sizing and Scope Discipline
-
-- When the user identifies the files, desired change, and acceptance criteria, make the direct edit and run focused verification.
-- Do not create design documents, implementation plans, tracking artifacts, or commits beyond the requested changes unless the user asks or a genuine unresolved design, cross-cutting dependency, or material scope decision requires it.
-- Use brainstorming or detailed planning only for new behavior, architecture decisions, or genuinely ambiguous requirements.
-- Skills guide execution; they do not authorize expanding the accepted scope.
+- Run the nearest relevant pytest tests and Ruff for changed Python behavior;
+  use mypy when a shared typed interface changes.
+- Run the full pytest suite for shared config, runtime registry/process, Web UI
+  infrastructure, or release-facing changes—not for isolated docs or metadata.
+- Render and exercise the affected Web UI workflow for user-facing UI changes.
+  Check only the machines/deployment targets implicated by the change unless a
+  shared contract or release requires broader coverage.
+- Non-executable metadata needs focused diff/link checks only. Report validation
+  that needs unavailable hardware or models instead of substituting unrelated CI.

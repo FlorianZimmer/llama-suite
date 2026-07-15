@@ -1,28 +1,16 @@
-# AGENTS.md
+# Python package scope
 
-## Build/Lint/Test Commands
-- No explicit build commands found
-- No lint commands found
-- No test commands found
-- Use Python directly for execution
+Inherit the repository-root `AGENTS.md`. This tree owns the installed Python
+control plane: configuration, runtime discovery/processes, eval and benchmark
+orchestration, proxy behavior, and the FastAPI Web UI.
 
-## Code Style Guidelines
-- Python code style follows PEP 8
-- Use snake_case for variables and functions
-- Use PascalCase for classes
-- Use all caps for constants
-- Import modules at the top of the file
-- Use type hints for function parameters and return values
-- Handle errors with try/except blocks
-- Use meaningful variable and function names
-- Keep lines under 80 characters
-- Use double quotes for strings
-- Avoid importing unnecessary modules
-- Use docstrings for functions and classes
-
-## Cursor Rules
-- No .cursor/rules/ directory found
-
-## Copilot Rules
-- No .github/copilot-instructions.md file found
-
+- Keep side effects at explicit runtime boundaries so config parsing and unit
+  tests remain deterministic and do not require models, servers, or network.
+- Resolve paths and machine differences through the established root/config
+  helpers; do not add workstation-specific constants to package code.
+- Preserve API authentication and subprocess argument boundaries when changing
+  Web UI, proxy, watcher, or command-building code.
+- Test the affected module and its public consumer. Widen to the full suite only
+  when shared config, registry, process, or Web UI infrastructure changes.
+- Follow the root validation and hygiene rules; this file adds no separate
+  formatting, planning, or tool ceremony.
